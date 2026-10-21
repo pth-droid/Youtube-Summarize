@@ -1,3 +1,9 @@
+# Visual Learning app
+
+Paste a YouTube link to create a saved, source-grounded interactive learning page. Double-click **Start Visual Learning.cmd** on Windows.
+
+Read the [app guide](APP_GUIDE.md), [build status and verification](BUILD_STATUS.md), and [master plan](MASTER_PLAN.md). The transcript library documentation follows.
+
 <h1 align="center">
   ✨ YouTube Transcript API ✨
 </h1>

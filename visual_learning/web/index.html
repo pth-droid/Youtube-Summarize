@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="visual-learning-token" content="__CSRF_TOKEN__">
+  <meta name="color-scheme" content="dark light">
+  <script src="/static/theme.js"></script>
+  <script src="/static/drawer.js"></script>
+  <title>Visual Learning · Your learning workspace</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/connections.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <button id="drawer-backdrop" class="drawer-backdrop" type="button" aria-label="Close menu" tabindex="-1" hidden></button>
+  <div class="shell">
+    <aside id="workspace-drawer" class="sidebar" aria-label="Workspace menu">
+      <div class="sidebar-tools"><button id="drawer-close" type="button" class="button quiet" aria-label="Close menu">×</button></div>
+      <a class="brand" href="#new" aria-label="Visual Learning home"><span class="brand-symbol" aria-hidden="true">V<span>·</span>L</span><span>Visual <br>Learning</span></a>
+      <p class="sidebar-label">YOUR WORKSPACE</p>
+      <nav aria-label="Main navigation">
+        <button type="button" data-view="new" class="nav-item active"><span aria-hidden="true">＋</span> Start learning</button>
+        <button type="button" data-view="library" class="nav-item"><span aria-hidden="true">▦</span> Library</button>
+        <button type="button" data-view="jobs" class="nav-item"><span aria-hidden="true">◷</span> Processing <span id="job-count" class="count" hidden></span></button>
+        <button type="button" data-view="settings" class="nav-item"><span aria-hidden="true">⚙</span> Settings</button>
+      </nav>
+      <button id="theme-toggle" type="button" class="button secondary theme-toggle">Light mode</button>
+      <details class="local-note workspace-help"><summary aria-label="About this workspace" title="About this workspace">?</summary><div><span class="status-dot" aria-hidden="true"></span><strong>Saved on this computer</strong><p>Your library stays here. AI providers receive source text during generation.</p></div></details>
+    </aside>
+    <main id="main">
+      <div class="workspace-bar"><button id="drawer-toggle" type="button" class="button secondary" aria-controls="workspace-drawer" aria-expanded="true"><span aria-hidden="true">☰</span> Menu</button></div>
+      <div id="notice" class="notice" role="status" hidden></div>
+
+      <section id="view-library" class="view" aria-labelledby="library-title" hidden>
+        <header class="page-header"><div><p class="eyebrow">UNDERSTAND · CONNECT · EXPLORE</p><h1 id="library-title">Your learning library</h1><p class="lede">Keep the big picture. Return to the source when you need it.</p></div><button type="button" class="button primary" data-view="new">＋ New learning page</button></header>
+        <div class="library-tools"><label class="search"><span aria-hidden="true">⌕</span><input id="library-search" type="search" placeholder="Search your saved pages" aria-label="Search your saved pages"></label><label class="filter">Language<select id="library-language"><option value="">All languages</option><option value="vi">Vietnamese</option><option value="en">English</option></select></label><span id="library-total" class="muted"></span></div>
+        <div id="library-grid" class="library-grid"></div>
+        <div id="library-empty" class="empty-state" hidden><div class="empty-figure" aria-hidden="true"><span>Source</span><i>↓</i><span>Big picture</span><i>↙ &nbsp; ↘</i><span>Ideas &amp; evidence</span></div><h2>Your next idea starts here</h2><p>Paste a video link. Get a visual overview, useful connections, and source evidence you can explore.</p><button type="button" class="button primary" data-view="new">Create your first page</button></div>
+      </section>
+
+      <section id="view-new" class="view start-view" aria-labelledby="new-title">
+        <header class="page-header"><div><p class="eyebrow">FROM VIDEO TO UNDERSTANDING</p><h1 id="new-title">Learn something new</h1><p class="lede">Paste a YouTube link. Start with your saved settings.</p></div></header>
+        <form id="new-form" class="panel start-panel">
+          <div class="quick-start">
+          <div id="youtube-fields"><label for="video-url">YouTube video link</label><input id="video-url" type="url" required maxlength="2000" autocomplete="off" placeholder="Paste your YouTube link here" aria-describedby="youtube-help"><p id="youtube-help" class="hint">Watch links, Shorts, and shared links work here.</p></div>
+          <div id="import-fields" hidden><label for="source-file">Source file</label><input id="source-file" type="file" accept=".txt,.srt,.vtt,.json"><p id="import-help" class="hint">TXT, SRT, VTT, or transcript JSON. Plain text has no verified timestamps.</p><label for="import-title">Page title <span class="optional">optional</span></label><input id="import-title" maxlength="500" placeholder="A clear name for your source"><div id="import-url-row"><label for="import-url">Original YouTube link <span class="optional">optional</span></label><input id="import-url" type="url" placeholder="Add a link for timestamp navigation"></div></div>
+          <button id="create-button" class="button primary" type="submit" disabled>Create learning page <span aria-hidden="true">→</span></button>
+          </div>
+          <div class="start-defaults" aria-live="polite"><div><p id="defaults-label" class="defaults-label">Loading your saved settings…</p><div id="defaults-summary" class="defaults-summary"></div></div><button type="button" class="button quiet" data-view="settings">Edit defaults</button></div>
+          <div id="new-paid-row" hidden><label class="check"><input id="new-paid" type="checkbox">I approve API requests for this page. Hosted providers may charge.</label></div>
+          <div id="existing-result" class="callout" hidden></div><div id="new-error" class="form-error" role="alert" hidden></div>
+          <details id="page-options" class="advanced page-options"><summary>Options for this page</summary><p class="hint">These choices apply to this page. Your saved defaults stay the same.</p>
+          <div class="field-pair"><div><label for="new-language">Explanation language</label><select id="new-language"><option value="vi">Vietnamese · keep technical terms</option><option value="en">English</option></select></div><div><label for="new-level">Your knowledge level</label><select id="new-level"><option value="beginner">Beginner</option><option value="balanced">Balanced</option><option value="advanced">Advanced</option></select></div></div>
+          <label for="learning-goal">What do you want to understand? <span class="optional">optional</span></label><textarea id="learning-goal" rows="3" maxlength="2000" placeholder="For example: Help me understand how the parts affect each other."></textarea>
+          <label for="source-language">Source caption language <span class="optional">optional</span></label><input id="source-language" maxlength="40" placeholder="Automatic · or enter en, vi, ko…"><p class="hint">Use this when the video has several caption or dubbed tracks.</p><label for="new-provider">AI provider</label><select id="new-provider"><option value="codex">Codex · existing subscription</option></select><button id="reset-page-options" type="button" class="button quiet">Use saved defaults</button>
+          </details>
+          <div class="source-alternatives"><span class="hint">Choose a source</span><div class="input-modes" role="group" aria-label="Source type"><button type="button" data-input="youtube" class="mode active" aria-pressed="true">YouTube link</button><button type="button" data-input="transcript" class="mode" aria-pressed="false">Transcript file</button><button type="button" data-input="audio" class="mode" aria-pressed="false">Audio file</button></div></div>
+        </form>
+        <p class="start-result">Get a visual overview, explore connected ideas, and return to the source. Your page is saved in your <a href="#library">Library</a>.</p>
+        <details class="start-help"><summary>How it works</summary><ol><li>Keep the captions and their timestamps.</li><li>Find the main ideas and how they connect.</li><li>Save an interactive page with source evidence.</li></ol><p class="hint">If captions are unavailable, you can import a transcript or approve audio transcription.</p></details>
+      </section>
+
+      <section id="view-jobs" class="view" aria-labelledby="jobs-title" hidden>
+        <header class="page-header"><div><p class="eyebrow">YOUR WORK IS SAVED AS IT GOES</p><h1 id="jobs-title">Processing</h1><p class="lede">You can close this browser. Keep the app running to continue processing.</p></div></header>
+        <div class="jobs-layout"><div id="jobs-list" class="jobs-list"></div><div id="job-detail" class="panel job-detail"><p class="muted">Choose a job to see its progress.</p></div></div>
+      </section>
+
+      <section id="view-reader" class="view reader-view" aria-labelledby="reader-title" hidden><header class="reader-header"><button type="button" class="button quiet" data-view="library">← Library</button><h1 id="reader-title">Learning page</h1><a id="reader-export" class="button primary" href="#">Export HTML</a></header><iframe id="reader-frame" title="Interactive learning page" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe></section>
+
+      <section id="view-settings" class="view" aria-labelledby="settings-title" hidden>
+        <header class="page-header"><div><p class="eyebrow">YOUR DEFAULTS</p><h1 id="settings-title">Settings</h1><p class="lede">Choose how your next learning pages are made.</p></div></header>
+        <div class="settings-grid"><form id="settings-form" class="panel"><h2>Learning preferences</h2><label for="settings-language">Explanation language</label><select id="settings-language"><option value="vi">Vietnamese · keep technical terms</option><option value="en">English</option></select><label for="settings-level">Knowledge level</label><select id="settings-level"><option value="beginner">Beginner</option><option value="balanced">Balanced</option><option value="advanced">Advanced</option></select><label for="settings-provider">Default AI provider</label><select id="settings-provider"><option value="codex">Codex · existing subscription</option></select><label for="codex-model">Codex model <span class="optional">optional</span></label><input id="codex-model" maxlength="100" placeholder="Use CLI default"><p class="hint">Choose a supported model for your account. A model change starts a new analysis.</p><label class="check"><input id="allow-paid" type="checkbox">Allow API requests without approval for each page. Hosted providers may charge.</label><h2 class="section-gap">Audio transcription</h2><label for="groq-model">Groq model</label><select id="groq-model"><option value="whisper-large-v3-turbo">Whisper Large v3 Turbo · faster</option><option value="whisper-large-v3">Whisper Large v3</option></select><label class="check"><input id="groq-free" type="checkbox">Use a free Groq account only.</label><label class="check"><input id="retain-audio" type="checkbox">Keep source audio after successful transcription.</label><p class="hint">Audio processing always needs approval for the source. Account billing must be checked in Groq.</p><button class="button primary" type="submit">Save preferences</button></form>
+          <div><section class="panel credentials-panel" aria-labelledby="provider-hub-title">
+            <div class="hub-header"><div><h2 id="provider-hub-title">Provider access</h2><p class="hint">Add your own providers and models. Save a separate connection for each model or endpoint.</p></div><button id="add-connection" type="button" class="button primary">＋ Add connection</button></div>
+            <form id="connection-editor" class="connection-editor" hidden>
+              <h3 id="connection-editor-title">Add a connection</h3>
+              <label for="connection-name">Connection name</label><input id="connection-name" maxlength="120" required placeholder="For example: My provider · fast model">
+              <label for="connection-endpoint">API endpoint</label><input id="connection-endpoint" type="url" maxlength="2000" required placeholder="https://your-provider.example/v1"><p class="hint">Enter the base URL or the full request URL.</p>
+              <label for="connection-model">Model ID</label><input id="connection-model" maxlength="100" required placeholder="Enter the exact model name from your provider">
+              <label for="connection-protocol">API format</label><select id="connection-protocol"><option value="openai">OpenAI-compatible chat</option><option value="anthropic">Anthropic Messages</option></select>
+              <label for="connection-key">API key <span class="optional">optional</span></label><input id="connection-key" type="password" autocomplete="new-password" maxlength="4096" placeholder="Enter an API key, if required"><p class="hint">Keys stay in the operating system credential store.</p>
+              <details class="advanced"><summary>Connection options</summary><label class="check"><input id="connection-no-key" type="checkbox">This endpoint does not need an API key.</label><div id="connection-compatible-options"><label class="check"><input id="connection-json-mode" type="checkbox" checked>Request JSON mode.</label><label for="connection-token-parameter">Output limit field</label><select id="connection-token-parameter"><option value="max_tokens">max_tokens</option><option value="max_completion_tokens">max_completion_tokens</option></select></div></details>
+              <div id="connection-error" class="form-error" role="alert" hidden></div><div class="button-row"><button id="save-connection" class="button primary" type="submit">Save connection</button><button id="cancel-connection" class="button quiet" type="button">Cancel</button></div>
+            </form>
+            <p id="connection-empty" class="connection-empty">No API connections yet. Add a provider, endpoint, and model to get started.</p>
+            <div id="api-connection-list"></div>
+            <div class="provider-access"><strong>Codex subscription</strong><span id="codex-status" class="badge">Checking</span><p>Uses your existing Codex CLI sign-in.</p></div>
+            <details id="legacy-deepseek" hidden><summary>Existing DeepSeek connection</summary><label for="deepseek-model">DeepSeek model</label><input id="deepseek-model" maxlength="100" placeholder="Model ID from DeepSeek"><p class="hint">Select Save preferences to save this model.</p><form class="credential-form" data-provider="deepseek"><label for="deepseek-key">API key <span id="deepseek-status" class="badge"></span></label><input id="deepseek-key" type="password" autocomplete="new-password" placeholder="Enter a key to save it"><div class="button-row"><button class="button secondary" type="submit">Save key</button><button class="button quiet" type="button" data-remove-key="deepseek">Remove saved key</button></div></form></details>
+            <details class="audio-access"><summary>Audio transcription access</summary><form class="credential-form" data-provider="groq"><label for="groq-key">Groq API key <span id="groq-status" class="badge"></span></label><input id="groq-key" type="password" autocomplete="new-password" placeholder="Enter a key to save it"><div class="button-row"><button class="button secondary" type="submit">Save key</button><button class="button quiet" type="button" data-remove-key="groq">Remove saved key</button></div></form></details>
+            <p class="hint">Saving a connection sends no AI request. Select it in your learning preferences or use it as your default.</p>
+          </section><section class="panel storage-panel"><h2>Your saved library</h2><p id="storage-details" class="muted"></p><p>Your database is one SQLite file. It needs no separate server.</p><form id="library-folder-form"><label for="library-folder">Library folder</label><input id="library-folder" type="text" maxlength="4096" placeholder="D:\MyLearningLibrary" required><p class="hint">Paste a full folder path. Choose a new or empty folder. All saved pages, source files, and preferences are copied there. The current folder stays as a backup. Finish or cancel processing first.</p><div class="button-row folder-actions"><button id="library-browse-button" type="button" class="button secondary">Browse…</button><button id="library-folder-button" type="submit" class="button primary">Change library folder</button></div></form><p class="hint">This choice is remembered for the next launch. API keys stay in the Windows credential store.</p><button id="backup-button" type="button" class="button secondary">Download library backup</button><p class="hint">A backup contains saved source files, pages, jobs, and preferences. It has no API keys.</p></section></div>
+        </div>
+      </section>
+      <footer class="app-footer"><span>Visual Learning</span><span>Overview first. Evidence always within reach.</span></footer>
+    </main>
+  </div>
+</body>
+</html>
