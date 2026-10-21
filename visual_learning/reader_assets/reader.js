@@ -70,8 +70,46 @@
   function showSection(section){detail.replaceChildren();detail.append(button(t('← Return to overview','← Trở về toàn cảnh'),resetFocus,'back-link'),el('h2','',section.title));section.unit_ids.forEach(id=>detail.append(nodeButton(id)));detail.append(button(t('Read section source','Đọc đoạn nguồn của phần này'),()=>jumpSource(section.snippet_ids)));openPanel();}
   function jumpSource(ids){document.getElementById('source-browser').open=true;sourceHighlight=new Set(ids);const field=document.getElementById('source-search');field.value='';sourceLimit=Math.max(80,...ids.map(id=>snippets.get(id).index+10));renderSource();const row=document.querySelector('.source-row.highlight');if(row){row.scrollIntoView({behavior:'smooth',block:'center'});row.focus({preventScroll:true});}announce(t('Showing original source passage','Đang hiển thị đoạn nguồn gốc'));}
   function renderSource(){const query=document.getElementById('source-search').value.trim().toLocaleLowerCase(),matched=source.snippets.filter(s=>!query||s.text.toLocaleLowerCase().includes(query)),list=document.getElementById('transcript-list');list.replaceChildren();matched.slice(0,sourceLimit).forEach(s=>{const row=el('div','source-row'+(sourceHighlight.has(s.id)?' highlight':''));row.dataset.snippetId=s.id;row.id=`source-${s.id}`;row.tabIndex=-1;row.append(videoLink(s.start,time(s.start)));const p=el('p');if(s.speaker)p.append(el('span','source-speaker',s.speaker+': '));p.append(document.createTextNode(s.text));row.append(p);list.append(row);});document.getElementById('source-result-count').textContent=t(`${matched.length} source passages · showing ${Math.min(sourceLimit,matched.length)}`,`${matched.length} đoạn nguồn · đang hiển thị ${Math.min(sourceLimit,matched.length)}`);const load=document.getElementById('load-source');load.textContent=t('Show more source passages','Hiển thị thêm đoạn nguồn');load.classList.toggle('hidden',sourceLimit>=matched.length);}
+  // Chapter notes: a linear reading view whose detail follows each chapter's content.
+  // Limits come from the page data so they match the generation metrics.
+  function chapterNotes(){
+    const chapters=knowledge.chapters||[];if(!chapters.length)return;
+    const limits=(data.reader&&data.reader.note_leaf_limits)||{brief:0,standard:3,detailed:12};
+    const levelNames={brief:t('Brief','Gọn'),standard:t('Standard','Vừa'),detailed:t('Detailed','Chi tiết')};
+    const depthNames={basic:t('Introductory','Cơ bản'),intermediate:t('Intermediate','Trung bình'),expert:t('Specialist','Chuyên sâu')};
+    const roleNames={anecdote:t('anecdote','giai thoại'),banter:t('conversation','trò chuyện'),sponsor:t('sponsor','quảng cáo'),recap:t('recap','nhắc lại')};
+    const kindNames={concept:t('Concept','Khái niệm'),claim:t('Claim','Luận điểm'),mechanism:t('Mechanism','Cơ chế'),example:t('Example','Ví dụ'),evidence:t('Evidence','Bằng chứng'),objection:t('Objection','Phản biện'),choice:t('Choice','Lựa chọn'),prerequisite:t('Prerequisite','Kiến thức nền'),step:t('Step','Bước')};
+    let mode='auto';
+    const section=el('section','visual-section chapter-notes');section.id='chapter-notes';
+    const heading=el('div','section-heading');heading.append(el('p','eyebrow',t('CHAPTER NOTES','GHI CHÚ THEO CHƯƠNG')),el('h2','',t('Chapter notes','Ghi chú theo chương')),el('p','',t('Detail follows each chapter’s content: specialist chapters keep their details; conversation stays short.','Độ chi tiết theo nội dung từng chương: chương chuyên sâu giữ chi tiết, đoạn trò chuyện được rút gọn.')));
+    const tools=el('div','section-tools mode-toggle');tools.setAttribute('role','group');tools.setAttribute('aria-label',t('Detail level','Mức chi tiết'));
+    const list=el('div','chapter-list');
+    const modes=[['brief',t('Brief','Gọn')],['auto',t('Automatic','Tự động')],['detailed',t('Detailed','Chi tiết')]];
+    const toggles=modes.map(([value,label])=>{const b=button(label,()=>{mode=value;toggles.forEach(x=>x.setAttribute('aria-pressed',String(x===b)));draw();announce(t('Detail level: ','Mức chi tiết: ')+label);});b.setAttribute('aria-pressed',String(value===mode));return b;});
+    tools.append(...toggles);section.append(heading,tools,list);
+    function leafNote(u,full){const item=el('li','note-leaf'),head=el('p','note-leaf-title');head.append(el('span','note-kind',kindNames[u.kind]||u.kind),button(u.title,()=>selectUnit(u.id),'note-link'));item.append(head,citedText('p','note-summary',u.summary,u));if(full&&u.explanation&&u.explanation!==u.summary)item.append(el('p','note-explanation',u.explanation));if(full&&u.technical_terms.length)item.append(el('p','technical-terms',t('Technical terms: ','Thuật ngữ: ')+u.technical_terms.join(' · ')));if(u.caveats.length)item.append(el('p','caveat',u.caveats[0]));return item;}
+    function leafList(items,full){const ul=el('ul','note-leaves');items.forEach(u=>ul.append(leafNote(u,full)));return ul;}
+    function draw(){list.replaceChildren();chapters.forEach((c,i)=>{
+      const level=mode==='auto'?c.detail:mode,limit=limits[level]??0,full=level==='detailed';
+      const secs=c.section_ids.map(id=>sections.get(id)).filter(Boolean),passages=secs.flatMap(s=>s.snippet_ids.map(id=>snippets.get(id))).filter(Boolean).sort((a,b)=>a.index-b.index),start=passages.find(p=>p.start!==null)?.start;
+      const article=el('article','chapter-note'),head=el('header','chapter-head');article.id=`chapter-${i+1}`;
+      head.append(videoLink(start,start===undefined?t(`Chapter ${i+1}`,`Chương ${i+1}`):time(start)),el('h3','',c.title));
+      const tags=el('p','chapter-tags');tags.append(el('span','',depthNames[c.depth]||c.depth),el('span','',t('Automatic: ','Tự động: ')+levelNames[c.detail]));head.append(tags);article.append(head);
+      const condensed=secs.filter(s=>s.role&&s.role!=='substantive');
+      if(condensed.length){const p=el('p','condensed-note');p.append(document.createTextNode(t('Condensed: ','Đã rút gọn: ')));condensed.forEach((s,k)=>{const first=snippets.get(s.snippet_ids[0]);if(k)p.append(document.createTextNode(', '));p.append(button(`${roleNames[s.role]||s.role}${first&&first.start!==null?' '+time(first.start):''}`,()=>jumpSource(s.snippet_ids),'note-link'));});article.append(p);}
+      if(!c.unit_ids.length)article.append(el('p','subtle',t('No substantive ideas in this part.','Phần này không có ý tưởng thực chất.')));
+      const ideas=el('ol','note-ideas');
+      c.unit_ids.forEach(id=>{const u=units.get(id);if(!u)return;const li=el('li','note-idea');li.append(button(u.title,()=>selectUnit(id),'note-idea-title'),citedText('p','note-summary',u.summary,u));
+        const leaves=u.child_ids.map(cid=>units.get(cid)).filter(x=>x&&!x.child_ids.length),shown=leaves.slice(0,limit),rest=leaves.slice(limit);
+        if(shown.length)li.append(leafList(shown,full));
+        if(rest.length){const more=el('details','note-more');more.append(el('summary','',t(`${rest.length} more details`,`Thêm ${rest.length} chi tiết`)),leafList(rest,full));li.append(more);}
+        ideas.append(li);});
+      article.append(ideas);list.append(article);});}
+    draw();document.getElementById('visuals').append(section);
+    const link=el('a','',t('Chapter notes','Ghi chú theo chương'));link.href='#chapter-notes';document.getElementById('view-nav').append(link);
+  }
   document.getElementById('source-search').addEventListener('input',()=>{sourceLimit=80;sourceHighlight.clear();renderSource();});document.getElementById('load-source').addEventListener('click',()=>{sourceLimit+=120;renderSource();});
   document.getElementById('print-button').addEventListener('click',()=>window.print());
   window.addEventListener('beforeprint',()=>{sourceLimit=source.snippets.length;document.getElementById('source-search').value='';renderSource();let p=document.getElementById('print-reference');if(p)p.remove();p=el('section','print-reference');p.id='print-reference';p.append(el('h2','',t('Saved explanations and evidence','Giải thích và bằng chứng đã lưu')));knowledge.units.forEach(u=>{const part=el('section');part.append(el('h3','',u.title),badge(u),citedText('p','',u.summary,u),citedText('p','',u.explanation,u));u.caveats.forEach(c=>part.append(el('p','caveat',c)));part.append(evidenceBlock(u));p.append(part);});document.getElementById('reader').append(p);});
-  showLimitations();renderViews();emptyDetail();renderSource();
+  showLimitations();renderViews();chapterNotes();emptyDetail();renderSource();
 })();

@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 
+from .chapters import NOTE_LEAF_LIMITS
 from .models import KnowledgeModel, PresentationPlan, Transcript, validate_bundle
 
 ASSET_DIR = Path(__file__).parent / "reader_assets"
@@ -17,7 +18,7 @@ def render_page(source: Transcript, knowledge: KnowledgeModel, presentation: Pre
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
     data = {"source": source.model_dump(mode="json"), "knowledge": knowledge.model_dump(mode="json"),
-            "presentation": presentation.model_dump(mode="json")}
+            "presentation": presentation.model_dump(mode="json"), "reader": {"note_leaf_limits": NOTE_LEAF_LIMITS}}
     # Only include source fields required by the reader. Arbitrary import metadata
     # can contain local paths or service information and does not belong in exports.
     data["source"].pop("metadata", None)

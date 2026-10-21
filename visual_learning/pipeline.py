@@ -12,17 +12,18 @@ from types import SimpleNamespace
 from typing import Any, Callable
 
 from .models import (
-    SCHEMA_VERSION, SKILL_VERSION, Extraction, GroundingCorrections, GroundingReview, KnowledgeModel,
+    SCHEMA_VERSION, SKILL_VERSION, Chapter, Extraction, GroundingCorrections, GroundingReview, KnowledgeModel,
     KnowledgeUnit, PresentationPlan, Relationship, Snippet, Synthesis, Transcript,
     normalize_quote, validate_bundle, validate_grounding,
 )
+from .chapters import assign_units, chapter_profile, detail_level, split_sections
 from .renderer import render_page
 from .providers import ProviderError
 from .model_profiles import resolve_profile
 from .metrics import display_metrics, evenly_spaced, source_positions, spread_by_source_position
 
 SKILL_DIR = Path(__file__).resolve().parents[1] / "skills" / "visual-synthesis"
-PIPELINE_REVISION = "1.5"
+PIPELINE_REVISION = "2.0"
 # Versioned separately so a presentation change does not invalidate saved extraction and synthesis.
 PRESENTATION_REVISION = "2"
 DETAIL_KINDS = ("step", "choice", "objection", "mechanism")
@@ -539,7 +540,7 @@ class Pipeline:
                         {"preferences": preferences, "window_index": index, "source_title": source.title,
                          "source_metadata": {"timestamps_preserved": any(s.start is not None for s in source.snippets), "speaker_labels_available": any(s.speaker for s in source.snippets)},
                          "snippets": [semantic_snippet(s) for s in window]},
-                        f"Extract coherent semantic sections and useful knowledge units. Prefer contiguous section ranges: snippet_ids=[first ID], range_end=last ID; Python expands exact original IDs. Every source snippet must belong to a section. Preserve main claims, mechanisms, examples, evidence, contradictions, important numbers, prerequisites, and caveats. Match detail to source density. Usually 8-14 useful units per 12,000 source characters; do not compress a large window into that count. Up to {self.profile.maximum_units} units for this task. Preserve significant examples, qualifications and disagreements. Keep summaries to1-2 sentences and explanations to2-5 focused sentences. Every significant clause in title, summary, explanation needs appropriate source evidence; quote whole relevant sentences with contiguous IDs rather than disconnected caption fragments. Use local unique unit and relationship IDs. Child IDs are empty. Explanations use selected output language, original technical terms retained. Timing is preserved separately; do not claim source timestamps are absent because these semantic inputs omit them. Do not pad with generic ideas.",
+                        f"Extract coherent semantic sections and useful knowledge units. Prefer contiguous section ranges: snippet_ids=[first ID], range_end=last ID; Python expands exact original IDs. Every source snippet must belong to a section. Preserve main claims, mechanisms, examples, evidence, contradictions, important numbers, prerequisites, and caveats. Extract each distinct substantive idea once, however long or short this window is: the number of units follows the content, not the window length. Do not create units for greetings, small talk, sponsor reads, or restatements of an idea already extracted in this window; a window without substantive ideas has no units. Up to {self.profile.maximum_units} units for this task. Preserve significant examples, qualifications and disagreements. Label every section's role and depth by its content, never by its length or speaking style. Keep summaries to 1-2 sentences. Size each explanation to its idea: one sentence for a simple point, up to 8 sentences for a mechanism, procedure or argument, keeping every number, unit, condition and named method the source gives for it. Every significant clause in title, summary, explanation needs appropriate source evidence; quote whole relevant sentences with contiguous IDs rather than disconnected caption fragments. Use local unique unit and relationship IDs. Child IDs are empty. Explanations use selected output language, original technical terms retained. Timing is preserved separately; do not claim source timestamps are absent because these semantic inputs omit them. Do not pad with generic ideas.",
                         work_dir, validate_extraction)
                 except (ProviderError, PipelineError) as error:
                     diagnostics = getattr(error, "diagnostics", {})
@@ -573,12 +574,28 @@ class Pipeline:
         for index, window in enumerate(windows):
             self._notify("analyzing", f"Analyzing source section {index + 1} of {len(windows)}", completed=index, total=len(windows))
             extract_window(window, f"extraction_{index:04d}", index)
+        if not all_units:
+            raise PipelineError("No substantive ideas were found in this source. Its sections are saved for review.")
         self._notify("analyzing", "Connecting ideas across the complete source", completed=len(windows), total=len(windows))
+        # Level 0 synthesizes each contiguous chapter on its own. Restatements merge and
+        # distinct ideas stay apart, so a chapter keeps as many key ideas as its content
+        # holds, one level below the overview. Higher levels only build the overview.
+        chapter_sections = split_sections(source, sections)
+        chapter_units = assign_units(source, chapter_sections, all_units)
+        chapter_key_ideas = [[] for _ in chapter_sections]
+        chapter_titles = ["" for _ in chapter_sections]
         frontier = list(all_units)
         budget = self._budget(Synthesis.model_json_schema(), "synthesis")
         final = None
         for level in range(12):
-            groups = self._group_units(source, frontier, all_relationships, preferences, budget)
+            if level == 0:
+                groups, group_chapters = [], []
+                for chapter_index, members in enumerate(chapter_units):
+                    for group in self._group_units(source, members, all_relationships, preferences, budget):
+                        groups.append(group)
+                        group_chapters.append(chapter_index)
+            else:
+                groups = self._group_units(source, frontier, all_relationships, preferences, budget)
             next_frontier = []
             for group_index, group in enumerate(groups):
                 self._notify("analyzing", f"Connecting idea group {group_index + 1} of {len(groups)}", completed=group_index, total=len(groups))
@@ -589,7 +606,14 @@ class Pipeline:
                     validate_grounding(source, synthesis.units, synthesis.relationships)
                 else:
                     inputs = {u.id for u in group}
-                    max_nodes = min(8, max(1, len(group) // 2)) if len(groups) > 1 else min(8, len(group))
+                    if level == 0:
+                        max_nodes = min(8, len(group))
+                        scope = ("These units come from one contiguous chapter of the source. Create one parent idea per distinct "
+                                 "substantive idea: merge restatements and closely related points, keep distinct mechanisms, "
+                                 "examples, numbers and objections apart. Give group_title a short chapter title. ")
+                    else:
+                        max_nodes = min(8, max(1, len(group) // 2)) if len(groups) > 1 else min(8, len(group))
+                        scope = ""
                     def validate_synthesis(value):
                         if len(value.units) > max_nodes:
                             raise ValueError(f"This grouping may contain at most {max_nodes} parent ideas")
@@ -613,7 +637,7 @@ class Pipeline:
                         validate_grounding(source, [SimpleNamespace(id="main_conclusion", evidence=value.main_conclusion_evidence)], [])
                     synthesis = self._request("synthesis", Synthesis,
                         self._synthesis_body(source, group, all_relationships, preferences),
-                        f"Synthesize at most {max_nodes} coherent parent ideas, with useful cross-topic connections. EVERY supplied unit ID must be retained under one or more parent child_ids. Do not return existing units. Main question and conclusion must preserve disagreement and uncertainty. The main_conclusion_evidence must quote original passages supporting every significant clause in the main conclusion; don't assume node citations support the headline. Cite original passages for each sourced parent and each relationship. Do not turn temporal sequence into causality. Selected output language applies to all explanations.",
+                        scope + f"Synthesize at most {max_nodes} coherent parent ideas, with useful cross-topic connections. EVERY supplied unit ID must be retained under one or more parent child_ids. Do not return existing units. Main question and conclusion must preserve disagreement and uncertainty. The main_conclusion_evidence must quote original passages supporting every significant clause in the main conclusion; don't assume node citations support the headline. Cite original passages for each sourced parent and each relationship. Do not turn temporal sequence into causality. Selected output language applies to all explanations.",
                         work_dir, validate_synthesis)
                     synthesis.limitations.extend(self._review(source, synthesis.units, synthesis.relationships, work_dir))
                     save(name, synthesis.model_dump(mode="json"))
@@ -621,11 +645,16 @@ class Pipeline:
                 all_units.extend(synthesis.units)
                 all_relationships.extend(synthesis.relationships)
                 limitations.extend(synthesis.limitations)
+                if level == 0:
+                    chapter = group_chapters[group_index]
+                    chapter_key_ideas[chapter].extend(u.id for u in synthesis.units)
+                    chapter_titles[chapter] = chapter_titles[chapter] or synthesis.group_title
                 if len(groups) == 1:
                     final = synthesis
             if final is not None:
                 break
-            if len(next_frontier) >= len(frontier):
+            # Chapter synthesis may keep every distinct idea; the overview levels must reduce.
+            if level > 0 and len(next_frontier) >= len(frontier):
                 raise PipelineError("Synthesis did not reduce context. Saved detail is available for retry.")
             frontier = next_frontier
         if final is None:
@@ -657,13 +686,20 @@ class Pipeline:
         if any(s.start is None for s in source.snippets):
             limitations.append("Some source passages have no verified timestamp.")
         limitations.append("Source grounding was checked against the supplied transcript; speaker claims were not externally fact-checked.")
+        chapters = []
+        for index, group in enumerate(chapter_sections):
+            depth, share = chapter_profile(group)
+            leaves = [u for u in chapter_units[index] if not u.child_ids]
+            chapters.append(Chapter(id=f"chapter_{index + 1:02d}", title=(chapter_titles[index] or group[0].title)[:250],
+                section_ids=[s.id for s in group], unit_ids=chapter_key_ideas[index], depth=depth,
+                substantive_share=round(share, 3), detail=detail_level(depth, share, leaves, preferences["knowledge_level"])))
         knowledge = KnowledgeModel(source_id=source.source_id, language=language,
             main_question=final.main_question, main_conclusion=final.main_conclusion,
             main_conclusion_status="uncertain" if headline_caveats else "source",
             main_conclusion_caveats=headline_caveats,
             main_conclusion_evidence=final.main_conclusion_evidence,
             overview_ids=[u.id for u in final.units], units=all_units, relationships=all_relationships,
-            sections=sections, source_coverage=[s.id for s in source.snippets if s.id in coverage],
+            sections=sections, chapters=chapters, source_coverage=[s.id for s in source.snippets if s.id in coverage],
             limitations=list(dict.fromkeys(limitations)), learning_goal=preferences["learning_goal"], knowledge_level=preferences["knowledge_level"])
         write_json(work_dir / "knowledge.json", knowledge.model_dump(mode="json"))
         self._notify("selecting_visuals", "Choosing visual forms for the source structure")

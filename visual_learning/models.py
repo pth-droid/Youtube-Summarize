@@ -11,8 +11,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-SCHEMA_VERSION = "1.0"
-SKILL_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.1"
+SKILL_VERSION = "1.1.0"
 
 
 class Contract(BaseModel):
@@ -120,11 +120,18 @@ class Relationship(Contract):
         return self
 
 
+SectionRole = Literal["substantive", "anecdote", "banter", "sponsor", "recap"]
+ContentDepth = Literal["basic", "intermediate", "expert"]
+DetailLevel = Literal["brief", "standard", "detailed"]
+
+
 class SourceSection(Contract):
     id: str = Field(min_length=1, max_length=100)
     title: str = Field(min_length=1, max_length=250)
     snippet_ids: list[str] = Field(min_length=1)
     unit_ids: list[str] = Field(default_factory=list)
+    role: SectionRole = Field(default="substantive", description="What this passage does, judged by content: substantive ideas, an illustrative anecdote or tangent, greetings/small talk/intro/outro, a sponsor read, or a recap of earlier points.")
+    depth: ContentDepth = Field(default="intermediate", description="How specialised the content is, regardless of length or speaking style: basic (general-audience explanation), intermediate (domain mechanisms, tradeoffs, procedures), expert (specialist detail, data, formal reasoning).")
 
 
 class ExtractedSection(SourceSection):
@@ -132,13 +139,15 @@ class ExtractedSection(SourceSection):
 
 
 class Extraction(Contract):
-    units: list[KnowledgeUnit] = Field(min_length=1, max_length=80)
+    # A window of greetings or small talk legitimately contains no knowledge units.
+    units: list[KnowledgeUnit] = Field(default_factory=list, max_length=80)
     relationships: list[Relationship] = Field(default_factory=list, max_length=120)
     sections: list[ExtractedSection] = Field(min_length=1, max_length=48)
     limitations: list[str] = Field(default_factory=list)
 
 
 class Synthesis(Contract):
+    group_title: str = Field(default="", max_length=180, description="A short title naming what this group of ideas covers, such as a chapter title.")
     main_question: str = Field(min_length=1, max_length=700)
     main_conclusion: str = Field(min_length=1, max_length=1400)
     main_conclusion_evidence: list[Evidence] = Field(default_factory=list, max_length=12)
@@ -163,6 +172,17 @@ class GroundingCorrections(Contract):
     relationships: list[Relationship] = Field(default_factory=list, max_length=30)
 
 
+class Chapter(Contract):
+    """A contiguous part of the source and its key ideas, sized by content rather than duration."""
+    id: str = Field(min_length=1, max_length=100)
+    title: str = Field(min_length=1, max_length=250)
+    section_ids: list[str] = Field(min_length=1)
+    unit_ids: list[str] = Field(default_factory=list)
+    depth: ContentDepth = "intermediate"
+    substantive_share: float = Field(default=1.0, ge=0, le=1)
+    detail: DetailLevel = "standard"
+
+
 class KnowledgeModel(Contract):
     schema_version: str = SCHEMA_VERSION
     source_id: str
@@ -176,6 +196,7 @@ class KnowledgeModel(Contract):
     units: list[KnowledgeUnit] = Field(min_length=1)
     relationships: list[Relationship] = Field(default_factory=list)
     sections: list[SourceSection] = Field(default_factory=list)
+    chapters: list[Chapter] = Field(default_factory=list)
     source_coverage: list[str] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
     learning_goal: str = ""
@@ -205,6 +226,12 @@ class KnowledgeModel(Contract):
         for section in self.sections:
             if not set(section.unit_ids) <= valid:
                 raise ValueError("Unknown section units")
+        section_ids = {s.id for s in self.sections}
+        if len({c.id for c in self.chapters}) != len(self.chapters):
+            raise ValueError("Duplicate chapter IDs")
+        for chapter in self.chapters:
+            if not set(chapter.section_ids) <= section_ids or not set(chapter.unit_ids) <= valid:
+                raise ValueError(f"Unknown sections or units in chapter {chapter.id}")
         # Disclosure must terminate even if a provider accidentally creates a cycle.
         graph = {u.id: u.child_ids for u in self.units}
         visited, active = set(), set()

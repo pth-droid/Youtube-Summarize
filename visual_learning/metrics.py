@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Sequence
 
+from .chapters import NOTE_LEAF_LIMITS
+
 
 def source_positions(source) -> dict[str, float]:
     """Relative position (0 to below 1) of every snippet, in source order."""
@@ -64,6 +66,18 @@ def dig_deeper_depths(knowledge) -> dict[str, int]:
     return depths
 
 
+def note_leaves(knowledge, level: str | None = None) -> list:
+    """Leaf ideas shown inline in chapter notes, at each chapter's level or a forced one."""
+    units = {unit.id: unit for unit in knowledge.units}
+    shown = []
+    for chapter in knowledge.chapters:
+        limit = NOTE_LEAF_LIMITS[level or chapter.detail]
+        for uid in chapter.unit_ids:
+            children = [units[cid] for cid in units[uid].child_ids if not units[cid].child_ids]
+            shown.extend(children[:limit])
+    return shown
+
+
 def display_metrics(source, knowledge, presentation) -> dict[str, Any]:
     """Describe how much extracted detail reaches the reader, and from which part of the source.
 
@@ -82,6 +96,7 @@ def display_metrics(source, knowledge, presentation) -> dict[str, Any]:
         histogram[key] = histogram.get(key, 0) + 1
     times = [value for snippet in source.snippets for value in (snippet.end, snippet.start) if value is not None]
     minutes = round(max(times) / 60, 1) if times else None
+    inline = note_leaves(knowledge)
     return {
         "source_minutes": minutes,
         "leaf_units": len(leaves),
@@ -92,5 +107,11 @@ def display_metrics(source, knowledge, presentation) -> dict[str, Any]:
         "leaf_units_by_source_quarter": quarter_counts(leaves, positions),
         "visible_nodes_by_source_quarter": quarter_counts(visible, positions),
         "leaf_dig_deeper_depth": dict(sorted(histogram.items(), key=lambda pair: (not pair[0].isdigit(), int(pair[0]) if pair[0].isdigit() else 0))),
-        "scope": "Visible means placed in a visual. Every unit remains reachable through saved detail and print.",
+        "chapters": len(knowledge.chapters),
+        "chapter_detail_levels": {level: sum(1 for c in knowledge.chapters if c.detail == level) for level in NOTE_LEAF_LIMITS},
+        "chapter_key_ideas": sum(len(c.unit_ids) for c in knowledge.chapters),
+        "note_leaf_units": len(inline),
+        "note_leaf_units_by_source_quarter": quarter_counts(inline, positions),
+        "note_leaf_units_if_all_detailed": len(note_leaves(knowledge, "detailed")),
+        "scope": "Visible means placed in a visual; note leaves appear inline in chapter notes at the automatic level. Every unit remains reachable through saved detail and print.",
     }
