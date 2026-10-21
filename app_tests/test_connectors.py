@@ -251,6 +251,15 @@ def test_codex_explicit_low_effort_and_no_silent_model_switch(monkeypatch, tmp_p
     assert provider.generate("data", {}, tmp_path).data == {}
 
 
+def test_codex_workspace_out_of_credits_is_reported_as_quota(monkeypatch, tmp_path):
+    message = "Your workspace is out of credits. Ask your workspace owner to refill in order to continue."
+    command = codex_stub(tmp_path, f"import sys,json\nsys.stdin.read()\nprint(json.dumps({{'type':'turn.failed','error':{{'message':{message!r}}}}}))\nsys.exit(1)\n")
+    monkeypatch.setattr(providers, "_codex_command", lambda: command)
+    with pytest.raises(providers.ProviderError) as problem:
+        providers.CodexProvider(timeout_seconds=5).generate("text", {}, tmp_path)
+    assert problem.value.code == "quota" and problem.value.diagnostics["failure_category"] == "quota"
+
+
 def test_codex_cancel_and_quota_are_safe(monkeypatch, tmp_path):
     command = codex_stub(tmp_path, "import sys,json\nsys.stdin.read()\nprint(json.dumps({'type':'error','message':'usage limit private-key'}))\nsys.exit(1)\n")
     monkeypatch.setattr(providers, "_codex_command", lambda: command)

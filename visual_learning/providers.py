@@ -231,7 +231,8 @@ class CodexProvider:
                     usage = event.get("usage", {})
                 if event_type in {"error", "turn.failed"}:
                     message = json.dumps(event).lower()
-                    if any(word in message for word in ["quota", "rate limit", "usage limit"]): error_code, failure_category = "quota", "quota"
+                    # Workspace plans report exhausted allowance as "out of credits".
+                    if any(word in message for word in ["quota", "rate limit", "usage limit", "out of credits"]): error_code, failure_category = "quota", "quota"
                     elif any(word in message for word in ["401", "unauthorized", "authentication"]): error_code, failure_category = "authentication", "authentication"
                     elif any(word in message for word in ["connection", "network", "timed out"]): failure_category = "connection"
                     elif any(word in message for word in ["schema", "unsupported model", "model not found"]): failure_category = "request_configuration"
