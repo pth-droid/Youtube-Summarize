@@ -19,9 +19,13 @@ from .models import (
 from .renderer import render_page
 from .providers import ProviderError
 from .model_profiles import resolve_profile
+from .metrics import display_metrics, evenly_spaced, source_positions, spread_by_source_position
 
 SKILL_DIR = Path(__file__).resolve().parents[1] / "skills" / "visual-synthesis"
 PIPELINE_REVISION = "1.5"
+# Versioned separately so a presentation change does not invalidate saved extraction and synthesis.
+PRESENTATION_REVISION = "2"
+DETAIL_KINDS = ("step", "choice", "objection", "mechanism")
 
 
 class PipelineError(RuntimeError):
@@ -663,38 +667,38 @@ class Pipeline:
             limitations=list(dict.fromkeys(limitations)), learning_goal=preferences["learning_goal"], knowledge_level=preferences["knowledge_level"])
         write_json(work_dir / "knowledge.json", knowledge.model_dump(mode="json"))
         self._notify("selecting_visuals", "Choosing visual forms for the source structure")
-        cached = load("presentation")
+        presentation_checkpoint = f"presentation_r{PRESENTATION_REVISION}"
+        cached = load(presentation_checkpoint)
         if cached is not None:
             presentation = PresentationPlan.model_validate(cached)
             validate_bundle(source, knowledge, presentation)
         else:
-            overview_set = set(knowledge.overview_ids)
-            overview_relations = [r for r in knowledge.relationships if r.source in overview_set and r.target in overview_set]
             selected_units = {u.id: u for u in final.units}
             # Supply a bounded collection of candidate detail shapes, never all source records.
-            candidates = []
-            for unit in all_units:
-                if unit.kind in ("step", "choice", "objection", "mechanism") and unit.id not in selected_units:
-                    candidates.append(unit)
-                if len(candidates) == 12:
-                    break
+            # Spread every bounded selection over the whole source: units, relationships and
+            # sections are stored in source order, so their first entries cover only its opening.
+            positions = source_positions(source)
+            candidates = spread_by_source_position(
+                [u for u in all_units if u.kind in DETAIL_KINDS and u.id not in selected_units], positions, 12)
             selected_units.update({u.id: u for u in candidates})
             selected_ids = set(selected_units)
-            selected_relations = [r for r in all_relationships if r.source in selected_ids and r.target in selected_ids]
+            selected_relations = spread_by_source_position(
+                [r for r in all_relationships if r.source in selected_ids and r.target in selected_ids], positions, 40)
             body = {"main_question": knowledge.main_question, "overview_ids": knowledge.overview_ids,
                     "units": [{"id": u.id, "title": u.title, "summary": u.summary, "kind": u.kind, "status": u.status} for u in selected_units.values()],
-                    "relationships": [{"id": r.id, "source": r.source, "target": r.target, "label": r.label, "kind": r.kind, "status": r.status} for r in selected_relations[:40]],
-                    "sections": [{"id": s.id, "title": s.title} for s in sections[:20]], "language": language}
+                    "relationships": [{"id": r.id, "source": r.source, "target": r.target, "label": r.label, "kind": r.kind, "status": r.status} for r in selected_relations],
+                    "sections": [{"id": s.id, "title": s.title} for s in evenly_spaced(sections, 40)], "language": language}
             presentation = self._request("presentation", PresentationPlan, body,
                 "Select 2–3 complementary useful visual forms when justified, or one for a small source. First visual should orient around major ideas; source timeline can be an additional view. Choose forms from the knowledge structure. Use only supplied node/relationship/section IDs, with relationship endpoints included. Causal graph only for source/inference causes. Titles/questions use selected output language. Do not add content or decorative graphs.",
                 work_dir, lambda value: validate_bundle(source, knowledge, value))
-            save("presentation", presentation.model_dump(mode="json"))
+            save(presentation_checkpoint, presentation.model_dump(mode="json"))
         write_json(work_dir / "presentation.json", presentation.model_dump(mode="json"))
         self._notify("rendering", "Saving the interactive learning page")
         self._check_cancelled()
         page_path = render_page(source, knowledge, presentation, work_dir / "page.html")
         record = {"schema_version": SCHEMA_VERSION, "skill_version": SKILL_VERSION,
-            "pipeline_revision": PIPELINE_REVISION, "analysis_windows": completed_windows,
+            "pipeline_revision": PIPELINE_REVISION, "presentation_revision": PRESENTATION_REVISION,
+            "analysis_windows": completed_windows,
             "initial_analysis_windows": len(windows), "model_profile": self.profile.as_dict(),
             "adaptive_events": adaptive_events,
             "reasoning_effort": getattr(self.provider, "reasoning_effort", "provider default"),
@@ -703,7 +707,8 @@ class Pipeline:
             "preferences": preferences, "fingerprint": fingerprint, "duration_seconds": round(monotonic() - started, 3),
             "usage": self.usage, "usage_scope": "current invocation only; usage from earlier cached stages is excluded",
             "cached_stages": sorted(cached_stages), "request_sizes": self.call_sizes, "source_snippets": len(source.snippets),
-            "covered_snippets": len(coverage), "limitations": knowledge.limitations}
+            "covered_snippets": len(coverage), "display_metrics": display_metrics(source, knowledge, presentation),
+            "limitations": knowledge.limitations}
         write_json(work_dir / "generation.json", record)
         return {"title": source.title, "summary": knowledge.main_conclusion, "source_id": source.source_id,
                 "knowledge_path": str(work_dir / "knowledge.json"), "presentation_path": str(work_dir / "presentation.json"),
