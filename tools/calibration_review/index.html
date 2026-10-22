@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Calibration Review</title>
+<style>
+:root{--bg:#f6f5f1;--panel:#fff;--ink:#222b30;--muted:#5d6a70;--line:#d9ddd9;--accent:#205e5b;--cited:#cfe8df;--near:#eaf4ef;--missed:#c0392b;--missed-bg:#fbe9e6;--select:#fff1b8;--good:#2e7d32;--dup:#8a6d1d;--wrong:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#111a18;--panel:#1b2925;--ink:#e5eee9;--muted:#a9bdb4;--line:#3b4d45;--accent:#94d8c9;--cited:#2a4a3f;--near:#1f342d;--missed:#ff8a7a;--missed-bg:#3a2320;--select:#4a4120;--good:#8fd694;--dup:#e6c66e;--wrong:#ff8a7a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,"Segoe UI",sans-serif}
+button{font:inherit;color:inherit;background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:4px 10px;cursor:pointer}
+button[aria-pressed=true]{background:var(--accent);color:var(--bg);border-color:var(--accent)}button:hover{border-color:var(--accent)}
+header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}.tabs button{font-size:12px}.tabs .done::after{content:" ✓";color:var(--good)}
+.bar{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:13px}.bar .group{display:flex;gap:4px;align-items:center}
+.bar input{min-width:260px;flex:1;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:4px 8px}
+.status{color:var(--muted);font-size:12px;margin-left:auto}
+main{display:grid;grid-template-columns:minmax(0,42fr) minmax(0,58fr);gap:14px;padding:14px 16px}
+.col{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;height:calc(100vh - 150px);overflow:auto}
+h2{font-size:15px;margin:4px 0 10px}h3{font-size:14px;margin:16px 0 6px;color:var(--accent)}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:8px}.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+.idea{border-left:3px solid var(--accent);padding:4px 0 4px 10px;margin:8px 0}.leaf{border-left:2px solid var(--line);margin:6px 0 6px 12px;padding-left:10px}
+.row{display:flex;gap:8px;align-items:flex-start}.row .text{flex:1;min-width:0}.title{font-weight:650;cursor:pointer}.title:hover{text-decoration:underline}
+.kind{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-right:6px}.summary{color:var(--muted);font-size:13px}
+.marks{display:flex;gap:2px;flex:none}.marks button{padding:0 6px;font-size:12px;line-height:20px}
+.marks button[data-v=good][aria-pressed=true]{background:var(--good);border-color:var(--good)}.marks button[data-v=duplicate][aria-pressed=true]{background:var(--dup);border-color:var(--dup)}.marks button[data-v=wrong][aria-pressed=true]{background:var(--wrong);border-color:var(--wrong)}
+.single{font-size:11px;color:var(--dup)}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;position:sticky;top:-12px;background:var(--panel);padding:6px 0;z-index:2}
+.section{margin:12px 0 4px;padding:4px 8px;background:var(--bg);border-radius:6px;font-size:12px}.section b{font-size:13px}.role{font-size:11px;border:1px solid var(--line);border-radius:20px;padding:0 6px;margin-left:6px}.role.non{color:var(--dup);border-color:var(--dup)}
+.snip{display:grid;grid-template-columns:52px minmax(0,1fr);gap:8px;padding:2px 6px;border-left:3px solid transparent;cursor:pointer;user-select:none}
+.snip:hover{outline:1px dashed var(--line)}.snip a{color:var(--muted);font-size:11px;text-decoration:none}
+.snip.near{background:var(--near)}.snip.cited{background:var(--cited)}.snip.flash{outline:2px solid var(--accent)}
+.snip.missed{border-left-color:var(--missed);background:var(--missed-bg)}.snip.sel{background:var(--select)!important}
+.gap{font-size:11px;color:var(--muted);padding:2px 6px 2px 66px;font-style:italic}
+.missed-list{font-size:12px;margin:6px 0 10px;padding:0;list-style:none}.missed-list li{display:flex;gap:6px;align-items:center;margin:3px 0}.missed-list span{cursor:pointer;flex:1}
+.action{position:fixed;bottom:16px;right:16px;z-index:9;background:var(--panel);border:2px solid var(--missed);border-radius:10px;padding:10px;display:flex;gap:6px;align-items:center;box-shadow:0 6px 20px #0003}
+.action[hidden]{display:none}.action input{width:300px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+.hint{font-size:12px;color:var(--muted)}kbd{border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:11px}
+@media (max-width:900px){main{grid-template-columns:1fr}.col{height:auto}}
+</style></head>
+<body>
+<header>
+  <div class="tabs" id="tabs"></div>
+  <div class="bar">
+    <div class="group"><span>Độ đủ ý:</span><button data-verdict="coverage" data-v="enough">Đủ</button><button data-verdict="coverage" data-v="missing">Thiếu ý</button><button data-verdict="coverage" data-v="too_much">Thừa ý</button></div>
+    <div class="group"><span>Bạn muốn:</span><button data-verdict="wanted" data-v="brief">Gọn</button><button data-verdict="wanted" data-v="detailed">Chi tiết</button></div>
+    <input id="note" placeholder="Ghi chú cho video này (tuỳ chọn)">
+    <span class="status" id="status"></span>
+  </div>
+</header>
+<main>
+  <section class="col" id="ideas-col"><h2 id="ideas-head">Ý đã trích</h2><div id="ideas"></div></section>
+  <section class="col" id="source-col">
+    <div class="tools"><button id="only-gaps" aria-pressed="false">Chỉ hiện đoạn chưa trích</button><button id="next-gap">Khoảng trống tiếp theo <kbd>N</kbd></button>
+      <span class="hint">Bấm một đoạn, <kbd>Shift</kbd>+bấm đoạn khác để chọn khoảng, rồi <kbd>M</kbd> để đánh dấu bỏ sót · <kbd>Esc</kbd> bỏ chọn</span></div>
+    <div class="legend"><span><i class="sw" style="background:var(--cited)"></i>được trích dẫn</span><span><i class="sw" style="background:var(--near)"></i>gần đoạn trích (±3)</span><span><i class="sw" style="border:1px solid var(--line)"></i>chưa được trích</span><span><i class="sw" style="background:var(--missed-bg);border-left:3px solid var(--missed)"></i>bạn đánh dấu bỏ sót</span></div>
+    <ul class="missed-list" id="missed-list"></ul>
+    <div id="source"></div>
+  </section>
+</main>
+<div class="action" id="action" hidden><b id="action-label"></b><input id="action-note" placeholder="Ý bị bỏ sót là gì? (tuỳ chọn)"><button id="action-save">Đánh dấu bỏ sót</button><button id="action-cancel">Huỷ</button></div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
+const time=s=>{if(s==null)return '';s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=String(s%60).padStart(2,'0');return h?`${h}:${String(m).padStart(2,'0')}:${x}`:`${m}:${x}`;};
+const KINDS={concept:'Khái niệm',claim:'Luận điểm',mechanism:'Cơ chế',example:'Ví dụ',evidence:'Bằng chứng',objection:'Phản biện',choice:'Lựa chọn',prerequisite:'Kiến thức nền',step:'Bước'};
+const ROLES={substantive:'thực chất',anecdote:'giai thoại',banter:'trò chuyện',sponsor:'quảng cáo',recap:'nhắc lại'};
+let list=[],data=null,marks=null,cover=[],selection=null,onlyGaps=false,saveTimer=null;
+
+async function api(path,options){const r=await fetch(path,options);if(!r.ok)throw new Error(await r.text());return r.json();}
+function emptyMarks(){return {verdict:{coverage:null,wanted:null,note:''},missed:[],ideas:{}};}
+function save(){$('status').textContent='Đang lưu…';clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{
+  try{const r=await api('/api/marks/'+data.id,{method:'POST',headers:{'Content-Type':'application/json','X-Review':'1'},body:JSON.stringify(marks)});
+    $('status').textContent='Đã lưu '+new Date(r.saved).toLocaleTimeString();const v=list.find(x=>x.id===data.id);if(v&&!v.reviewed){v.reviewed=true;renderTabs();}}
+  catch(e){$('status').textContent='Lỗi lưu: '+e.message;}},400);}
+
+function renderTabs(){const t=$('tabs');t.replaceChildren();list.forEach(v=>{const b=el('button',v.reviewed?'done':'',`${v.title.slice(0,38)} · ${v.minutes}′ · ${v.leaves} ý`);b.title=v.title;b.setAttribute('aria-pressed',String(data&&data.id===v.id));b.onclick=()=>open(v.id);t.append(b);});}
+
+function computeCover(){cover=new Array(data.snippets.length).fill(0);
+  data.chapters.forEach(c=>c.ideas.forEach(i=>[i,...i.leaves].forEach(u=>u.evidence.forEach(span=>span.forEach(p=>{cover[p]=2;})))));
+  const near=[...cover];cover.forEach((v,p)=>{if(v===2)for(let d=-3;d<=3;d++){const q=p+d;if(q>=0&&q<near.length&&near[q]===0)near[q]=1;}});cover=near;}
+
+function markButtons(id){const box=el('span','marks');[['good','✓','Ý tốt'],['duplicate','⧉','Trùng / lặp ý khác'],['wrong','✗','Sai hoặc thừa']].forEach(([v,label,title])=>{const b=el('button','',label);b.dataset.v=v;b.title=title;b.setAttribute('aria-pressed',String(marks.ideas[id]===v));
+  b.onclick=()=>{marks.ideas[id]=marks.ideas[id]===v?undefined:v;if(!marks.ideas[id])delete marks.ideas[id];box.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(marks.ideas[id]===x.dataset.v)));save();};box.append(b);});return box;}
+function unitRow(u,cls){const wrap=el('div',cls),row=el('div','row'),text=el('div','text'),title=el('div','title');title.append(el('span','kind',KINDS[u.kind]||u.kind),document.createTextNode(u.title));
+  title.onclick=()=>flash(u.evidence.flat());text.append(title,el('div','summary',u.summary));if(cls==='leaf'&&u.explanation&&u.explanation!==u.summary)text.append(el('div','summary',u.explanation));row.append(text,markButtons(u.id));wrap.append(row);return wrap;}
+function renderIdeas(){const box=$('ideas');box.replaceChildren();let leaves=0,single=0;
+  data.chapters.forEach(c=>{box.append(el('h3','',`${c.title} — ${{brief:'Gọn',standard:'Vừa',detailed:'Chi tiết'}[c.detail]} · ${c.depth} · thực chất ${Math.round(c.substantive_share*100)}%`));
+    c.ideas.forEach(i=>{const idea=unitRow(i,'idea');leaves+=i.leaves.length;if(i.leaves.length===1){single++;idea.querySelector('.text').append(el('div','single','Chỉ có 1 ý con'));}i.leaves.forEach(l=>idea.append(unitRow(l,'leaf')));box.append(idea);});});
+  $('ideas-head').textContent=`Ý đã trích — ${data.chapters.reduce((n,c)=>n+c.ideas.length,0)} ý chính, ${leaves} ý chi tiết (${single} ý chính chỉ có 1 ý con)`;}
+
+function missedAt(){const m=new Array(data.snippets.length).fill(false);marks.missed.forEach(x=>{for(let p=x.first;p<=x.last;p++)m[p]=true;});return m;}
+function renderSource(){const box=$('source'),missed=missedAt();box.replaceChildren();let s=0,hidden=0;
+  const flushGap=()=>{if(hidden){box.append(el('div','gap',`… ${hidden} đoạn đã được trích (đang ẩn)`));hidden=0;}};
+  data.snippets.forEach((snip,p)=>{while(s<data.sections.length&&data.sections[s].first<=p){const sec=data.sections[s];if(!onlyGaps||sec.first===p){flushGap();const head=el('div','section');head.append(el('b','',sec.title),el('span','role'+(sec.role!=='substantive'?' non':''),ROLES[sec.role]||sec.role),el('span','role',sec.depth));box.append(head);}s++;}
+    if(onlyGaps&&cover[p]&&!missed[p]){hidden++;return;}flushGap();
+    const row=el('div','snip'+(cover[p]===2?' cited':cover[p]===1?' near':'')+(missed[p]?' missed':'')+(selection&&p>=selection[0]&&p<=selection[1]?' sel':''));row.dataset.p=p;
+    const a=el('a','',time(snip.start));if(data.video_id&&snip.start!=null){a.href=`https://www.youtube.com/watch?v=${data.video_id}&t=${Math.floor(snip.start)}s`;a.target='_blank';a.rel='noopener noreferrer';a.onclick=e=>e.stopPropagation();}
+    row.append(a,el('span','',snip.text));row.onclick=e=>select(p,e.shiftKey);box.append(row);});flushGap();renderMissedList();}
+function renderMissedList(){const ul=$('missed-list');ul.replaceChildren();if(!marks.missed.length){ul.append(el('li','hint','Chưa có đoạn bị bỏ sót nào được đánh dấu.'));return;}
+  marks.missed.forEach(m=>{const li=el('li'),t=el('span','',`Bỏ sót ${time(data.snippets[m.first].start)}–${time(data.snippets[m.last].start)} (${m.last-m.first+1} đoạn)${m.note?': '+m.note:''}`);t.onclick=()=>flash([m.first]);const x=el('button','','×');x.title='Xoá đánh dấu';x.onclick=()=>{marks.missed=marks.missed.filter(y=>y!==m);renderSource();save();};li.append(t,x);ul.append(li);});}
+
+function select(p,extend){selection=extend&&selection?[Math.min(selection[0],p),Math.max(selection[1],p)]:[p,p];
+  document.querySelectorAll('.snip.sel').forEach(n=>n.classList.remove('sel'));document.querySelectorAll('.snip').forEach(n=>{const q=+n.dataset.p;if(q>=selection[0]&&q<=selection[1])n.classList.add('sel');});
+  $('action').hidden=false;$('action-label').textContent=`${selection[1]-selection[0]+1} đoạn · ${time(data.snippets[selection[0]].start)}`;}
+function clearSelection(){selection=null;$('action').hidden=true;$('action-note').value='';document.querySelectorAll('.snip.sel').forEach(n=>n.classList.remove('sel'));}
+function markSelection(){if(!selection)return;marks.missed.push({id:Math.random().toString(36).slice(2,10),first:selection[0],last:selection[1],note:$('action-note').value.trim()});clearSelection();renderSource();save();}
+function flash(positions){if(!positions.length)return;if(onlyGaps){onlyGaps=false;$('only-gaps').setAttribute('aria-pressed','false');renderSource();}
+  document.querySelectorAll('.snip.flash').forEach(n=>n.classList.remove('flash'));let first=null;positions.forEach(p=>{const n=document.querySelector(`.snip[data-p="${p}"]`);if(n){n.classList.add('flash');first=first||n;}});if(first)first.scrollIntoView({block:'center',behavior:'smooth'});}
+function nextGap(){const col=$('source-col'),top=col.scrollTop+col.clientHeight/3;const rows=[...document.querySelectorAll('.snip')];
+  for(const n of rows){const p=+n.dataset.p;if(n.offsetTop>top&&!cover[p]){let run=0;for(let q=p;q<cover.length&&!cover[q];q++)run++;if(run>=5){n.scrollIntoView({block:'start',behavior:'smooth'});n.classList.add('flash');setTimeout(()=>n.classList.remove('flash'),900);return;}}}
+  $('status').textContent='Không còn khoảng trống ≥5 đoạn phía dưới.';}
+
+function renderVerdict(){document.querySelectorAll('[data-verdict]').forEach(b=>b.setAttribute('aria-pressed',String(marks.verdict[b.dataset.verdict]===b.dataset.v)));$('note').value=marks.verdict.note||'';}
+async function open(id){data=await api('/api/video/'+id);marks=data.marks||emptyMarks();delete marks.updated_at;selection=null;$('action').hidden=true;
+  computeCover();renderTabs();renderVerdict();renderIdeas();renderSource();$('source-col').scrollTop=0;$('ideas-col').scrollTop=0;
+  $('status').textContent=data.marks?'Đã có đánh dấu trước đó':'Chưa review';history.replaceState(null,'','#'+id);}
+
+document.querySelectorAll('[data-verdict]').forEach(b=>b.onclick=()=>{const k=b.dataset.verdict;marks.verdict[k]=marks.verdict[k]===b.dataset.v?null:b.dataset.v;renderVerdict();save();});
+$('note').oninput=()=>{marks.verdict.note=$('note').value;save();};
+$('only-gaps').onclick=()=>{onlyGaps=!onlyGaps;$('only-gaps').setAttribute('aria-pressed',String(onlyGaps));renderSource();};
+$('next-gap').onclick=nextGap;$('action-save').onclick=markSelection;$('action-cancel').onclick=clearSelection;
+$('action-note').onkeydown=e=>{if(e.key==='Enter')markSelection();if(e.key==='Escape')clearSelection();};
+document.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;const k=e.key.toLowerCase();
+  if(k==='m'&&selection){e.preventDefault();$('action-note').focus();}else if(k==='escape')clearSelection();else if(k==='n')nextGap();});
+(async()=>{list=await api('/api/videos');renderTabs();const wanted=location.hash.slice(1);open(list.some(v=>v.id===wanted)?wanted:(list.find(v=>v.id==='lNWhbbAM59Y')||list[0]).id);})();
+</script>
+</body></html>
