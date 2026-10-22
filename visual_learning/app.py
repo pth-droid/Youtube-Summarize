@@ -73,6 +73,7 @@ class Preferences(StrictModel):
     knowledge_level: Literal["beginner", "balanced", "advanced"] | None = None
     learning_goal: str | None = Field(None, max_length=2000)
     codex_model: str | None = Field(None, max_length=100)
+    claude_code_model: str | None = Field(None, max_length=100)
     deepseek_model: str | None = Field(None, max_length=100)
     api_connections: dict[ProviderName, APIConnection] | None = None
     groq_model: Literal["whisper-large-v3", "whisper-large-v3-turbo"] | None = None
@@ -83,7 +84,7 @@ class Preferences(StrictModel):
     @field_validator("api_connections")
     @classmethod
     def connection_ids(cls, value):
-        if value and {"codex", "deepseek", "groq"}.intersection(value):
+        if value and {"codex", "claude_code", "deepseek", "groq"}.intersection(value):
             raise ValueError("This connection ID is reserved.")
         return value
 
@@ -199,9 +200,9 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
             merged["language"] = values["output_language"]
         merged["output_language"] = merged["language"]
         check_provider(merged["provider"], merged)
-        from .provider_config import selected_model
+        from .provider_config import SUBSCRIPTION_PROVIDERS, selected_model
         merged["model"] = selected_model(merged, merged["provider"])
-        if merged["provider"] != "codex" and not (paid_usage_approved or defaults.get("allow_paid_llm")):
+        if merged["provider"] not in SUBSCRIPTION_PROVIDERS and not (paid_usage_approved or defaults.get("allow_paid_llm")):
             raise HTTPException(409, "Approve API use for this page before continuing. Hosted providers may charge.")
         merged["paid_usage_approved"] = bool(paid_usage_approved or defaults.get("allow_paid_llm"))
         return merged
@@ -210,7 +211,8 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
         return HTTPException(400, str(error)[:400])
 
     def check_provider(provider, settings):
-        if provider not in {"codex", "deepseek"} and provider not in settings.get("api_connections", {}):
+        from .provider_config import BUILT_IN_PROVIDERS
+        if provider not in BUILT_IN_PROVIDERS and provider not in settings.get("api_connections", {}):
             raise HTTPException(409, "This connection is unavailable. Add it in Provider access or select another connection.")
 
     @app.get("/", response_class=HTMLResponse)
@@ -230,7 +232,7 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
         secrets_store = SecretStore()
         credentials = secrets_store.status()
         credentials.update({name: secrets_store.status(name) for name in settings.get("api_connections", {})})
-        return {"preferences": settings, "credentials": credentials, "tools": {name: bool(shutil.which(name)) for name in ("codex", "ffmpeg", "yt-dlp", "deno")}, "storage": store.storage_info()}
+        return {"preferences": settings, "credentials": credentials, "tools": {name: bool(shutil.which(name)) for name in ("codex", "claude", "ffmpeg", "yt-dlp", "deno")}, "storage": store.storage_info()}
 
     @app.put("/api/settings")
     def update_settings(value: Preferences):
@@ -413,7 +415,8 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
             selected["source_language"] = value.source_language
             if job_input["kind"] == "youtube":
                 job["approval"] = None
-        if selected["provider"] != "codex" and not (value.paid_usage_approved or (not changed and selected.get("paid_usage_approved")) or store.settings()["allow_paid_llm"]):
+        from .provider_config import SUBSCRIPTION_PROVIDERS
+        if selected["provider"] not in SUBSCRIPTION_PROVIDERS and not (value.paid_usage_approved or (not changed and selected.get("paid_usage_approved")) or store.settings()["allow_paid_llm"]):
             raise HTTPException(409, "Approve API use before retrying with this provider.")
         selected["paid_usage_approved"] = bool(value.paid_usage_approved or (not changed and selected.get("paid_usage_approved")) or store.settings()["allow_paid_llm"])
         if language_changed:

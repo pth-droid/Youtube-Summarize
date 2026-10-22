@@ -20,6 +20,7 @@ DEFAULT_SETTINGS = {
     "knowledge_level": "balanced",
     "learning_goal": "",
     "codex_model": "",
+    "claude_code_model": "",
     "deepseek_model": "deepseek-flash",
     "api_connections": {},
     "groq_model": "whisper-large-v3-turbo",

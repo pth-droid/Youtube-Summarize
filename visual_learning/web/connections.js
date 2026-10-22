@@ -1,15 +1,19 @@
 /* User-named connections. API keys are never returned in saved settings. */
 'use strict';
 
+// Local CLIs on the user's own subscription: no saved key and no paid-use approval.
+const SUBSCRIPTION_PROVIDERS=['codex','claude_code'];
+
 function providerName(id, connections=state.settings?.preferences.api_connections||{}) {
   if(id==='codex')return 'Codex';
+  if(id==='claude_code')return 'Claude';
   if(id==='deepseek')return 'DeepSeek';
   return connections[id]?.name||(id.startsWith('api_')?'Saved API connection':id.replaceAll('_',' '));
 }
 
 function providerOptions(selected='') {
   const connections=state.settings?.preferences.api_connections||{};
-  const options=[['codex','Codex · existing subscription']];
+  const options=[['codex','Codex · existing subscription'],['claude_code','Claude · existing subscription']];
   if(selected==='deepseek'||state.settings?.preferences.provider==='deepseek'||state.settings?.credentials?.deepseek?.configured)options.push(['deepseek','DeepSeek · saved connection']);
   Object.entries(connections).forEach(([id,value])=>options.push([id,`${providerName(id,connections)} · ${value.model||'Set a model'}`]));
   if(selected&&!options.some(([id])=>id===selected))options.push([selected,`${providerName(selected)} · unavailable`]);
@@ -18,7 +22,7 @@ function providerOptions(selected='') {
 
 function renderConnections(preferences, credentials) {
   const current=$('new-provider').value;
-  const selected=current==='codex'||current==='deepseek'||preferences.api_connections?.[current]?current:preferences.provider;
+  const selected=SUBSCRIPTION_PROVIDERS.includes(current)||current==='deepseek'||preferences.api_connections?.[current]?current:preferences.provider;
   $('new-provider').innerHTML=providerOptions(selected);
   $('settings-provider').innerHTML=providerOptions(preferences.provider);
   const expanded=new Set([...$('api-connection-list').querySelectorAll('details[open]')].map(item=>item.dataset.connection));

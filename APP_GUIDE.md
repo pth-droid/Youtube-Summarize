@@ -35,6 +35,8 @@ Groq's free allowance can require a wait for long recordings. The app saves each
 
 Codex is the default. It uses your existing subscription through the local CLI. It does not use an OpenAI API key.
 
+Claude is the second subscription option. It uses the locally installed Claude Code CLI with your Claude subscription sign-in (run `claude`, then `/login`, once). The app removes `ANTHROPIC_API_KEY`, auth tokens, custom endpoints and cloud routing from its environment, so a Claude call is never billed to an API account; a `claude setup-token` subscription token is kept. Each call runs without tools, MCP servers, skills, user settings or saved sessions, and the CLI validates the answer against the stage's JSON schema. It counts against your plan's usage limits; when a limit is reached, the job pauses with a usage message. Leave the model empty to use the CLI default, or set `claude_code_model` in preferences.
+
 To use your own provider, open **Settings → Provider access → Add connection**. Enter a connection name, endpoint, exact model ID, and API format. Add a key if needed. You can save several models from the same provider. Open a saved connection to edit it or select **Use as default**. Read [PROVIDER_CONNECTIONS.md](PROVIDER_CONNECTIONS.md) for connection options.
 
 Approve API use for each page, or enable the API default in Settings. Provider failures do not switch to other providers automatically. Existing DeepSeek access remains available when configured. Saved keys stay in the operating system credential store. Saving a connection sends no AI request.

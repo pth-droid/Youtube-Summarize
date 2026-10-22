@@ -3,6 +3,9 @@ from urllib.parse import urlparse
 import re
 
 API_PROVIDERS = ("openai_compatible", "claude", "grok", "muse", "glm", "selfhost")
+# Local CLIs signed in with the user's own subscription: no saved key, no per-call charge.
+SUBSCRIPTION_PROVIDERS = ("codex", "claude_code")
+BUILT_IN_PROVIDERS = (*SUBSCRIPTION_PROVIDERS, "deepseek")
 
 
 def valid_provider_id(value: str) -> bool:
@@ -14,7 +17,7 @@ def is_api_provider(settings: dict, provider: str) -> bool:
 
 
 def provider_label(settings: dict, provider: str) -> str:
-    return settings.get("api_connections", {}).get(provider, {}).get("name") or {"codex": "Codex", "deepseek": "DeepSeek"}.get(provider, provider.replace("_", " "))
+    return settings.get("api_connections", {}).get(provider, {}).get("name") or {"codex": "Codex", "claude_code": "Claude", "deepseek": "DeepSeek"}.get(provider, provider.replace("_", " "))
 
 
 def validate_endpoint(value: str) -> str:

@@ -38,6 +38,8 @@ class ModelProfile:
 # Explicit connector defaults. These are app policies, not advertised capacities.
 PROFILES = {
     ('codex', 'CLI default'): ModelProfile(extraction_characters=40000, output_tokens=16384, maximum_units=40),
+    # Same task sizing as Codex so the two subscription connectors stay comparable.
+    ('claude_code', 'CLI default'): ModelProfile(extraction_characters=40000, output_tokens=16384, maximum_units=40),
     ('deepseek', 'deepseek-flash'): ModelProfile(output_tokens=32768),
 }
 
