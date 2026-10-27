@@ -1,0 +1,6 @@
+{
+  "name": "distill-verification",
+  "private": true,
+  "scripts": {"test:e2e": "playwright test"},
+  "devDependencies": {"@playwright/test": "^1.56.0"}
+}

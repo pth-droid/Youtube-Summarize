@@ -9,3 +9,16 @@ upload_new_version.sh
 .coverage
 coverage.xml
 .DS_STORE
+.visual-learning/
+node_modules/
+playwright-report/
+test-results/
+.pytest_cache/
+__pycache__/
+BUILD_STATUS.local.md
+.feasibility/
+.venv*/
+.e2e-data/
+.build-data/
+artifacts-local/
+*.log
