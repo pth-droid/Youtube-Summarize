@@ -95,6 +95,7 @@
 .page-options{margin-top:24px;padding-top:20px}
 .page-options summary{color:var(--ink);font-weight:600;min-height:24px}
 #reset-page-options{margin-top:18px}
+.downloader-panel{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}.downloader-panel h3{margin:0 0 4px;font-size:.95rem}.downloader-panel .button-row{margin:8px 0}
 .recording-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;margin:0 0 6px}.recording-row>.hint{margin:0}
 .start-result{font-size:.83rem;color:var(--muted);line-height:1.7;max-width:640px;margin:22px 0 14px}
 .start-help{font-size:.78rem;color:var(--muted)}

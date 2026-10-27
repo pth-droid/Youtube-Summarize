@@ -102,7 +102,7 @@ def _run(command: list[str], cancelled=None, timeout: float = 900) -> bytes:
     if cancelled and cancelled():
         raise ProviderError("cancelled", "Audio processing was cancelled.")
     try:
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
     except OSError as exc:
         raise ProviderError("missing_dependency", "The audio preparation command could not start. Check yt-dlp and FFmpeg installation.") from exc
     deadline = time.monotonic() + timeout
@@ -113,12 +113,17 @@ def _run(command: list[str], cancelled=None, timeout: float = 900) -> bytes:
             if time.monotonic() > deadline:
                 raise ProviderError("timeout", "Audio preparation took too long. Retry or import a transcript.")
             try:
-                output, _ = process.communicate(timeout=0.2)
+                output, error_output = process.communicate(timeout=0.2)
                 break
             except subprocess.TimeoutExpired:
                 continue
         if process.returncode:
-            raise ProviderError("audio_failed", "Audio could not be downloaded or prepared. Import an audio file or transcript instead.")
+            # Keep the tool's own last lines: they name the cause (a bot check, HTTP 403, an outdated yt-dlp).
+            from .downloader import classify, error_lines
+            text = (error_output or b"").decode("utf-8", "replace")
+            code, message = classify(text) or ("audio_failed", "Audio could not be downloaded or prepared. Import an audio file or transcript instead.")
+            tool = "yt-dlp" if "yt_dlp" in command else Path(command[0]).stem
+            raise ProviderError(code, message, diagnostics={"tool": tool, "exit_code": process.returncode, "error_lines": error_lines(text)})
         return output
     finally:
         stop_process(process)
@@ -540,8 +545,10 @@ def transcribe_youtube(video_id: str, work_dir: Path, approval: dict, progress=N
     audio_files = [p for p in work_dir.glob("source-audio.*") if p.suffix.lower() in {".webm", ".m4a", ".mp3", ".ogg", ".opus", ".wav"}]
     if not audio_files:
         if progress: progress("Downloading approved audio")
-        command = [sys.executable, "-m", "yt_dlp", "--no-playlist", "--no-progress", "--no-warnings", "--socket-timeout", "30", "--retries", "2", "-f", "bestaudio[language=original]/bestaudio", "--paths", str(work_dir), "-o", "source-audio.%(ext)s", "--", f"https://www.youtube.com/watch?v={video_id}"]
-        _run(command, cancelled)
+        from .downloader import command as ytdlp_command
+        # yt-dlp ranks the original audio track first, so a dubbed track is never the best audio.
+        _run(ytdlp_command("--no-progress", "--no-warnings", "--socket-timeout", "30", "--retries", "2", "-f", "bestaudio",
+                           "--paths", str(work_dir), "-o", "source-audio.%(ext)s", "--", f"https://www.youtube.com/watch?v={video_id}"), cancelled)
         audio_files = [p for p in work_dir.glob("source-audio.*") if p.suffix.lower() in {".webm", ".m4a", ".mp3", ".ogg", ".opus", ".wav"}]
     if not audio_files: raise ProviderError("audio_failed", "No usable audio was downloaded. Import an audio file or transcript instead.")
     return transcribe_audio(audio_files[0], work_dir, approval, video_id, progress, cancelled, checkpoint, load_checkpoint, language=approval.get("source_language") or None)

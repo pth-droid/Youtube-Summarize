@@ -189,7 +189,10 @@ class Worker:
                         raise
                     from .audio import approval_request
                     request = approval_request(preferences, job_id, job["input"]["video_id"], getattr(error, "message", str(error)), languages=getattr(error, "languages", []), caption_error=getattr(error, "code", "unavailable"))
-                    self.update_job(job_id, state="awaiting_approval", approval=request, error={"code": request["caption_error"], "message": request["reason"]}, progress={"stage": "awaiting_approval", "message": "Caption retrieval stopped. Choose audio transcription or import a transcript."})
+                    caption_error = {"code": request["caption_error"], "message": request["reason"]}
+                    if getattr(error, "diagnostics", None):
+                        caption_error["diagnostics"] = error.diagnostics  # why the free yt-dlp route failed too
+                    self.update_job(job_id, state="awaiting_approval", approval=request, error=caption_error, progress={"stage": "awaiting_approval", "message": "Caption retrieval stopped. Choose audio transcription or import a transcript."})
                     return
             # Validate before saving the source checkpoint. Do not cache invalid ingestion.
             source = Transcript.model_validate(source).model_dump(mode="json")
