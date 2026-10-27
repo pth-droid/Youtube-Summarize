@@ -96,6 +96,8 @@ test('settings choose a transcription service for each kind of recording', async
     await expect(page.locator('#transcribe-meeting')).toHaveValue('soniox');
     await expect(page.locator('#transcribe-lecture')).toHaveValue('soniox');
     await expect(page.locator('#transcribe-video')).toHaveValue('soniox');
+    // The downloader reports its version without asking PyPI until Check for update is selected.
+    await expect(page.locator('#ytdlp-status')).toContainText(/^yt-dlp \d{4}\./);
     await page.locator('#transcribe-lecture').selectOption('groq');
     await page.locator('#settings-output').selectOption('lecture');
     await page.getByRole('button', {name: 'Save preferences'}).click();

@@ -223,6 +223,8 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
         content = (WEB / "index.html").read_text(encoding="utf-8")
         return HTMLResponse(content.replace("__CSRF_TOKEN__", token))
 
+    ytdlp_updating = threading.Lock()
+
     @app.get("/api/health")
     def health():
         process = app.state.worker_process
@@ -235,7 +237,32 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
         secrets_store = SecretStore()
         credentials = secrets_store.status()
         credentials.update({name: secrets_store.status(name) for name in settings.get("api_connections", {})})
-        return {"preferences": settings, "credentials": credentials, "tools": {name: bool(shutil.which(name)) for name in ("codex", "claude", "ffmpeg", "yt-dlp", "deno")}, "storage": store.storage_info()}
+        from .downloader import installed_version
+        tools = {name: bool(shutil.which(name)) for name in ("codex", "claude", "ffmpeg", "deno")}
+        tools["yt-dlp"] = installed_version() is not None  # the app runs yt-dlp from its own environment, not PATH
+        return {"preferences": settings, "credentials": credentials, "tools": tools, "storage": store.storage_info()}
+
+    @app.get("/api/tools/yt-dlp")
+    def ytdlp_status(check: bool = False):
+        from .downloader import status
+        return status(check_latest=check)
+
+    @app.post("/api/tools/yt-dlp/update")
+    def ytdlp_update():
+        from .downloader import DownloadError, status, update
+        # A running download reads the files an update replaces.
+        if any(job["state"] in {"retrieving", "transcribing"} for job in store.list_jobs()):
+            raise HTTPException(409, "Wait for the current caption or audio download to finish, then update yt-dlp.")
+        if not ytdlp_updating.acquire(blocking=False):
+            raise HTTPException(409, "An update of yt-dlp is already running.")
+        try:
+            result = update()
+        except DownloadError as error:
+            lines = error.diagnostics.get("error_lines", [])
+            raise HTTPException(502, error.message + (" " + lines[-1] if lines else ""))
+        finally:
+            ytdlp_updating.release()
+        return status() | result
 
     @app.put("/api/settings")
     def update_settings(value: Preferences):

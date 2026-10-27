@@ -123,6 +123,10 @@ def test_caption_selection_and_display_time(monkeypatch):
 def test_blocked_captions_differ_from_missing(monkeypatch):
     from youtube_transcript_api import YouTubeTranscriptApi
     from youtube_transcript_api._errors import RequestBlocked, TranscriptsDisabled
+    from distill import downloader
+    def second_route_fails(*_args, **_kwargs):
+        raise downloader.DownloadError("blocked", "YouTube asked to confirm that this is not a bot.")
+    monkeypatch.setattr(downloader, "video_info", second_route_fails)
     for error, code in [(RequestBlocked(VIDEO), "blocked"), (TranscriptsDisabled(VIDEO), "missing_captions")]:
         def fail(*args):
             raise error
