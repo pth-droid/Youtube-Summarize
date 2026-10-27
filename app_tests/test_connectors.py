@@ -12,7 +12,7 @@ import pytest
 import requests
 
 from distill import audio, ingest, providers
-from distill.models import Extraction, Transcript
+from distill.models import Extraction, FigureSet, Transcript
 
 
 VIDEO = "0qqW3vxOC-g"
@@ -140,6 +140,22 @@ def test_strict_schema_keeps_model_types():
     assert "anyOf" not in strict["properties"]["relationships"]
     assert "required" in strict["$defs"]["KnowledgeUnit"]
     assert schema == Extraction.model_json_schema()  # Input was not mutated.
+
+
+def test_strict_schema_reads_field_names_as_fields_not_keywords():
+    # FigureState has a field named "properties". Reading it as a keyword once added
+    # fake "required" and "additionalProperties" fields, and Codex ran out of output tokens.
+    strict = providers._strict_schema(FigureSet.model_json_schema())
+    state = strict["$defs"]["FigureState"]
+    assert list(state["properties"]) == state["required"] == ["phase_id", "caption", "properties", "unit_ids"]
+    assert state["properties"]["properties"]["type"] == "array"
+    assert strict["$defs"]["StateProperty"]["additionalProperties"] is False
+    figure = strict["$defs"]["Figure"]["properties"]
+    assert set(figure["type"]) >= {"enum", "type"} and figure["process"]["anyOf"][1] == {"type": "null"}
+    for name, definition in strict["$defs"].items():
+        if "properties" in definition:
+            assert definition["required"] == list(definition["properties"]), name
+            assert all(isinstance(field, dict) for field in definition["properties"].values()), name
 
 
 def test_environment_and_public_errors_do_not_expose_keys(monkeypatch):
@@ -424,3 +440,184 @@ def test_local_ffmpeg_preparation(monkeypatch, tmp_path):
     with wave.open(chunks[0].path, "rb") as stream:
         assert stream.getnchannels() == 1 and stream.getframerate() == 16000
     assert Path(chunks[0].path).stat().st_size < audio.MAX_UPLOAD_BYTES
+
+
+def soniox_approval(**values):
+    return approval(**({"provider": "soniox", "model": "stt-async-v5", "free_only": False, "paid_usage_approved": True} | values))
+
+
+MEETING_TOKENS = [
+    {"text": "Xin", "start_ms": 0, "end_ms": 300, "speaker": "1", "language": "vi", "confidence": 0.98},
+    {"text": " chào", "start_ms": 300, "end_ms": 600, "speaker": "1", "language": "vi", "confidence": 0.97},
+    {"text": " cả nhà.", "start_ms": 600, "end_ms": 1100, "speaker": "1", "language": "vi", "confidence": 0.96},
+    {"text": " Chào", "start_ms": 1500, "end_ms": 1800, "speaker": "2", "language": "vi", "confidence": 0.99},
+    {"text": " anh.", "start_ms": 1800, "end_ms": 2100, "speaker": "2", "language": "vi", "confidence": 0.99},
+    {"text": " Bắt", "start_ms": 5000, "end_ms": 5300, "speaker": "2", "language": "vi", "confidence": 0.4},
+    {"text": " đầu", "start_ms": 5300, "end_ms": 5600, "speaker": "2", "language": "vi", "confidence": 0.5},
+    {"text": " nhé", "start_ms": 5600, "end_ms": 5900, "speaker": "1", "language": "vi", "confidence": 0.9},
+]
+
+
+def test_soniox_tokens_become_speaker_turns():
+    snippets, warnings, count = audio.soniox_snippets(MEETING_TOKENS)
+    assert [(s["speaker"], s["text"]) for s in snippets] == [
+        ("Speaker 1", "Xin chào cả nhà."), ("Speaker 2", "Chào anh."), ("Speaker 2", "Bắt đầu"), ("Speaker 1", "nhé")]
+    assert count == 2 and snippets[2]["start"] == 5 and snippets[0]["end"] == 1.1
+    assert [s["id"] for s in snippets] == ["s000001", "s000002", "s000003", "s000004"]
+    assert warnings == ["Uncertain transcription near 5.0s; compare with original audio."]
+    Transcript(source_id="import:x", snippets=snippets)
+
+
+def test_soniox_single_voice_has_no_label_and_numbering_follows_first_voice():
+    lecture = [{"text": "One", "start_ms": 0, "end_ms": 400, "speaker": "1"},
+               {"text": " Uno", "start_ms": 400, "end_ms": 800, "speaker": "1", "translation_status": "translation"},
+               {"text": " voice.", "start_ms": 400, "end_ms": 900, "speaker": "1"}]
+    snippets, _, count = audio.soniox_snippets(lecture)
+    assert count == 1 and snippets == [{"id": "s000001", "text": "One voice.", "start": 0, "end": 0.9, "duration": 0.9, "timing_basis": "speech", "speaker": None}]
+    swapped = audio.soniox_snippets([{"text": "Hi", "start_ms": 0, "end_ms": 1, "speaker": "3"}, {"text": " Hey", "start_ms": 2, "end_ms": 3, "speaker": "1"}])[0]
+    assert [s["speaker"] for s in swapped] == ["Speaker 1", "Speaker 2"]
+    for tokens in [[{"text": "x", "end_ms": 1}], [{"text": "x", "start_ms": 5, "end_ms": 1}], [None], [{"start_ms": 0, "end_ms": 1}]]:
+        with pytest.raises(providers.ProviderError) as problem:
+            audio.soniox_snippets(tokens)
+        assert problem.value.code == "invalid_output"
+    with pytest.raises(providers.ProviderError) as problem:
+        audio.soniox_snippets([])
+    assert problem.value.code == "audio_failed"
+
+
+def test_soniox_is_the_default_and_requires_paid_consent(monkeypatch, tmp_path):
+    request = audio.approval_request({}, "job-1", VIDEO, "Captions unavailable")
+    assert request["provider"] == "soniox" and request["model"] == "stt-async-v5"
+    assert request["free_only"] is False and request["speaker_labels"] and not request["approved"]
+    groq = audio.approval_request({"transcription_providers": {"video": "groq"}, "groq_free_only": True}, "job-1", VIDEO, "reason", languages=["vi"])
+    assert groq["provider"] == "groq" and groq["free_only"] and groq["languages"] == ["vi"] and "speaker_labels" not in groq
+    # Each workflow has its own service; an unknown or missing choice stays on Soniox.
+    meeting_on_groq = {"transcription_providers": {"meeting": "groq", "lecture": "elsewhere"}}
+    assert audio.approval_request(meeting_on_groq, "job-1", VIDEO, "reason", workflow="meeting")["provider"] == "groq"
+    assert audio.approval_request(meeting_on_groq, "job-1", VIDEO, "reason", workflow="lecture")["provider"] == "soniox"
+    assert audio.approval_request(meeting_on_groq, "job-1", VIDEO, "reason")["workflow"] == "video"
+    monkeypatch.setattr(audio.requests, "request", lambda *a, **k: pytest.fail("Unapproved upload"))
+    monkeypatch.setattr(audio, "_run", lambda *a, **k: pytest.fail("Unapproved download"))
+    for changed in [{"paid_usage_approved": False}, {"model": "whisper-large-v3"}, {"provider": "other"}, {"approved": False}]:
+        with pytest.raises(providers.ProviderError):
+            audio.transcribe_youtube(VIDEO, tmp_path, soniox_approval(**changed))
+    audio.validate_approval(soniox_approval(), VIDEO, "stt-async-v5")
+
+
+def setup_soniox(monkeypatch, tmp_path, routes):
+    source = tmp_path / "meeting.m4a"
+    source.write_bytes(b"local meeting audio")
+    def prepare(audio_path, work_dir, cancelled=None):
+        path = work_dir / "chunks" / "upload.flac"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"synthetic flac")
+        return path, 1800.0
+    calls = []
+    def request(method, url, **kwargs):
+        path = url.removeprefix(audio.SONIOX_API)
+        calls.append((method, path, kwargs.get("json")))
+        result = routes(method, path)
+        if isinstance(result, Exception):
+            raise result
+        return result
+    monkeypatch.setattr(audio, "prepare_upload", prepare)
+    monkeypatch.setattr(audio, "SONIOX_POLL_SECONDS", 0)
+    monkeypatch.setattr(providers.SecretStore, "get", lambda self, name: "test-key" if name == "soniox" else None)
+    monkeypatch.setattr(audio.requests, "request", request)
+    return source, calls
+
+
+def test_soniox_resumes_the_saved_request_without_a_second_upload_or_charge(monkeypatch, tmp_path):
+    phase = {"done": False}
+    def routes(method, path):
+        if (method, path) == ("POST", "/files"): return response({"id": "file-1"})
+        if (method, path) == ("POST", "/transcriptions"): return response({"id": "tr-1", "status": "queued"})
+        if (method, path) == ("GET", "/transcriptions/tr-1"):
+            return response({"status": "completed"}) if phase["done"] else response(status=429, headers={"retry-after": "90"})
+        if (method, path) == ("GET", "/transcriptions/tr-1/transcript"): return response({"text": "", "tokens": MEETING_TOKENS})
+        if method == "DELETE": return response(status=204)
+        pytest.fail(f"Unexpected Soniox call {method} {path}")
+    source, calls = setup_soniox(monkeypatch, tmp_path, routes)
+    work = tmp_path / "job"
+    with pytest.raises(providers.ProviderError) as problem:
+        audio.transcribe_audio(source, work, soniox_approval(), VIDEO, language="vi")
+    assert problem.value.code == "quota" and problem.value.retry_after == 90
+    assert calls[1][2] == {"model": "stt-async-v5", "file_id": "file-1", "enable_speaker_diarization": True,
+                           "enable_language_identification": True, "client_reference_id": "job-1", "language_hints": ["vi"]}
+    phase["done"] = True
+    calls.clear()
+    transcript = audio.transcribe_audio(source, work, soniox_approval(), VIDEO, language="vi")
+    assert [(m, p) for m, p, _ in calls] == [("GET", "/transcriptions/tr-1"), ("GET", "/transcriptions/tr-1/transcript"),
+                                             ("DELETE", "/transcriptions/tr-1"), ("DELETE", "/files/file-1")]
+    assert [s.speaker for s in transcript.snippets] == ["Speaker 1", "Speaker 2", "Speaker 2", "Speaker 1"]
+    assert transcript.language == "vi" and transcript.metadata["provider"] == "soniox"
+    assert transcript.metadata["speaker_count"] == 2 and transcript.metadata["audio_duration"] == 1800
+    assert source.exists() and not (work / "chunks" / "upload.flac").exists()
+    assert "test-key" not in (work / "transcript.json").read_text(encoding="utf-8")
+    calls.clear()
+    assert audio.transcribe_audio(source, work, soniox_approval(), VIDEO, language="vi").snippets == transcript.snippets
+    assert calls == []
+
+
+def test_soniox_failed_transcription_is_resubmitted_without_reupload(monkeypatch, tmp_path):
+    created = []
+    def routes(method, path):
+        if (method, path) == ("POST", "/files"): return response({"id": "file-1"})
+        if (method, path) == ("POST", "/transcriptions"):
+            created.append(path)
+            return response({"id": f"tr-{len(created)}"})
+        if (method, path) == ("GET", "/transcriptions/tr-1"):
+            return response({"status": "error", "error_type": "invalid_audio", "error_message": "Audio could not be decoded"})
+        if (method, path) == ("GET", "/transcriptions/tr-2"): return response({"status": "processing"})
+        pytest.fail(f"Unexpected Soniox call {method} {path}")
+    source, calls = setup_soniox(monkeypatch, tmp_path, routes)
+    with pytest.raises(providers.ProviderError) as problem:
+        audio.transcribe_audio(source, tmp_path / "job", soniox_approval(), VIDEO)
+    assert problem.value.code == "provider_failed" and "Audio could not be decoded" in str(problem.value)
+    monkeypatch.setattr(audio, "SONIOX_WAIT_SECONDS", 0)
+    with pytest.raises(providers.ProviderError) as problem:
+        audio.transcribe_audio(source, tmp_path / "job", soniox_approval(), VIDEO)
+    assert problem.value.code == "temporary" and problem.value.retry_after == 120
+    assert [p for m, p, _ in calls if m == "POST"] == ["/files", "/transcriptions", "/transcriptions"]
+
+
+@pytest.mark.parametrize("failing,error,code", [
+    ("POST /transcriptions", requests.ReadTimeout, "uncertain_timeout"),
+    ("POST /transcriptions", requests.ConnectionError, "uncertain_request"),
+    ("POST /transcriptions", requests.ConnectTimeout, "temporary"),
+    ("POST /files", requests.ReadTimeout, "temporary"),
+    ("GET /transcriptions/tr-1", requests.ConnectionError, "temporary")])
+def test_soniox_only_the_billable_request_is_uncertain(monkeypatch, tmp_path, failing, error, code):
+    def routes(method, path):
+        if f"{method} {path}" == failing: return error("private-key")
+        if path == "/files": return response({"id": "file-1"})
+        if path == "/transcriptions": return response({"id": "tr-1"})
+        pytest.fail(f"Unexpected Soniox call {method} {path}")
+    source, _ = setup_soniox(monkeypatch, tmp_path, routes)
+    with pytest.raises(providers.ProviderError) as problem:
+        audio.transcribe_audio(source, tmp_path / "job", soniox_approval(), VIDEO)
+    assert problem.value.code == code and "private-key" not in str(problem.value)
+    assert problem.value.retry_after == (30 if code == "temporary" else None)
+
+
+def test_soniox_duration_is_limited_to_one_upload(monkeypatch, tmp_path):
+    monkeypatch.setattr(audio, "_probe_duration", lambda *a, **k: audio.SONIOX_MAX_DURATION_SECONDS + 1)
+    monkeypatch.setattr(audio, "_run", lambda *a, **k: pytest.fail("Over-limit audio must not be converted"))
+    with pytest.raises(providers.ProviderError) as problem:
+        audio.prepare_upload(tmp_path / "long.wav", tmp_path / "job")
+    assert problem.value.code == "audio_duration_limit"
+
+
+def test_local_ffmpeg_soniox_upload_is_mono_16khz_flac(tmp_path):
+    if not audio.shutil.which("ffmpeg") or not audio.shutil.which("ffprobe"):
+        pytest.skip("FFmpeg is not installed")
+    path = tmp_path / "local-generated.wav"
+    with wave.open(str(path), "wb") as stream:
+        stream.setnchannels(2)
+        stream.setsampwidth(2)
+        stream.setframerate(44100)
+        stream.writeframes(b"\0\0\0\0" * 44100)
+    upload, duration = audio.prepare_upload(path, tmp_path / "job")
+    assert upload.name == "upload.flac" and duration == 1
+    probe = audio._run([audio._binary("ffprobe"), "-v", "error", "-show_entries", "stream=codec_name,channels,sample_rate", "-of", "json", str(upload)])
+    assert json.loads(probe)["streams"][0] == {"codec_name": "flac", "sample_rate": "16000", "channels": 1}

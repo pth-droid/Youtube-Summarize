@@ -59,7 +59,7 @@ test('custom connection persists and is used by the quick start',async({page,req
   expect(settings.api_connections[id]).toMatchObject({name:'My Study Lab',model:'anything-v2',endpoint:'http://127.0.0.1:1234/v1'});
   expect(JSON.stringify(settings)).not.toContain('test-key-for-isolated-browser');
   await page.goto('/');
-  await expect(page.getByRole('heading',{name:'Learn something new',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'What do you want to make?',exact:true})).toBeVisible();
   await expect(page.locator('#defaults-summary')).toContainText('My Study Lab');
   await expect(page.locator('#new-provider')).toHaveValue(id);
   await expect(page.locator('#new-paid')).toBeVisible();

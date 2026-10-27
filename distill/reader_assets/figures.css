@@ -1,0 +1,235 @@
+/* Process figures, shared by the learning page and the lecture deck.
+   Colours are theme tokens. The five categorical steps were checked for colour-vision separation against
+   the light (#fff) and dark (#1b2925) surfaces; flows also differ by line pattern, so colour is never alone. */
+:root{--fig-1:#00897b;--fig-2:#c0562b;--fig-3:#2f6fb5;--fig-4:#a07400;--fig-5:#6a55c2;--fig-gas:#7d8a90;
+  --fig-metal:#e7ebe8;--fig-outline:#59666d;--fig-inner:#f6f5f1;--fig-water:#cfe3f3;--fig-coffee:#7a4a2a;--fig-paper:#fbfaf6;
+  --fig-grid:#e3e6e3;--fig-axis:#c4cbc7;--fig-inference:#6448a2;--fig-background:#426575}
+@media screen{
+  :root[data-theme=dark]{--fig-1:#14a08e;--fig-2:#d96f38;--fig-3:#4f8fd8;--fig-4:#b88a17;--fig-5:#8c7be0;--fig-gas:#a3b1ad;
+    --fig-metal:#2a3a35;--fig-outline:#a9bdb4;--fig-inner:#14201d;--fig-water:#1e3b50;--fig-coffee:#7a4a2a;--fig-paper:#27342f;
+    --fig-grid:#2c3b36;--fig-axis:#3b4d45;--fig-inference:#c7b1ff;--fig-background:#acd2e4}
+}
+.figure{display:grid;gap:14px;min-width:0}
+.fig-caption{color:var(--muted);font-size:.92em;max-width:780px;margin:0 0 14px}
+.fig-badges{display:flex;flex-wrap:wrap;gap:6px}
+.fig-badge{font-size:.69em;font-weight:700;text-transform:uppercase;letter-spacing:.035em;padding:3px 7px;border-radius:4px;border:1px solid currentColor;color:var(--muted);width:auto}
+.fig-badge.inference{color:var(--fig-inference)}.fig-badge.uncertain{color:var(--warning)}.fig-badge.background{color:var(--fig-background)}
+.fig-badge.provenance-source{color:var(--accent)}.fig-badge.provenance-illustrative,.fig-badge.provenance-background{color:var(--warning)}
+.fig-sources{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.78em;color:var(--muted);margin:0}
+.fig-unit{font-size:1em;padding:4px 10px;border-radius:50px}
+.muted{color:var(--muted)}
+
+/* Process: phases, chart, scrubber, readout and state cards. */
+.fig-phases{display:flex;flex-wrap:wrap;gap:6px}
+.fig-phases button{border-radius:50px;padding:5px 12px;font-size:.8em}
+.fig-chart{position:relative;min-width:0}
+.fig-chart svg{display:block;max-width:100%;height:auto;overflow:visible}
+.fig-chart text{font:12px system-ui,-apple-system,"Segoe UI",sans-serif;fill:var(--muted)}
+.fig-chart .fig-label{fill:var(--ink);font-weight:650}
+.fig-chart .fig-tick{font-variant-numeric:tabular-nums}
+.fig-band{fill:transparent}.fig-band.alt{fill:var(--tint)}.fig-band.current{fill:var(--fig-1);fill-opacity:.2}
+.fig-grid{stroke:var(--fig-grid);stroke-width:1}.fig-baseline,.fig-boundary{stroke:var(--fig-axis);stroke-width:1}
+.fig-event{stroke:var(--muted);stroke-width:1}.fig-event.log{stroke-dasharray:4 3}
+.fig-line{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.fig-join{fill:none;stroke-width:1.5;stroke-dasharray:3 5}
+.fig-dot{stroke:var(--surface);stroke-width:2}
+.s1{stroke:var(--fig-1)}.s2{stroke:var(--fig-2)}.s3{stroke:var(--fig-3)}.s4{stroke:var(--fig-4)}.s5{stroke:var(--fig-5)}
+.fig-dot.s1{fill:var(--fig-1)}.fig-dot.s2{fill:var(--fig-2)}.fig-dot.s3{fill:var(--fig-3)}.fig-dot.s4{fill:var(--fig-4)}.fig-dot.s5{fill:var(--fig-5)}
+.fig-dot.s1,.fig-dot.s2,.fig-dot.s3,.fig-dot.s4,.fig-dot.s5{stroke:var(--surface)}
+.fig-lane-area{fill:var(--fig-1);fill-opacity:.16}.fig-lane-line{fill:none;stroke:var(--fig-1);stroke-width:2}
+.fig-cursor{stroke:var(--ink);stroke-width:2}.fig-cursor-handle{fill:var(--ink);stroke:var(--surface);stroke-width:2}
+.fig-lane-track{fill:var(--tint);fill-opacity:.55}
+.fig-hit{fill:transparent;cursor:crosshair}
+.fig-key-row{display:flex;flex-wrap:wrap;gap:6px 16px;margin:8px 0 0;padding:0;list-style:none;font-size:.78em;color:var(--muted)}
+.fig-key-row li{display:inline-flex;align-items:center;gap:6px}
+.fig-line-key{display:inline-block;width:20px;border-top:2px solid}.fig-line-key.dashed{border-top-style:dashed}
+.fig-line-key.s1{border-color:var(--fig-1)}.fig-line-key.s2{border-color:var(--fig-2)}.fig-line-key.s3{border-color:var(--fig-3)}.fig-line-key.s4{border-color:var(--fig-4)}.fig-line-key.s5{border-color:var(--fig-5)}
+.fig-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fig-scrub-label{font-size:.8em;color:var(--muted)}
+.fig-scrubber{flex:1;min-width:160px;accent-color:var(--accent)}
+.fig-controls button{font-size:.8em;padding:6px 12px}
+.fig-log-status{flex-basis:100%;font-size:.78em;color:var(--muted)}
+.fig-log-status:empty{display:none}
+.fig-readout{margin:0;min-height:3.1em;font-size:.88em;border-left:3px solid var(--accent);padding:6px 12px;background:var(--tint);border-radius:0 8px 8px 0}
+.fig-readout b{font-weight:700}
+.fig-states{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.fig-state{display:grid;grid-template-columns:70px minmax(0,1fr);gap:12px;align-items:start;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface);transition:border-color .2s,box-shadow .2s}
+.fig-state.is-current{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.fig-state h3{margin:2px 0 4px;font-size:.95em}
+.fig-state p{margin:0;font-size:.82em}
+.fig-state-time{color:var(--accent);font-weight:700;font-size:.72em!important;letter-spacing:.04em;font-variant-numeric:tabular-nums}
+.fig-glyph{width:70px;height:70px}
+.fig-props{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px;font-size:.76em}
+.fig-props li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;align-items:center}
+.fig-prop-text{grid-column:1/-1;color:var(--muted)}.fig-prop-text:empty{display:none}
+.fig-meter{display:inline-flex;gap:3px}
+.fig-meter i{width:11px;height:6px;border-radius:2px;background:var(--tint);box-shadow:inset 0 0 0 1px var(--line)}
+.fig-meter i.on{background:var(--accent);box-shadow:none}
+.fig-compounds{border-collapse:collapse;font-size:.82em;margin-top:6px}
+.fig-compounds caption{text-align:left;font-weight:650;padding:0 0 6px}
+.fig-compounds th,.fig-compounds td{padding:6px 12px;border-bottom:1px solid var(--line);text-align:left;font-weight:600}
+.fig-compounds thead th{color:var(--muted);font-weight:650}
+.fig-compounds .is-current{background:var(--tint)}
+.glyph-bean{stroke:var(--fig-outline);stroke-width:1.5}
+.glyph-crease{fill:none;stroke:#000;stroke-opacity:.42;stroke-width:2.2;stroke-linecap:round}
+.glyph-crack{fill:none;stroke:var(--paper);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.glyph-oil{fill:#fff;fill-opacity:.6}
+.glyph-pore{fill:#000;fill-opacity:.35}
+.glyph-pressure{fill:none;stroke:var(--fig-5);stroke-width:2;stroke-dasharray:3 3}
+.glyph-push{stroke:var(--fig-5);stroke-width:2.4;stroke-linecap:round}
+.glyph-water{fill:var(--fig-3)}.glyph-halo{fill:var(--fig-3)}
+.glyph-grounds{fill:#6e4427;stroke:var(--fig-outline);stroke-width:1.5}
+.glyph-solubles{fill:#c9933f}
+.glyph-solute{fill:var(--fig-4)}
+.glyph-generic{fill:var(--accent)}
+
+/* Tables: the readable twin of every chart. */
+.fig-table summary{cursor:pointer;font-weight:650;font-size:.86em;color:var(--accent)}
+.fig-table-scroll{overflow-x:auto}
+.fig-data{border-collapse:collapse;font-size:.8em;margin:10px 0;min-width:100%}
+.fig-data caption{text-align:left;font-weight:650;padding:4px 0}
+.fig-data th,.fig-data td{text-align:left;padding:6px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.fig-data td{font-variant-numeric:tabular-nums}
+
+/* Apparatus: fixed cutaway drawings with flow layers. */
+.fig-layers{display:flex;flex-wrap:wrap;gap:6px}
+.figure .fig-layer{display:inline-flex;align-items:center;gap:7px;font-size:.8em;padding:5px 11px;border-radius:50px}
+.figure .fig-layer[aria-pressed=true]{background:var(--surface);color:var(--ink);border-color:var(--accent)}
+.figure .fig-layer[aria-pressed=false]{opacity:.55;border-style:dashed}
+.fig-motion{font-size:.8em;padding:5px 11px}
+.fig-key{display:inline-block;width:24px;border-top:3px solid var(--fig-2)}
+.key-conduction{border-top:4px solid var(--fig-2)}.key-convection{border-top:3px dashed var(--fig-2)}.key-radiation{border-top:3px dotted var(--fig-2)}
+.key-air{border-top:3px dashed var(--fig-1)}.key-water{border-top:4px solid var(--fig-3)}.key-gas{border-top:4px dotted var(--fig-gas)}
+.key-pressure{border-top:6px solid var(--fig-5)}.key-material{border-top:5px dotted var(--fig-4)}
+.visual-section.figure-section{overflow:clip}
+.fig-apparatus{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(220px,1fr);gap:20px;align-items:start}
+.figure:not(.fig-slide) .fig-drawing{position:sticky;top:16px}
+.ap-svg{display:block;width:100%;height:auto}
+.ap-metal{fill:var(--fig-metal);stroke:var(--fig-outline);stroke-width:2;stroke-linejoin:round}
+.ap-drum{fill:var(--fig-inner);stroke:var(--fig-outline);stroke-width:12}
+.ap-dark{fill:var(--fig-outline)}
+.ap-inner{fill:var(--fig-inner)}
+.ap-hole{fill:var(--fig-inner)}
+.ap-water{fill:var(--fig-water)}
+.ap-coffee{fill:var(--fig-coffee)}
+.ap-paper{fill:var(--fig-paper);stroke:var(--fig-outline);stroke-width:1}
+.ap-glass{fill:none;stroke:var(--fig-outline);stroke-width:2.5;stroke-linejoin:round}
+.ap-line,.ap-tick{fill:none;stroke:var(--fig-outline);stroke-width:2}
+.ap-handle,.ap-spout{fill:none;stroke:var(--fig-outline);stroke-width:9;stroke-linecap:round}
+.ap-bean{fill:#7a4a2a;stroke:#3b2417;stroke-width:.8}
+.ap-green{fill:#8fa66a;stroke:#56673a;stroke-width:.8}
+.ap-crease{fill:none;stroke:#000;stroke-opacity:.4;stroke-width:1}
+.ap-grounds{fill:#4a2c18}
+.ap-bubble{fill:none;stroke:var(--fig-gas);stroke-width:1.5}
+.ap-vane{stroke:var(--fig-outline);stroke-width:5;stroke-linecap:round}
+.ap-rotation{fill:none;stroke:var(--fig-axis);stroke-width:2.5}.ap-rotation-head{fill:var(--fig-axis)}
+.ap-flame{fill:var(--fig-2);fill-opacity:.85}
+.ap-lamp{fill:var(--fig-paper);stroke:var(--fig-outline);stroke-width:2}
+.ap-filament{fill:none;stroke:var(--fig-2);stroke-width:2}
+.ap-element{fill:none;stroke:var(--fig-2);stroke-width:4;stroke-linecap:round}
+.ap-damper{stroke:var(--fig-outline);stroke-width:4;stroke-linecap:round}
+.ap-probe{stroke:var(--fig-outline);stroke-width:4;stroke-linecap:round}
+.ap-needle{stroke:var(--fig-2);stroke-width:2.5;stroke-linecap:round}
+.ap-leader{stroke:var(--ink);stroke-width:1.2}
+.ap-callout{cursor:pointer}
+.ap-callout circle{fill:var(--surface);stroke:var(--ink);stroke-width:2}
+.ap-callout text{font:700 15px system-ui,-apple-system,"Segoe UI",sans-serif;text-anchor:middle;fill:var(--ink)}
+.ap-callout.active circle{fill:var(--accent);stroke:var(--accent)}.ap-callout.active text{fill:var(--surface)}
+.flow .flow-line{fill:none;stroke-linecap:round;stroke-linejoin:round;--period:18;animation:fig-flow 1.1s linear infinite}
+.flow.off{display:none}
+.flow-conduction .flow-line{stroke:var(--fig-2);stroke-width:4;animation:none}
+.flow-convection .flow-line{stroke:var(--fig-2);stroke-width:3;stroke-dasharray:10 8}
+.flow-radiation .flow-line{stroke:var(--fig-2);stroke-width:2.5;stroke-dasharray:6 5;--period:11}
+.flow-air .flow-line{stroke:var(--fig-1);stroke-width:3;stroke-dasharray:10 8}
+.flow-water .flow-line{stroke:var(--fig-3);stroke-width:4;stroke-dasharray:14 6;--period:20}
+.flow-gas .flow-line{stroke:var(--fig-gas);stroke-width:4;stroke-dasharray:.5 9;--period:9.5;animation-duration:1.6s}
+.flow-pressure .flow-line{stroke:var(--fig-5);stroke-width:6;animation:none}
+.flow-material .flow-line{stroke:var(--fig-4);stroke-width:6;stroke-dasharray:.5 14;--period:14.5;animation-duration:1.4s}
+.marker-conduction,.marker-convection,.marker-radiation{fill:var(--fig-2)}.marker-air{fill:var(--fig-1)}.marker-water{fill:var(--fig-3)}
+.marker-gas{fill:var(--fig-gas)}.marker-pressure{fill:var(--fig-5)}.marker-material{fill:var(--fig-4)}
+@keyframes fig-flow{from{stroke-dashoffset:var(--period)}to{stroke-dashoffset:0}}
+.figure.paused .flow-line{animation-play-state:paused}
+.fig-legend{min-width:0}
+.fig-parts{margin:0;padding-left:1.7em;display:grid;gap:8px;font-size:.86em}
+.fig-parts li::marker{color:var(--accent);font-weight:750}
+.fig-parts p{margin:2px 0 4px;color:var(--muted);font-size:.93em}
+.fig-part{border:0;background:none;padding:1px 4px;text-align:left;font-weight:650;border-radius:5px}
+.fig-parts li.active .fig-part{background:var(--tint);color:var(--accent)}
+.fig-flows{list-style:none;margin:14px 0 0;padding:12px 0 0;border-top:1px solid var(--line);display:grid;gap:8px;font-size:.8em}
+.fig-flows li{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+
+/* Region map. */
+.fig-map{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(200px,1fr);gap:18px;align-items:start}
+.fig-region{fill:var(--tint);fill-opacity:.75;stroke:var(--fig-axis);stroke-width:1;cursor:pointer}
+.fig-region.emphasis{fill:var(--fig-1);fill-opacity:.2;stroke:var(--fig-1)}
+.fig-region.active{stroke:var(--ink);stroke-width:2}
+.fig-point{fill:var(--ink);stroke:var(--surface);stroke-width:2}
+.fig-regions{margin:0;padding:0;list-style:none;display:grid;gap:8px;font-size:.84em}
+.fig-regions p{margin:2px 0 4px 28px;color:var(--muted);font-size:.95em}
+.fig-regions .fig-sources{margin-left:28px}
+.fig-region-button{border:0;background:none;padding:2px 4px;text-align:left;font-weight:650;border-radius:5px}
+.fig-region-button b{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--tint);color:var(--accent);font-size:.85em;margin-right:4px}
+.fig-regions li.emphasis .fig-region-button b{background:var(--accent);color:var(--surface)}
+.fig-regions li.active .fig-region-button{background:var(--tint)}
+
+/* What-if: levers and the effects the source states. */
+.fig-levers{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.fig-lever{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:5px 6px 5px 12px;background:var(--surface);font-size:.86em;font-weight:650}
+.fig-lever button{font-size:.9em;padding:5px 10px;font-weight:500}.fig-reset{font-size:.78em;padding:5px 10px}
+.fig-effects{position:relative;display:grid;grid-template-columns:repeat(var(--columns),minmax(0,1fr));gap:18px 56px;padding:8px 0 30px}
+.fig-column{display:flex;flex-direction:column;gap:14px;justify-content:center;min-width:0}
+.fig-node{position:relative;z-index:1;display:flex;flex-direction:column;gap:3px;text-align:left;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:.86em;overflow-wrap:anywhere;width:100%}
+.fig-node.is-lever{border-color:var(--accent)}
+.fig-node-state{font-size:.9em;font-weight:700;color:var(--muted)}.fig-node-state:empty{display:none}
+.fig-node[data-state=up]{border-color:var(--fig-3);box-shadow:inset 3px 0 0 var(--fig-3)}.fig-node[data-state=up] .fig-node-state{color:var(--fig-3)}
+.fig-node[data-state=down]{border-color:var(--fig-2);box-shadow:inset 3px 0 0 var(--fig-2)}.fig-node[data-state=down] .fig-node-state{color:var(--fig-2)}
+.fig-node[data-state=mixed]{border-style:dashed}
+.fig-links{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.fig-link{fill:none;stroke:var(--fig-axis);stroke-width:1.5}.fig-link.active{stroke:var(--ink);stroke-width:2}
+.fig-sign circle{fill:var(--surface);stroke:var(--fig-axis);stroke-width:1.2}.fig-sign text{font:700 12px system-ui,sans-serif;text-anchor:middle;fill:var(--ink)}
+.fig-announce:not(.sr-only){margin:0;font-size:.86em;min-height:1.4em}
+.fig-effect-list{margin:8px 0 0;padding-left:1.2em;display:grid;gap:5px;font-size:.84em}
+
+/* Scale ladder: one process at several sizes. */
+.fig-ladder{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(var(--levels),minmax(0,1fr));gap:16px}
+.fig-level{position:relative;border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--surface);min-width:0}
+.fig-level h3{margin:2px 0 6px;font-size:.98em}.fig-level p{margin:0 0 8px;font-size:.84em}
+.fig-scale{color:var(--accent);font-weight:700;font-size:.74em!important;letter-spacing:.04em;text-transform:uppercase}
+.fig-lens-box{display:flex;align-items:flex-end;height:54px;margin-bottom:10px}
+.fig-lens{display:block;width:calc(54px - var(--level) * 9px);aspect-ratio:1;border-radius:50%;border:3px solid var(--accent)}
+.fig-level:not(:last-child)::after{content:"";position:absolute;top:41px;right:-17px;width:18px;border-top:2px solid var(--accent)}
+
+@media(max-width:850px){.fig-apparatus,.fig-map{grid-template-columns:1fr}}
+@media(max-width:600px){
+  .fig-effects{grid-template-columns:1fr;gap:10px}.fig-links{display:none}
+  .fig-ladder{grid-template-columns:1fr}.fig-level:not(:last-child)::after{top:auto;bottom:-17px;right:auto;left:40px;width:0;height:18px;border-top:0;border-left:2px solid var(--accent)}
+  .fig-state{grid-template-columns:56px minmax(0,1fr)}.fig-glyph{width:56px;height:56px}
+}
+@media(prefers-reduced-motion:reduce){.flow .flow-line{animation:none!important}.fig-motion{display:none}}
+
+/* Inside a 1280x720 slide the figure uses its own sizes, not the slide's large text. */
+.fig-slide{font-size:.9em}
+.fig-slide-states{display:grid;gap:16px;align-content:start}
+@media screen and (min-width:761px){
+  .js-deck .slide-content:has(.fig-slide){display:flex;flex-direction:column}
+  .js-deck .fig-slide{flex:1;min-height:0;font-size:20px;display:flex;flex-direction:column;gap:12px}
+  .js-deck .fig-slide .fig-chart text{font-size:15px}
+  .js-deck .fig-slide .ap-callout text{font-size:17px}
+  .js-deck .fig-slide .fig-chart{flex:1;min-height:0}
+  .js-deck .fig-slide .fig-chart.compact{flex:none}
+  /* A figure slide gives the chart the room; the band and the scrubber already show the phases. */
+  .js-deck .slide.kind-figure{--h2:36px;gap:14px;padding-top:40px}
+  .js-deck .fig-slide .fig-phases{display:none}
+  .js-deck .fig-slide .fig-apparatus,.js-deck .fig-slide .fig-map{flex:1;min-height:0;grid-template-columns:minmax(0,1.9fr) minmax(0,1fr)}
+  .js-deck .fig-slide .fig-drawing{height:100%}.js-deck .fig-slide .ap-svg{height:100%}
+  .js-deck .fig-slide .fig-readout{font-size:.9em;min-height:2.6em}
+  .js-deck .fig-slide-states .fig-states{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .js-deck .fig-slide-states .fig-state{grid-template-columns:96px minmax(0,1fr)}
+  .js-deck .fig-slide-states .fig-glyph{width:96px;height:96px}
+}
+@media print{
+  :root,[data-theme=dark]{--fig-1:#00897b;--fig-2:#c0562b;--fig-3:#2f6fb5;--fig-4:#a07400;--fig-5:#6a55c2;--fig-gas:#7d8a90;--fig-metal:#e7ebe8;--fig-outline:#59666d;--fig-inner:#f6f5f1;--fig-water:#cfe3f3;--fig-paper:#fbfaf6;--fig-grid:#e3e6e3;--fig-axis:#c4cbc7}
+  .fig-controls,.fig-layers,.fig-levers,.fig-phases,.fig-sources,.fig-table summary{display:none!important}
+  .flow.off{display:inline}.flow .flow-line{animation:none}
+  .fig-state,.fig-apparatus,.fig-map{break-inside:avoid}
+}

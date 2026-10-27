@@ -31,7 +31,7 @@ test('change library folder preserves saved pages and worker processing', async 
   await page.getByRole('button', {name: 'Transcript file', exact: true}).click();
   await page.locator('#source-file').setInputFiles({name: 'relocated.srt', mimeType: 'text/plain', buffer: Buffer.from('1\n00:00:10,000 --> 00:00:15,000\nHeating affects reaction speed.\n\n2\n00:00:20,000 --> 00:00:25,000\nDevelopment time changes aroma.\n')});
   await page.locator('#import-title').fill('After library folder change');
-  await page.getByRole('button', {name: 'Create learning page'}).click();
+  await page.getByRole('button', {name: 'Create interactive page'}).click();
   await expect(page.locator('#job-detail')).toContainText('Your learning page is ready.', {timeout: 20000});
   await page.locator('.nav-item[data-view="library"]').click();
   await expect(page.locator('.page-card').filter({hasText: 'After library folder change'})).toBeVisible();
@@ -87,7 +87,7 @@ test('import source through the form, process it in the worker and save to the l
   await page.locator('#import-title').fill('Browser import contract');
   await page.getByText('Options for this page', {exact: true}).click();
   await page.locator('#new-language').selectOption('en');
-  await page.getByRole('button', {name: 'Create learning page'}).click();
+  await page.getByRole('button', {name: 'Create interactive page'}).click();
   await expect(page.locator('#job-detail')).toContainText('Your learning page is ready.', {timeout: 20000});
   await page.getByText('Generation details', {exact: true}).click();
   await expect(page.locator('#job-detail')).toContainText('Subscription allowance: unknown');
@@ -104,11 +104,12 @@ test('import source through the form, process it in the worker and save to the l
 test('caption failure asks for audio consent and cancellation prevents processing', async ({page}) => {
   await page.locator('.nav-item[data-view="new"]').click();
   await page.locator('#video-url').fill('https://www.youtube.com/watch?v=0qqW3vxOC-g');
-  await page.getByRole('button', {name: 'Create learning page'}).click();
+  await page.getByRole('button', {name: 'Create interactive page'}).click();
   await expect(page.getByRole('heading', {name: 'Approve audio transcription'})).toBeVisible({timeout: 15000});
   await expect(page.locator('#audio-consent')).not.toBeChecked();
-  await expect(page.locator('#free-confirm')).not.toBeChecked();
-  await page.getByRole('button', {name: 'Continue with Groq'}).click();
+  await expect(page.locator('#paid-audio-confirm')).not.toBeChecked();
+  await expect(page.locator('.job-approval')).toContainText('Labelled automatically');
+  await page.getByRole('button', {name: 'Continue with Soniox'}).click();
   await expect(page.locator('#notice')).toContainText('Approve audio processing for this source');
   await page.getByRole('button', {name: 'Cancel processing'}).click();
   await expect(page.locator('#job-detail .job-stage strong')).toHaveText('Cancelled');

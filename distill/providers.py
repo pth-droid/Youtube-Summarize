@@ -42,7 +42,7 @@ class SecretStore:
     configuration errors; installed OS keyrings are needed to save a secret.
     """
     service = "visual-learning"  # pre-rename keyring service; saved keys live under it
-    env_names = {"deepseek": "DEEPSEEK_API_KEY", "groq": "GROQ_API_KEY",
+    env_names = {"deepseek": "DEEPSEEK_API_KEY", "groq": "GROQ_API_KEY", "soniox": "SONIOX_API_KEY",
                  "openai_compatible": "OPENAI_API_KEY", "claude": "ANTHROPIC_API_KEY",
                  "grok": "XAI_API_KEY", "muse": "MUSE_API_KEY", "glm": "GLM_API_KEY",
                  "selfhost": "DISTILL_SELFHOST_API_KEY"}
@@ -130,17 +130,30 @@ def _strict_schema(schema: dict) -> dict:
     Existing nullable fields retain their original anyOf null alternative.
     """
     schema = json.loads(json.dumps(schema))
+    # Walk the schema by its structure. A "properties" mapping holds field schemas, not
+    # a schema itself, so a field named "properties", "type" or "items" is never read as
+    # a keyword; doing so once added fake required fields that no answer could satisfy.
     def visit(node):
-        if isinstance(node, dict):
-            if node.get("type") == "object" or "properties" in node:
-                properties = node.get("properties", {})
-                node["required"] = list(properties)
-                node["additionalProperties"] = False
-            for child in node.values():
-                visit(child)
-        elif isinstance(node, list):
+        if isinstance(node, list):
             for child in node:
                 visit(child)
+            return
+        if not isinstance(node, dict):
+            return
+        properties = node.get("properties")
+        if node.get("type") == "object" or isinstance(properties, dict):
+            properties = properties if isinstance(properties, dict) else {}
+            node["required"] = list(properties)
+            node["additionalProperties"] = False
+            for child in properties.values():
+                visit(child)
+        for key in ("items", "prefixItems", "anyOf", "oneOf", "allOf", "not"):
+            if key in node:
+                visit(node[key])
+        for key in ("$defs", "definitions"):
+            if isinstance(node.get(key), dict):
+                for child in node[key].values():
+                    visit(child)
     visit(schema)
     return schema
 
@@ -391,7 +404,11 @@ class ClaudeCodeProvider:
             messages = {"quota": "Claude subscription usage is unavailable. Wait for your limit to reset or select another provider.",
                         "authentication": "Sign in to Claude Code with your Claude subscription (run claude, then /login), then retry.",
                         "invalid_output": "Claude did not return a valid JSON object."}
-            raise ProviderError(code, messages.get(code, "Claude Code could not complete this analysis. Check the CLI sign-in and selected model, then retry."), diagnostics={
+            message = messages.get(code, "Claude Code could not complete this analysis. Check the CLI sign-in and selected model, then retry.")
+            if code == "authentication" and "expired" in text:
+                # The CLI keeps its own sign-in, separate from the Claude apps; it can expire on its own.
+                message = "Your Claude Code sign-in has expired. Run claude, then /login, then retry."
+            raise ProviderError(code, message, diagnostics={
                 "provider": self.name, "model": self.model, "exit_code": process.returncode, "failure_category": category,
                 "failure": "invalid_json" if code == "invalid_output" else category, "subtype": subtype,
                 "api_error_status": status if isinstance(status, int) else None, "stderr_line_count": stderr.count("\n"), "usage": usage})

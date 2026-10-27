@@ -177,7 +177,7 @@ class Worker:
                 else:
                     source = normalized(transcribe_youtube(job["input"]["video_id"], work_dir, approval, progress=audio_progress, cancelled=cancelled, checkpoint=checkpoint, load_checkpoint=load_checkpoint))
             elif job["input"]["kind"] == "audio_import":
-                self.update_job(job_id, state="awaiting_approval", progress={"stage": "awaiting_approval", "message": "Approve sending this audio to Groq, or import a transcript."})
+                self.update_job(job_id, state="awaiting_approval", progress={"stage": "awaiting_approval", "message": "Approve sending this audio for transcription, or import a transcript."})
                 return
             else:
                 try:
@@ -187,7 +187,8 @@ class Worker:
                         raise InterruptedError()
                     if getattr(error, "retry_after", None):
                         raise
-                    request = {"approved": False, "job_id": job_id, "source": job["input"]["video_id"], "provider": "groq", "model": preferences.get("groq_model", "whisper-large-v3-turbo"), "free_only": bool(preferences.get("groq_free_only", True)), "free_account_confirmed": False, "retain_audio": bool(preferences.get("retain_audio")), "source_language": preferences.get("source_language") or None, "reason": getattr(error, "message", str(error)), "duration": None, "quota": "Remaining Groq account quota is unknown.", "languages": getattr(error, "languages", []), "caption_error": getattr(error, "code", "unavailable")}
+                    from .audio import approval_request
+                    request = approval_request(preferences, job_id, job["input"]["video_id"], getattr(error, "message", str(error)), languages=getattr(error, "languages", []), caption_error=getattr(error, "code", "unavailable"))
                     self.update_job(job_id, state="awaiting_approval", approval=request, error={"code": request["caption_error"], "message": request["reason"]}, progress={"stage": "awaiting_approval", "message": "Caption retrieval stopped. Choose audio transcription or import a transcript."})
                     return
             # Validate before saving the source checkpoint. Do not cache invalid ingestion.

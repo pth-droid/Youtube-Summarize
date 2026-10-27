@@ -12,20 +12,30 @@ from types import SimpleNamespace
 from typing import Any, Callable
 
 from .models import (
-    SCHEMA_VERSION, SKILL_VERSION, Chapter, Extraction, GroundingCorrections, GroundingReview, KnowledgeModel,
-    KnowledgeUnit, PresentationPlan, Relationship, Snippet, Synthesis, Transcript,
-    normalize_quote, validate_bundle, validate_grounding,
+    SCHEMA_VERSION, SKILL_VERSION, Chapter, Extraction, FigurePlan, FigureSet, GroundingCorrections, GroundingReview,
+    KnowledgeModel, KnowledgeUnit, LectureFrame, LectureParts, LecturePlan, PresentationPlan, Relationship, Snippet,
+    Synthesis, Transcript, normalize_quote, validate_bundle, validate_figures, validate_grounding, validate_lecture,
 )
+from .apparatus import catalogue
 from .chapters import assign_units, chapter_profile, detail_level, split_sections
-from .renderer import render_page
+from .renderer import render_lecture, render_page
 from .providers import ProviderError
 from .model_profiles import resolve_profile
 from .metrics import display_metrics, evenly_spaced, source_positions, spread_by_source_position
 
 SKILL_DIR = Path(__file__).resolve().parents[1] / "skills" / "visual-synthesis"
+# Kept outside SKILL_DIR: its files feed the analysis fingerprint, and lecture
+# guidance must not invalidate saved analysis.
+LECTURE_SKILL_DIR = SKILL_DIR.parent / "lecture-slides"
+FIGURE_SKILL_DIR = SKILL_DIR.parent / "process-figures"
 PIPELINE_REVISION = "2.0"
 # Versioned separately so a presentation change does not invalidate saved extraction and synthesis.
 PRESENTATION_REVISION = "2"
+LECTURE_REVISION = "1"
+FIGURE_REVISION = "1"
+# Figures are considered only for sources that explain mechanisms or procedures.
+PROCESS_KINDS = ("mechanism", "step")
+SLIDE_RANGE = {"brief": "1-2", "standard": "2-4", "detailed": "3-6"}
 DETAIL_KINDS = ("step", "choice", "objection", "mechanism")
 
 
@@ -225,8 +235,12 @@ class Pipeline:
 
     def _instructions(self, stage: str) -> str:
         refs = ["source-grounding.md", "learning-depth.md"]
-        refs.append("visual-selection.md" if stage == "presentation" else "transcript-analysis.md")
-        files = [SKILL_DIR / "SKILL.md", *[SKILL_DIR / "references" / name for name in refs]]
+        if stage in ("lecture", "figures"):
+            skill = LECTURE_SKILL_DIR if stage == "lecture" else FIGURE_SKILL_DIR
+            files = [skill / "SKILL.md", *[SKILL_DIR / "references" / name for name in refs]]
+        else:
+            refs.append("visual-selection.md" if stage == "presentation" else "transcript-analysis.md")
+            files = [SKILL_DIR / "SKILL.md", *[SKILL_DIR / "references" / name for name in refs]]
         return "\n\n".join(path.read_text(encoding="utf-8") for path in files)
 
     def _budget(self, schema, stage):
@@ -259,7 +273,8 @@ class Pipeline:
             self.call_sizes.append({"stage": stage, "characters": request_size, "limit": maximum})
             # Provider transport/quota/auth errors must propagate for durable worker recovery.
             def model_progress(message):
-                self._notify("selecting_visuals" if stage == "presentation" else "validating" if stage == "grounding" else "analyzing", message)
+                self._notify({"presentation": "selecting_visuals", "figures": "selecting_visuals", "grounding": "validating",
+                              "lecture": "rendering"}.get(stage, "analyzing"), message)
             try:
                 response = self.provider.generate(prompt, schema, work_dir, progress=model_progress if self._progress else None)
             except ProviderError as error:
@@ -447,6 +462,163 @@ class Pipeline:
             groups.append(current)
         return groups
 
+    def _lecture(self, source, knowledge, preferences, work_dir, load, save) -> LecturePlan:
+        """Teach the validated knowledge as slides, chapter by chapter. No new source analysis happens here."""
+        units = {u.id: u for u in knowledge.units}
+        order = {u.id: index for index, u in enumerate(knowledge.units)}
+        positions = source_positions(source)
+        section_units = {s.id: s.unit_ids for s in knowledge.sections}
+        overview = SimpleNamespace(id="overview", title=knowledge.main_question, section_ids=[], unit_ids=knowledge.overview_ids, detail="standard")
+        budget = self._budget(LectureParts.model_json_schema(), "lecture")
+
+        def unit_record(unit, explanation):
+            return {"id": unit.id, "title": unit.title, "summary": unit.summary, "explanation": unit.explanation[:explanation],
+                    "kind": unit.kind, "status": unit.status, "caveats": unit.caveats[:3], "technical_terms": unit.technical_terms[:6],
+                    "has_original_quote": bool(unit.evidence)}
+
+        def chapter_body(chapter):
+            ids = list(dict.fromkeys([*chapter.unit_ids, *(uid for sid in chapter.section_ids for uid in section_units.get(sid, []))]))
+            if not ids:
+                return None  # greetings, small talk or a sponsor read
+            key = [units[uid] for uid in chapter.unit_ids]
+            rest = [units[uid] for uid in ids if uid not in set(chapter.unit_ids)]
+            # Smaller context windows get fewer supporting ideas and shorter explanations; key ideas always stay.
+            for limit, explanation in ((14, 600), (9, 250), (5, 0)):
+                chosen = sorted(key + spread_by_source_position(rest, positions, max(0, limit - len(key))), key=lambda u: order[u.id])
+                chosen_ids = {u.id for u in chosen}
+                body = {"id": chapter.id, "title": chapter.title, "slides": SLIDE_RANGE.get(chapter.detail, "2-4"),
+                        "units": [unit_record(u, explanation) for u in chosen],
+                        "relationships": [{"source": r.source, "target": r.target, "label": r.label, "kind": r.kind, "status": r.status}
+                                          for r in knowledge.relationships if r.source in chosen_ids and r.target in chosen_ids][:12]}
+                if len(json.dumps(body, ensure_ascii=False)) <= budget:
+                    break
+            return body
+
+        bodies = [body for body in map(chapter_body, knowledge.chapters) if body] or [chapter_body(overview)]
+        per_call = max(1, min(6, self.profile.output_tokens * 3 // 5 // 2400))
+        batches, current, size = [], [], 0
+        for body in bodies:
+            length = len(json.dumps(body, ensure_ascii=False))
+            if current and (len(current) >= per_call or size + length > budget):
+                batches.append(current)
+                current, size = [], 0
+            current.append(body)
+            size += length
+        batches.append(current)
+
+        def check_parts(value, batch):
+            if [part.chapter_id for part in value.parts] != [body["id"] for body in batch]:
+                raise ValueError("Return one part for each supplied chapter, in the supplied order")
+            allowed = {body["id"]: {u["id"] for u in body["units"]} for body in batch}
+            for part in value.parts:
+                for slide in part.slides:
+                    if not set(slide.unit_ids) <= allowed[part.chapter_id]:
+                        raise ValueError("A slide cites ideas that were not supplied for its chapter")
+                    if slide.layout == "quote" and not any(units[uid].evidence for uid in slide.unit_ids):
+                        raise ValueError("A quote slide needs an idea with original evidence")
+
+        context = {"language": preferences["language"], "knowledge_level": preferences["knowledge_level"],
+                   "learning_goal": preferences["learning_goal"], "lecture_topic": knowledge.main_question}
+        parts = []
+        for index, batch in enumerate(batches):
+            name = f"lecture_r{LECTURE_REVISION}_{index + 1:02d}"
+            result, cached = None, load(name)
+            if cached is not None:
+                try:
+                    result = LectureParts.model_validate(cached)
+                    check_parts(result, batch)
+                except ValueError:
+                    result = None  # an older batch plan; write this part again
+            if result is None:
+                self._notify("rendering", f"Writing lecture slides, part {index + 1} of {len(batches)}")
+                result = self._request("lecture", LectureParts, context | {"chapters": batch},
+                    "Write lecture slides for each supplied chapter, one part per chapter in the supplied order. Use the chapter's slide range. Cite only that chapter's supplied idea IDs.",
+                    work_dir, lambda value, batch=batch: check_parts(value, batch))
+                save(name, result.model_dump(mode="json"))
+            parts.extend(result.parts)
+
+        name = f"lecture_r{LECTURE_REVISION}_frame"
+        frame_ids = list(dict.fromkeys([*knowledge.overview_ids, *(uid for chapter in knowledge.chapters for uid in chapter.unit_ids)]))[:24]
+        def check_frame(value):
+            if any(not set(question.unit_ids) <= set(frame_ids) for question in value.questions):
+                raise ValueError("A quiz question cites ideas that were not supplied")
+        frame, cached = None, load(name)
+        if cached is not None:
+            try:
+                frame = LectureFrame.model_validate(cached)
+                check_frame(frame)
+            except ValueError:
+                frame = None
+        if frame is None:
+            self._notify("rendering", "Writing lecture objectives and quiz")
+            titles = {body["id"]: body["title"] for batch in batches for body in batch}
+            body = context | {"source_title": source.title, "main_question": knowledge.main_question,
+                "main_conclusion": knowledge.main_conclusion, "main_conclusion_caveats": knowledge.main_conclusion_caveats,
+                "chapters": [titles[part.chapter_id] for part in parts],
+                "units": [{"id": units[uid].id, "title": units[uid].title, "summary": units[uid].summary, "kind": units[uid].kind,
+                           "status": units[uid].status} for uid in frame_ids]}
+            frame = self._request("lecture", LectureFrame, body,
+                "Write the lecture title, learning objectives, takeaways and three to five quiz questions. Questions cite only supplied idea IDs.",
+                work_dir, check_frame)
+            save(name, frame.model_dump(mode="json"))
+        lecture = LecturePlan(**frame.model_dump(), parts=parts)
+        validate_lecture(knowledge, lecture)
+        write_json(work_dir / "lecture.json", lecture.model_dump(mode="json"))
+        return lecture
+
+    def _figures(self, source, knowledge, preferences, work_dir, load, save) -> FigurePlan:
+        """Fill fixed figure forms for physical and procedural ideas. No new source analysis happens here."""
+        if sum(u.kind in PROCESS_KINDS for u in knowledge.units) < 2:
+            plan = FigurePlan()
+            write_json(work_dir / "figures.json", plan.model_dump(mode="json"))
+            return plan
+        name = f"figures_r{FIGURE_REVISION}"
+        plan, cached = None, load(name)
+        if cached is not None:
+            try:
+                plan = FigurePlan.model_validate(cached)
+                validate_figures(knowledge, plan)
+            except ValueError:
+                plan = None  # an older figure plan; choose the figures again
+        if plan is None:
+            units = {u.id: u for u in knowledge.units}
+            order = {u.id: index for index, u in enumerate(knowledge.units)}
+            positions = source_positions(source)
+            key_ids = list(dict.fromkeys([*knowledge.overview_ids, *(uid for chapter in knowledge.chapters for uid in chapter.unit_ids)]))
+            # Mechanisms, steps, examples and ideas with numbers carry what figures show; spread them over the whole source.
+            candidates = [u for u in knowledge.units if u.id not in key_ids
+                          and (u.kind in (*PROCESS_KINDS, "example") or re.search(r"\d", u.summary + u.explanation))]
+            budget = self._budget(FigureSet.model_json_schema(), "figures")
+
+            def record(unit, explanation, quote):
+                return {"id": unit.id, "title": unit.title, "summary": unit.summary, "explanation": unit.explanation[:explanation],
+                        "kind": unit.kind, "status": unit.status, "caveats": unit.caveats[:2],
+                        "original_quote": unit.evidence[0].quote[:quote] if unit.evidence and quote else ""}
+
+            for limit, explanation, quote in ((44, 700, 260), (30, 360, 160), (18, 160, 0)):
+                chosen = [units[uid] for uid in key_ids[:limit]]
+                chosen += spread_by_source_position(candidates, positions, max(0, limit - len(chosen)))
+                chosen.sort(key=lambda u: order[u.id])
+                ids = {u.id for u in chosen}
+                relationships = sorted((r for r in knowledge.relationships if r.source in ids and r.target in ids),
+                                       key=lambda r: r.kind != "causes")[:40]
+                body = {"language": preferences["language"], "knowledge_level": preferences["knowledge_level"],
+                        "learning_goal": preferences["learning_goal"], "main_question": knowledge.main_question,
+                        "templates": catalogue(), "units": [record(u, explanation, quote) for u in chosen],
+                        "relationships": [{"id": r.id, "source": r.source, "target": r.target, "kind": r.kind, "label": r.label,
+                                           "status": r.status} for r in relationships]}
+                if len(json.dumps(body, ensure_ascii=False)) <= budget:
+                    break
+            allowed_relationships = {r.id for r in relationships}
+            self._notify("selecting_visuals", "Choosing figures for processes, apparatus and quantities")
+            result = self._request("figures", FigureSet, body,
+                "Choose zero to four figures for the supplied ideas, following the figure guidance. Cite only supplied idea IDs and, for what-if effects, only supplied causes relationships. Use only slot and path IDs of the supplied templates. Return an empty list when no figure would explain better than text.",
+                work_dir, lambda value: validate_figures(knowledge, value, ids, allowed_relationships))
+            plan = FigurePlan(figures=result.figures)
+            save(name, plan.model_dump(mode="json"))
+        write_json(work_dir / "figures.json", plan.model_dump(mode="json"))
+        return plan
+
     def run(self, source, preferences, work_dir, progress=None, cancelled=None, checkpoint=None, load_checkpoint=None):
         self._progress, self._cancelled = progress, cancelled or (lambda: False)
         self.usage, self.call_sizes = [], []
@@ -459,6 +631,8 @@ class Pipeline:
         language = preferences.get("language", preferences.get("output_language", "vi"))
         if language not in ("vi", "en"):
             language = "vi"
+        # The output format only changes the final stages, so it stays out of the analysis fingerprint.
+        output_format = "lecture" if preferences.get("output_format") == "lecture" else "page"
         preferences = {"language": language, "knowledge_level": preferences.get("knowledge_level", "balanced"),
                        "learning_goal": preferences.get("learning_goal", preferences.get("goal", ""))}
         write_json(work_dir / "source.json", source.model_dump(mode="json"))
@@ -729,11 +903,23 @@ class Pipeline:
                 work_dir, lambda value: validate_bundle(source, knowledge, value))
             save(presentation_checkpoint, presentation.model_dump(mode="json"))
         write_json(work_dir / "presentation.json", presentation.model_dump(mode="json"))
-        self._notify("rendering", "Saving the interactive learning page")
-        self._check_cancelled()
-        page_path = render_page(source, knowledge, presentation, work_dir / "page.html")
+        figures = self._figures(source, knowledge, preferences, work_dir, load, save)
+        lecture = None
+        if output_format == "lecture":
+            lecture = self._lecture(source, knowledge, preferences, work_dir, load, save)
+            self._notify("rendering", "Saving the lecture slides")
+            self._check_cancelled()
+            page_path = render_lecture(source, knowledge, lecture, work_dir / "lecture.html", figures)
+        else:
+            self._notify("rendering", "Saving the interactive learning page")
+            self._check_cancelled()
+            page_path = render_page(source, knowledge, presentation, work_dir / "page.html", figures)
         record = {"schema_version": SCHEMA_VERSION, "skill_version": SKILL_VERSION,
             "pipeline_revision": PIPELINE_REVISION, "presentation_revision": PRESENTATION_REVISION,
+            "output_format": output_format,
+            "lecture_revision": LECTURE_REVISION if lecture else None,
+            "lecture_slides": sum(len(part.slides) for part in lecture.parts) if lecture else None,
+            "figure_revision": FIGURE_REVISION, "figures": [figure.type for figure in figures.figures],
             "analysis_windows": completed_windows,
             "initial_analysis_windows": len(windows), "model_profile": self.profile.as_dict(),
             "adaptive_events": adaptive_events,
@@ -748,5 +934,5 @@ class Pipeline:
         write_json(work_dir / "generation.json", record)
         return {"title": source.title, "summary": knowledge.main_conclusion, "source_id": source.source_id,
                 "knowledge_path": str(work_dir / "knowledge.json"), "presentation_path": str(work_dir / "presentation.json"),
-                "source_path": str(work_dir / "source.json"), "page_path": str(page_path),
+                "source_path": str(work_dir / "source.json"), "page_path": str(page_path), "output_format": output_format,
                 "generation_path": str(work_dir / "generation.json"), "warnings": knowledge.limitations}

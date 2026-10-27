@@ -76,6 +76,9 @@ class Preferences(StrictModel):
     claude_code_model: str | None = Field(None, max_length=100)
     deepseek_model: str | None = Field(None, max_length=100)
     api_connections: dict[ProviderName, APIConnection] | None = None
+    output_format: Literal["page", "lecture"] | None = None
+    transcription_providers: dict[Literal["video", "meeting", "lecture"], Literal["soniox", "groq"]] | None = None
+    soniox_model: str | None = Field(None, pattern=r"^stt-async-[a-z0-9.-]{1,40}$")
     groq_model: Literal["whisper-large-v3", "whisper-large-v3-turbo"] | None = None
     groq_free_only: bool | None = None
     allow_paid_llm: bool | None = None
@@ -84,7 +87,7 @@ class Preferences(StrictModel):
     @field_validator("api_connections")
     @classmethod
     def connection_ids(cls, value):
-        if value and {"codex", "claude_code", "deepseek", "groq"}.intersection(value):
+        if value and {"codex", "claude_code", "deepseek", "groq", "soniox"}.intersection(value):
             raise ValueError("This connection ID is reserved.")
         return value
 
@@ -366,12 +369,15 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
             return {"existing": existing, "job": None}
         selected = preferences(value.preferences, paid_usage_approved=value.paid_usage_approved)
         job = store.create_job({"kind": "youtube", "video_id": video_id, "url": "https://www.youtube.com/watch?v=" + video_id, "preferences": selected}, state="awaiting_approval")
-        # Reuse a validated source across language/model/goal changes, never an old analysis.
+        # Reuse a validated source across language/model/goal changes. The first page or slides made
+        # from a source in the other format keep a compatible analysis; a new version gets a fresh one.
         if existing:
             source = store.load_checkpoint(existing[0]["job_id"], "source")
             if source and (not selected.get("source_language") or source.get("language", "").lower() == selected["source_language"].lower()):
                 store.checkpoint(job["id"], "source", source)
                 store.write_json(job["id"], "source.json", source)
+                if all(g["metadata"].get("output_format", "page") != selected["output_format"] for g in existing):
+                    store.copy_checkpoints(existing[0]["job_id"], job["id"])
         job = store.update_job(job["id"], state="queued")
         return {"job": public_job(job), "existing": []}
 
@@ -491,19 +497,22 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
         return public_job(store.update_job(job_id, state="queued", error=None, cancel_requested=False, next_run_at=0, approval=None, progress={"stage": "queued", "message": "Transcript imported. Waiting for analysis."}))
 
     @app.post("/api/audio-import", status_code=201)
-    async def import_audio(file: UploadFile = File(...), title: str = Form(""), preference_json: str = Form("{}"), paid_usage_approved: bool = Form(False)):
+    async def import_audio(file: UploadFile = File(...), title: str = Form(""), preference_json: str = Form("{}"), paid_usage_approved: bool = Form(False), recording_type: str = Form("meeting")):
         allowed = {".wav", ".mp3", ".m4a", ".webm", ".ogg", ".opus", ".flac", ".mp4"}
         suffix = Path(file.filename or "").suffix.lower()
         if suffix not in allowed:
             await file.close()
             raise HTTPException(422, "Choose a WAV, MP3, M4A, WebM, OGG, Opus, FLAC, or MP4 audio file.")
+        if recording_type not in ("meeting", "lecture"):
+            await file.close()
+            raise HTTPException(422, "Choose whether this recording is a meeting or a lecture.")
         try:
             value = Preferences.model_validate_json(preference_json)
         except ValueError:
             await file.close()
             raise HTTPException(422, "Check the import preferences.")
         selected = preferences(value, paid_usage_approved=paid_usage_approved)
-        job = store.create_job({"kind": "audio_import", "title": title.strip()[:500] or Path(file.filename).stem, "preferences": selected}, state="awaiting_approval")
+        job = store.create_job({"kind": "audio_import", "title": title.strip()[:500] or Path(file.filename).stem, "recording_type": recording_type, "preferences": selected}, state="awaiting_approval")
         audio_path = store.artifact_dir(job["id"]) / ("imported-audio" + suffix)
         total, digest = 0, hashlib.sha256()
         try:
@@ -524,8 +533,9 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
             await file.close()
         source_id = "import:" + digest.hexdigest()
         input_data = job["input"] | {"audio_source": source_id, "audio_path": str(audio_path.relative_to(store.root))}
-        approval = {"approved": False, "job_id": job["id"], "source": source_id, "provider": "groq", "model": selected["groq_model"], "free_only": selected["groq_free_only"], "free_account_confirmed": False, "retain_audio": selected["retain_audio"], "source_language": selected.get("source_language") or None, "reason": "Audio import needs cloud speech transcription.", "duration": None, "quota": "Remaining Groq account quota is unknown."}
-        job = store.update_job(job["id"], input=input_data, approval=approval, state="awaiting_approval", progress={"stage": "awaiting_approval", "message": "Audio is saved locally. Approve sending it to Groq before processing."})
+        from .audio import PROVIDER_LABELS, approval_request
+        approval = approval_request(selected, job["id"], source_id, "Audio import needs cloud speech transcription.", workflow=recording_type)
+        job = store.update_job(job["id"], input=input_data, approval=approval, state="awaiting_approval", progress={"stage": "awaiting_approval", "message": f"Audio is saved locally. Approve sending it to {PROVIDER_LABELS[approval['provider']]} before processing."})
         return {"job": public_job(job)}
 
     @app.delete("/api/jobs/{job_id}/audio")
@@ -534,7 +544,7 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
         if job["state"] in ACTIVE_STATES | {"queued"}:
             raise HTTPException(409, "Cancel processing and wait for it to stop before deleting temporary audio.")
         folder = store.artifact_dir(job_id)
-        for pattern in ("imported-audio.*", "source-audio.*", "chunks/*.wav"):
+        for pattern in ("imported-audio.*", "source-audio.*", "chunks/*.wav", "chunks/*.flac"):
             for path in folder.glob(pattern):
                 store.managed_path(path).unlink(missing_ok=True)
         return {"deleted": True}
@@ -570,7 +580,8 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
         path = store.managed_path(result["page_path"])
         if not path.is_file():
             raise HTTPException(410, "The saved page file is missing.")
-        return FileResponse(path, media_type="text/html", filename="learning-page-" + generation_id[:8] + ".html")
+        name = "lecture-slides-" if result.get("metadata", {}).get("output_format") == "lecture" else "learning-page-"
+        return FileResponse(path, media_type="text/html", filename=name + generation_id[:8] + ".html")
 
     @app.delete("/api/generations/{generation_id}")
     def delete_page(generation_id: str):

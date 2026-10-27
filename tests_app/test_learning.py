@@ -41,6 +41,19 @@ class SemanticFixtureProvider:
             input_units=body["units"]
             return {"main_question":"What does the source explain?","main_conclusion":"The source connects its ideas.","main_conclusion_evidence":input_units[0]["evidence"],"units":[unit("parent","Source model",input_units[0]["evidence"],[u["id"] for u in input_units])],"relationships":[],"limitations":[]}
         if schema["title"]=="PresentationPlan":return {"visuals":[{"id":"overview","type":"concept_map","title":"Major ideas","reader_question":"What connects them?","rationale":"Orient around the source model","node_ids":body["overview_ids"],"relationship_ids":[],"section_ids":[]}],"reading_order":["overview"]}
+        if schema["title"]=="LectureParts":
+            def slides(chapter):
+                ids=[u["id"] for u in chapter["units"]]
+                result=[{"layout":"points","title":chapter["title"],"points":[u["summary"] for u in chapter["units"][:4]],"columns":[],"unit_ids":ids[:4],"notes":"Explain how the supplied ideas connect."}]
+                quoted=[u["id"] for u in chapter["units"] if u["has_original_quote"]]
+                if quoted:result.append({"layout":"quote","title":"In the speaker's words","points":["Why this passage matters."],"columns":[],"unit_ids":quoted[:1],"notes":""})
+                return result
+            return {"parts":[{"chapter_id":chapter["id"],"slides":slides(chapter)} for chapter in body["chapters"]]}
+        if schema["title"]=="LectureFrame":
+            ids=[u["id"] for u in body["units"]]
+            return {"title":"Lecture: "+body["source_title"][:120],"objectives":["Explain the source model.","Identify its evidence."],"takeaways":[body["main_conclusion"][:250],"Check the cited passages."],
+                    "questions":[{"question":"What does the source explain?","options":["How its ideas connect","An unrelated topic"],"answer":0,"explanation":"The conclusion connects the ideas.","unit_ids":ids[:1]}]}
+        if schema["title"]=="FigureSet":return {"figures":[]}
         raise AssertionError(schema["title"])
 
 

@@ -25,7 +25,7 @@ test('home opens ready for a link and submits saved defaults with Enter', async 
   await expect(page.locator('#notice')).toContainText('Preferences saved');
 
   await page.goto('/');
-  await expect(page.getByRole('heading', {name: 'Learn something new', exact: true})).toBeVisible();
+  await expect(page.getByRole('heading', {name: 'What do you want to make?', exact: true})).toBeVisible();
   await expect(page.locator('#view-library')).toBeHidden();
   await expect(page.locator('#video-url')).toBeFocused();
   await expect(page.locator('#create-button')).toBeEnabled();
@@ -142,7 +142,7 @@ test('mobile home keeps the link and start button in view and supports other sou
   await expect(page.locator('#source-file')).toHaveAttribute('required');
   await expect(page.locator('#video-url')).not.toHaveAttribute('required');
   await page.getByRole('button', {name: 'Audio file', exact: true}).click();
-  await expect(page.locator('#import-help')).toContainText('approve sending it to Groq');
+  await expect(page.locator('#import-help')).toContainText('approve sending it to Soniox');
   await expect(page.locator('#import-url-row')).toBeHidden();
   await page.getByRole('button', {name: 'YouTube link', exact: true}).click();
   await expect(page.locator('#video-url')).toBeVisible();

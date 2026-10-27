@@ -23,6 +23,11 @@ DEFAULT_SETTINGS = {
     "claude_code_model": "",
     "deepseek_model": "deepseek-flash",
     "api_connections": {},
+    "output_format": "page",
+    # Speech-to-text service per kind of source: a YouTube video without captions,
+    # a meeting recording (several voices) and a lecture or talk.
+    "transcription_providers": {"video": "soniox", "meeting": "soniox", "lecture": "soniox"},
+    "soniox_model": "stt-async-v5",
     "groq_model": "whisper-large-v3-turbo",
     "groq_free_only": True,
     "allow_paid_llm": False,

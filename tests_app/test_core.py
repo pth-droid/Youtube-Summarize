@@ -189,14 +189,33 @@ def test_import_is_not_claimable_until_its_source_is_durable(client, monkeypatch
 
 
 def test_audio_import_stays_local_until_approval_and_cannot_bypass_free_confirmation(client):
+    client.store.save_settings({"transcription_providers": {"video": "soniox", "meeting": "groq", "lecture": "soniox"}})
     response = client.post("/api/audio-import", files={"file": ("sample.wav", b"AUTHORED TEST NOT REAL AUDIO")})
     assert response.status_code == 201
     job = response.json()["job"]
-    assert job["state"] == "awaiting_approval"
+    assert job["state"] == "awaiting_approval" and job["approval"]["provider"] == "groq"
+    assert job["input"]["recording_type"] == "meeting" and job["approval"]["workflow"] == "meeting"
+    lecture = client.post("/api/audio-import", data={"recording_type": "lecture"}, files={"file": ("talk.wav", b"AUTHORED TEST NOT REAL AUDIO")})
+    assert lecture.status_code == 201 and lecture.json()["job"]["approval"]["provider"] == "soniox"
+    assert client.post("/api/audio-import", data={"recording_type": "podcast"}, files={"file": ("x.wav", b"AUDIO")}).status_code == 422
     path = f"/api/jobs/{job['id']}/approve"
     assert client.post(path, json={"approved": True}).status_code == 409
     approved = client.post(path, json={"approved": True, "free_account_confirmed": True})
     assert approved.status_code == 200 and approved.json()["approval"]["approved"]
+
+
+def test_audio_import_defaults_to_soniox_speaker_labels_and_needs_paid_consent(client):
+    response = client.post("/api/audio-import", files={"file": ("meeting.m4a", b"AUTHORED TEST NOT REAL AUDIO")})
+    job = response.json()["job"]
+    assert job["approval"]["provider"] == "soniox" and job["approval"]["speaker_labels"]
+    assert "Soniox" in job["progress"]["message"]
+    path = f"/api/jobs/{job['id']}/approve"
+    assert client.post(path, json={"approved": True, "free_account_confirmed": True}).status_code == 409
+    approved = client.post(path, json={"approved": True, "paid_usage_approved": True})
+    assert approved.status_code == 200 and approved.json()["approval"]["paid_usage_approved"]
+    assert client.put("/api/settings", json={"transcription_providers": {"meeting": "elsewhere"}}).status_code == 422
+    assert client.put("/api/settings", json={"transcription_providers": {"podcast": "soniox"}}).status_code == 422
+    assert client.put("/api/settings", json={"output_format": "poster"}).status_code == 422
 
 
 def test_library_export_backup_restore_and_managed_delete(client, tmp_path):

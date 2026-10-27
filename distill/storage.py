@@ -234,6 +234,13 @@ class Store:
             row = con.execute("SELECT value FROM checkpoints WHERE job_id=? AND name=?", (job_id, name)).fetchone()
         return json.loads(row["value"]) if row else None
 
+    def copy_checkpoints(self, from_job: str, to_job: str):
+        """Copy saved stages to another job. The pipeline reuses only stages whose fingerprint still matches."""
+        with self.connection() as con:
+            con.execute("BEGIN IMMEDIATE")
+            con.execute("INSERT INTO checkpoints SELECT ?,name,value,updated_at FROM checkpoints WHERE job_id=? ON CONFLICT(job_id,name) DO NOTHING", (to_job, from_job))
+            con.commit()
+
     def clear_checkpoints(self, job_id: str, preserve: tuple[str, ...] = ("source",)):
         with self.connection() as con:
             if preserve:
@@ -298,7 +305,7 @@ class Store:
                 con.rollback()
                 return self.get_generation(current["generation_id"])
             con.execute("INSERT INTO generations VALUES(?,?,?,?,?,?,?,?,?,?,?)", (generation_id, job_id, result.get("source_id", job["input"].get("video_id", job_id)), str(result.get("title", "Learning page")), str(result.get("summary", "")), preferences.get("language", "vi"), preferences.get("provider", "codex"), preferences.get("model", ""), str(page.relative_to(self.root)), json_text(metadata), utcnow()))
-            con.execute("UPDATE jobs SET state='complete',generation_id=?,progress=?,error=NULL,lease_owner=NULL,lease_until=NULL,updated_at=? WHERE id=?", (generation_id, json_text({"stage": "complete", "message": "Your learning page is ready."}), utcnow(), job_id))
+            con.execute("UPDATE jobs SET state='complete',generation_id=?,progress=?,error=NULL,lease_owner=NULL,lease_until=NULL,updated_at=? WHERE id=?", (generation_id, json_text({"stage": "complete", "message": "Your lecture slides are ready." if metadata.get("output_format") == "lecture" else "Your learning page is ready."}), utcnow(), job_id))
             con.commit()
         return self.get_generation(generation_id)
 
