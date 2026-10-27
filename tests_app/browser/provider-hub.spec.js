@@ -4,7 +4,7 @@ const test = base.extend({
   cleanConnections: [async ({request}, use) => {
     const original=(await (await request.get('/api/settings')).json()).preferences;
     const html=await (await request.get('/')).text();
-    const headers={'x-visual-learning':html.match(/name="visual-learning-token" content="([^"]+)"/)[1]};
+    const headers={'x-distill':html.match(/name="distill-token" content="([^"]+)"/)[1]};
     try {await use();} finally {
       const current=(await (await request.get('/api/settings')).json()).preferences;
       const added=Object.keys(current.api_connections).filter(id=>!original.api_connections[id]);
@@ -109,7 +109,7 @@ test('remove a default connection removes its key and returns to Codex',async({p
   expect(settings.preferences.provider).toBe('codex');
   expect(settings.preferences.api_connections[id]).toBeUndefined();
   expect(settings.credentials[id]).toBeUndefined();
-  await page.getByRole('link',{name:'Visual Learning home',exact:true}).click();
+  await page.getByRole('link',{name:'Distill home',exact:true}).click();
   await expect(page.locator('#defaults-summary')).toContainText('Codex');
 });
 

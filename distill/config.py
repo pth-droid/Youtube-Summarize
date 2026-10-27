@@ -7,7 +7,7 @@ import json
 import tempfile
 from pathlib import Path
 
-APP_NAME = "Visual Learning"
+APP_NAME = "Distill"
 DEFAULT_PORT = 8765
 MAX_IMPORT_BYTES = 20 * 1024 * 1024
 MAX_AUDIO_BYTES = 1024 * 1024 * 1024
@@ -32,10 +32,11 @@ DEFAULT_SETTINGS = {
 
 def app_config_dir() -> Path:
     """Keep the library selection outside the library that can be moved."""
-    override = os.environ.get("VISUAL_LEARNING_CONFIG_DIR")
+    override = os.environ.get("DISTILL_CONFIG_DIR")
     if override:
         return Path(override).expanduser().resolve()
     base = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))) if os.name == "nt" else Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))
+    # Folder names predate the Distill rename; existing libraries are found here.
     return (base / "VisualLearningConfig").resolve()
 
 
@@ -55,7 +56,7 @@ def remember_data_dir(folder: Path):
 
 
 def default_data_dir() -> Path:
-    configured = os.environ.get("VISUAL_LEARNING_DATA_DIR")
+    configured = os.environ.get("DISTILL_DATA_DIR")
     if configured:
         return Path(configured).expanduser().resolve()
     selection = app_config_dir() / "library-location.json"

@@ -41,11 +41,11 @@ class SecretStore:
     There is deliberately no plaintext-file fallback. Backend failures are safe
     configuration errors; installed OS keyrings are needed to save a secret.
     """
-    service = "visual-learning"
+    service = "visual-learning"  # pre-rename keyring service; saved keys live under it
     env_names = {"deepseek": "DEEPSEEK_API_KEY", "groq": "GROQ_API_KEY",
                  "openai_compatible": "OPENAI_API_KEY", "claude": "ANTHROPIC_API_KEY",
                  "grok": "XAI_API_KEY", "muse": "MUSE_API_KEY", "glm": "GLM_API_KEY",
-                 "selfhost": "VISUAL_LEARNING_SELFHOST_API_KEY"}
+                 "selfhost": "DISTILL_SELFHOST_API_KEY"}
 
     def _name(self, provider: str) -> str:
         from .provider_config import valid_provider_id

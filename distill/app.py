@@ -127,7 +127,7 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
     @asynccontextmanager
     async def lifespan(application):
         if auto_worker:
-            command = [sys.executable, "-m", "visual_learning.worker", "--data-dir", str(store.root)]
+            command = [sys.executable, "-m", "distill.worker", "--data-dir", str(store.root)]
             application.state.worker_process = subprocess.Popen(command, cwd=Path(__file__).parent.parent, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
         try:
             yield
@@ -136,7 +136,7 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
             if process and process.poll() is None:
                 from .providers import stop_process
                 stop_process(process)
-    app = FastAPI(title="Visual Learning", docs_url=None, redoc_url=None, lifespan=lifespan)
+    app = FastAPI(title="Distill", docs_url=None, redoc_url=None, lifespan=lifespan)
     app.state.store = store
     app.state.csrf_token = token
     app.state.worker_process = None
@@ -152,7 +152,7 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
         if origin and origin != expected:
             return JSONResponse({"detail": "This request came from a different site."}, status_code=403)
         if request.method not in {"GET", "HEAD", "OPTIONS"}:
-            if not secrets.compare_digest(request.headers.get("x-visual-learning", ""), token):
+            if not secrets.compare_digest(request.headers.get("x-distill", ""), token):
                 return JSONResponse({"detail": "Refresh the app and try again."}, status_code=403)
         content_length = request.headers.get("content-length")
         limit = MAX_AUDIO_BYTES + MAX_IMPORT_BYTES if request.url.path.startswith("/api/audio-import") else MAX_IMPORT_BYTES + 1024 * 1024
@@ -330,7 +330,7 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
         if not folder_picker_lock.acquire(blocking=False):
             raise HTTPException(409, "A folder picker is already open.")
         try:
-            result = subprocess.run([sys.executable, "-m", "visual_learning.folder_picker"], input=json.dumps({"initialdir": str(store.root)}), capture_output=True, text=True, timeout=180, creationflags=subprocess.CREATE_NO_WINDOW)
+            result = subprocess.run([sys.executable, "-m", "distill.folder_picker"], input=json.dumps({"initialdir": str(store.root)}), capture_output=True, text=True, timeout=180, creationflags=subprocess.CREATE_NO_WINDOW)
             if result.returncode:
                 raise HTTPException(409, "The folder picker could not open. Enter the folder path instead.")
             return json.loads(result.stdout)

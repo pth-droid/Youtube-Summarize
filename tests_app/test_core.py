@@ -12,13 +12,13 @@ from fastapi.testclient import TestClient
 
 from tests_app.learning_fixture import fixture
 from tests_app.test_learning import SemanticFixtureProvider
-from visual_learning.app import create_app
-from visual_learning.config import DEFAULT_SETTINGS
-from visual_learning.ingest import CaptionError
-from visual_learning.providers import ProviderError
-from visual_learning.renderer import render_page
-from visual_learning.storage import Store
-from visual_learning.worker import Worker
+from distill.app import create_app
+from distill.config import DEFAULT_SETTINGS
+from distill.ingest import CaptionError
+from distill.providers import ProviderError
+from distill.renderer import render_page
+from distill.storage import Store
+from distill.worker import Worker
 
 
 def new_job(store, kind="import", **preferences):
@@ -38,7 +38,7 @@ def saved_page(store):
 def client(tmp_path):
     app = create_app(tmp_path)
     with TestClient(app, base_url="http://127.0.0.1") as result:
-        result.headers["x-visual-learning"] = app.state.csrf_token
+        result.headers["x-distill"] = app.state.csrf_token
         result.store = app.state.store
         yield result
 
@@ -83,7 +83,7 @@ def test_worker_import_completes_and_restart_reuses_source(tmp_path, monkeypatch
     job = new_job(store, language="en")
     store.checkpoint(job["id"], "source", source.model_dump(mode="json"))
     provider = SemanticFixtureProvider()
-    monkeypatch.setattr("visual_learning.providers.make_provider", lambda *_args, **_kwargs: provider)
+    monkeypatch.setattr("distill.providers.make_provider", lambda *_args, **_kwargs: provider)
     assert Worker(store).run_once()
     complete = store.get_job(job["id"])
     assert complete["state"] == "complete"
@@ -119,8 +119,8 @@ def test_caption_failure_waits_for_explicit_audio_approval(tmp_path, monkeypatch
     job = new_job(store, kind="youtube")
     def unavailable(*_args, **_kwargs):
         raise CaptionError("no_captions", "Captions unavailable")
-    monkeypatch.setattr("visual_learning.ingest.fetch_youtube", unavailable)
-    monkeypatch.setattr("visual_learning.audio.transcribe_youtube", lambda *_a, **_k: pytest.fail("Audio must not start"))
+    monkeypatch.setattr("distill.ingest.fetch_youtube", unavailable)
+    monkeypatch.setattr("distill.audio.transcribe_youtube", lambda *_a, **_k: pytest.fail("Audio must not start"))
     Worker(store).run_once()
     waiting = store.get_job(job["id"])
     assert waiting["state"] == "awaiting_approval"
@@ -130,7 +130,7 @@ def test_caption_failure_waits_for_explicit_audio_approval(tmp_path, monkeypatch
 
 def test_local_boundary_validation_and_secret_values_not_echoed(client):
     assert client.post("/api/jobs", json={"url": "https://youtu.be/L_Guz73e6fw"}, headers={"origin": "https://other.example"}).status_code == 403
-    assert client.post("/api/jobs", json={"url": "https://youtu.be/L_Guz73e6fw"}, headers={"x-visual-learning": "invalid"}).status_code == 403
+    assert client.post("/api/jobs", json={"url": "https://youtu.be/L_Guz73e6fw"}, headers={"x-distill": "invalid"}).status_code == 403
     assert client.get("/api/health", headers={"host": "other.example"}).status_code == 403
     response = client.put("/api/credentials/deepseek", json={"key": "SECRET", "extra": "SECRET"})
     assert response.status_code == 422 and "SECRET" not in response.text

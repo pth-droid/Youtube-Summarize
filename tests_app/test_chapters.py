@@ -3,12 +3,12 @@ from pathlib import Path
 
 from tests_app.test_learning import SemanticFixtureProvider
 from tests_app.test_metrics import long_source
-from visual_learning.chapters import (NOTE_LEAF_LIMITS, assign_units, chapter_count, chapter_profile, detail_level,
+from distill.chapters import (NOTE_LEAF_LIMITS, assign_units, chapter_count, chapter_profile, detail_level,
                                       split_sections)
-from visual_learning.metrics import display_metrics, note_leaves
-from visual_learning.models import (Chapter, Evidence, KnowledgeModel, KnowledgeUnit, PresentationPlan, SourceSection,
+from distill.metrics import display_metrics, note_leaves
+from distill.models import (Chapter, Evidence, KnowledgeModel, KnowledgeUnit, PresentationPlan, SourceSection,
                                     Transcript)
-from visual_learning.pipeline import Pipeline
+from distill.pipeline import Pipeline
 
 
 def section(sid, first, last, role="substantive", depth="intermediate", units=()):

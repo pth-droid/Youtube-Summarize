@@ -344,7 +344,7 @@ class Store:
         """Create a consistent SQLite snapshot plus every artifact referenced by it."""
         backups = self.root / "backups"
         backups.mkdir(exist_ok=True)
-        target = backups / ("visual-learning-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:6] + ".zip")
+        target = backups / ("distill-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:6] + ".zip")
         with tempfile.TemporaryDirectory(prefix="vl-backup-") as temporary:
             snapshot = Path(temporary) / "library.sqlite3"
             with self.connection() as gate:
@@ -364,7 +364,7 @@ class Store:
                 job_ids = [row[0] for row in gate.execute("SELECT id FROM jobs")]
                 with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as archive:
                     archive.write(snapshot, "library.sqlite3")
-                    archive.writestr("BACKUP_README.txt", "Visual Learning backup. Stop the app and worker before restoring library.sqlite3 and jobs/ into an empty data folder. API keys are not included.\n")
+                    archive.writestr("BACKUP_README.txt", "Distill backup. Stop the app and worker before restoring library.sqlite3 and jobs/ into an empty data folder. API keys are not included.\n")
                     for job_id in job_ids:
                         folder = self.artifact_dir(job_id)
                         for artifact in folder.rglob("*"):
@@ -406,7 +406,7 @@ class Store:
             raise ValueError("Choose a new or empty folder. Existing files will not be replaced.")
         parent = target.parent
         parent.mkdir(parents=True, exist_ok=True)
-        temporary = Path(tempfile.mkdtemp(prefix=".visual-learning-copy-", dir=parent))
+        temporary = Path(tempfile.mkdtemp(prefix=".distill-copy-", dir=parent))
         published = False
         selection_changed = False
         committed = False

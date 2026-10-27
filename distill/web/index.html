@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="visual-learning-token" content="__CSRF_TOKEN__">
+  <meta name="distill-token" content="__CSRF_TOKEN__">
   <meta name="color-scheme" content="dark light">
   <script src="/static/theme.js"></script>
   <script src="/static/drawer.js"></script>
-  <title>Visual Learning · Your learning workspace</title>
+  <title>Distill · Your learning workspace</title>
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/connections.js" defer></script>
   <script src="/static/app.js" defer></script>
@@ -17,7 +17,7 @@
   <div class="shell">
     <aside id="workspace-drawer" class="sidebar" aria-label="Workspace menu">
       <div class="sidebar-tools"><button id="drawer-close" type="button" class="button quiet" aria-label="Close menu">×</button></div>
-      <a class="brand" href="#new" aria-label="Visual Learning home"><span class="brand-symbol" aria-hidden="true">V<span>·</span>L</span><span>Visual <br>Learning</span></a>
+      <a class="brand" href="#new" aria-label="Distill home"><span class="brand-symbol" aria-hidden="true">D</span><span>Distill</span></a>
       <p class="sidebar-label">YOUR WORKSPACE</p>
       <nav aria-label="Main navigation">
         <button type="button" data-view="new" class="nav-item active"><span aria-hidden="true">＋</span> Start learning</button>
@@ -93,7 +93,7 @@
           </section><section class="panel storage-panel"><h2>Your saved library</h2><p id="storage-details" class="muted"></p><p>Your database is one SQLite file. It needs no separate server.</p><form id="library-folder-form"><label for="library-folder">Library folder</label><input id="library-folder" type="text" maxlength="4096" placeholder="D:\MyLearningLibrary" required><p class="hint">Paste a full folder path. Choose a new or empty folder. All saved pages, source files, and preferences are copied there. The current folder stays as a backup. Finish or cancel processing first.</p><div class="button-row folder-actions"><button id="library-browse-button" type="button" class="button secondary">Browse…</button><button id="library-folder-button" type="submit" class="button primary">Change library folder</button></div></form><p class="hint">This choice is remembered for the next launch. API keys stay in the Windows credential store.</p><button id="backup-button" type="button" class="button secondary">Download library backup</button><p class="hint">A backup contains saved source files, pages, jobs, and preferences. It has no API keys.</p></section></div>
         </div>
       </section>
-      <footer class="app-footer"><span>Visual Learning</span><span>Overview first. Evidence always within reach.</span></footer>
+      <footer class="app-footer"><span>Distill</span><span>Overview first. Evidence always within reach.</span></footer>
     </main>
   </div>
 </body>

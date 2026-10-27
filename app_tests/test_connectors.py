@@ -11,8 +11,8 @@ from types import SimpleNamespace
 import pytest
 import requests
 
-from visual_learning import audio, ingest, providers
-from visual_learning.models import Extraction, Transcript
+from distill import audio, ingest, providers
+from distill.models import Extraction, Transcript
 
 
 VIDEO = "0qqW3vxOC-g"

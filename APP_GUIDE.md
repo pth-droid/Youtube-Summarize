@@ -1,8 +1,8 @@
-# Use Visual Learning
+# Use Distill
 
 ## Open the app
 
-Double-click **Start Visual Learning.cmd** in this folder. Leave its window open while pages are being made. The app opens at **http://127.0.0.1:8765**. Closing a browser tab keeps processing active. Closing the app window stops processing; saved work resumes after the next launch. An interrupted job may need up to 90 seconds to become available again.
+Double-click **Start Distill.cmd** in this folder. Leave its window open while pages are being made. The app opens at **http://127.0.0.1:8765**. Closing a browser tab keeps processing active. Closing the app window stops processing; saved work resumes after the next launch. An interrupted job may need up to 90 seconds to become available again.
 
 This computer already has the app environment. For a new installation, install Python 3.12–3.14 first, then run `powershell -NoProfile -ExecutionPolicy Bypass -File .\setup-app.ps1`. Run `powershell -NoProfile -ExecutionPolicy Bypass -File .\start-app.ps1` to start it. These commands apply the script policy only to that process.
 
@@ -53,11 +53,11 @@ Your default Windows library is stored at `%LOCALAPPDATA%\VisualLearning`. It co
 
 To change the saved folder, open **Settings ? Your saved library**. Paste a full folder path, for example `D:\MyLearningLibrary`, then select **Change library folder**. Choose a new or empty folder. Finish or cancel running, queued, and quota-waiting jobs first. The app copies the complete library, checks the copied database, and uses the selected folder immediately. The original folder stays as a backup, including a consistent `library-before-move-*.sqlite3` snapshot and `LIBRARY_MOVED.txt` restore instructions. API keys stay in the credential store.
 
-Your folder choice is remembered outside the library in `%LOCALAPPDATA%\VisualLearningConfig\library-location.json`. The normal launcher uses it after restart. A deliberate `--data-dir` argument or `VISUAL_LEARNING_DATA_DIR` environment variable takes priority; an old copied library redirects to its new location. Keep the original backup until you have opened the saved pages in the new location. If a removable drive is unavailable, reconnect it before starting. Do not use a system folder, credential folder, or a folder inside the current library.
+Your folder choice is remembered outside the library in `%LOCALAPPDATA%\VisualLearningConfig\library-location.json`. The normal launcher uses it after restart. A deliberate `--data-dir` argument or `DISTILL_DATA_DIR` environment variable takes priority; an old copied library redirects to its new location. Keep the original backup until you have opened the saved pages in the new location. If a removable drive is unavailable, reconnect it before starting. Do not use a system folder, credential folder, or a folder inside the current library.
 
 In Settings, select **Download library backup** after processing has finished or has been cancelled. The ZIP contains the library database, source files, pages, jobs, and preferences. It excludes API keys. A large audio library can make the backup take time; avoid other library changes until the download finishes.
 
-To restore, close the app and its worker. Copy the ZIP's `library.sqlite3` and `jobs` folder into an empty library folder. Start with that folder using `.venv\Scripts\python.exe -m visual_learning --data-dir D:\MyLearningLibrary`. Save provider keys again if you moved to another computer. Keep your original backup until you have opened the restored pages.
+To restore, close the app and its worker. Copy the ZIP's `library.sqlite3` and `jobs` folder into an empty library folder. Start with that folder using `.venv\Scripts\python.exe -m distill --data-dir D:\MyLearningLibrary`. Save provider keys again if you moved to another computer. Keep your original backup until you have opened the restored pages.
 
 ## Recovery
 

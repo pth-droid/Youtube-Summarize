@@ -5,8 +5,8 @@ import sys
 import pytest
 
 from tests_app.test_provider_hub import hub  # noqa: F401  (fixture)
-from visual_learning import providers
-from visual_learning.providers import ClaudeCodeProvider, ProviderError, SecretStore, make_provider
+from distill import providers
+from distill.providers import ClaudeCodeProvider, ProviderError, SecretStore, make_provider
 
 
 def claude_stub(tmp_path, monkeypatch, body):

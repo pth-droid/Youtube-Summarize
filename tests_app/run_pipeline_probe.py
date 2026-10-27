@@ -4,9 +4,9 @@ import json
 import sys
 from pathlib import Path
 
-from visual_learning.models import Transcript
-from visual_learning.pipeline import Pipeline
-from visual_learning.providers import CodexProvider
+from distill.models import Transcript
+from distill.pipeline import Pipeline
+from distill.providers import CodexProvider
 
 
 def main():

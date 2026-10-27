@@ -116,7 +116,7 @@ class Worker:
         if code in {"approval_required", "audio_approval_required", "audio_approval"}:
             self.update_job(job_id, state="awaiting_approval", error={"code": code, "message": message or str(error)})
             return
-        safe_pipeline_error = type(error).__module__ == "visual_learning.pipeline" and type(error).__name__ == "PipelineError"
+        safe_pipeline_error = type(error).__module__ == "distill.pipeline" and type(error).__name__ == "PipelineError"
         safe_message = message or (str(error) if isinstance(error, (ValueError, FileNotFoundError)) or safe_pipeline_error else "Processing could not finish. Your transcript and completed sections are saved. Retry, switch provider, or import a transcript.")
         error_record = {"code": code or "processing_failed", "message": safe_message[:1000]}
         if isinstance(diagnostics, dict) and diagnostics:
@@ -214,7 +214,7 @@ class Worker:
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Process Visual Learning jobs independently of the browser.")
+    parser = argparse.ArgumentParser(description="Process Distill jobs independently of the browser.")
     parser.add_argument("--data-dir", type=Path, default=default_data_dir())
     parser.add_argument("--once", action="store_true", help="Process at most one ready job.")
     args = parser.parse_args(argv)

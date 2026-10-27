@@ -1,4 +1,4 @@
-"""Controlled, offline renderer for the validated visual-learning contracts."""
+"""Controlled, offline renderer for the validated Distill contracts."""
 from __future__ import annotations
 
 import html
@@ -36,9 +36,9 @@ def render_page(source: Transcript, knowledge: KnowledgeModel, presentation: Pre
     page = f'''<!doctype html>
 <html lang="{knowledge.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark light"><meta name="referrer" content="no-referrer"><script>{theme_script}</script>
-<title>{escape(source.title)} · Visual Learning</title><style>{css}</style></head>
+<title>{escape(source.title)} · Distill</title><style>{css}</style></head>
 <body><a class="skip-link" href="#overview">{'Đến nội dung' if vi else 'Skip to content'}</a>
-<header class="reader-header"><a class="wordmark" href="#overview"><span aria-hidden="true">◈</span> Visual Learning</a>
+<header class="reader-header"><a class="wordmark" href="#overview"><span aria-hidden="true">◈</span> Distill</a>
 <span class="offline-label">{'Trang đã lưu · đọc ngoại tuyến' if vi else 'Saved page · offline reading'}</span>
 <button id="theme-toggle" type="button">{'Chế độ sáng' if vi else 'Light mode'}</button>
 <button id="print-button" type="button">{'In / PDF' if vi else 'Print / PDF'}</button></header>

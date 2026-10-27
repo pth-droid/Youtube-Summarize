@@ -156,6 +156,6 @@ test('mobile library, genuine semantic page, settings persistence and backup', a
   const pending = page.waitForEvent('download');
   await page.getByRole('button', {name: 'Download library backup'}).click();
   const backup = await pending;
-  expect(backup.suggestedFilename()).toMatch(/visual-learning-.*\.zip/);
+  expect(backup.suggestedFilename()).toMatch(/distill-.*.zip/);
   await page.screenshot({path: '.feasibility/screenshots/settings-mobile.png', fullPage: true});
 });

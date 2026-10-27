@@ -4,10 +4,10 @@ from pathlib import Path
 import pytest
 
 from tests_app.learning_fixture import fixture
-from visual_learning.models import Evidence, KnowledgeUnit, Transcript, validate_bundle, validate_grounding
-from visual_learning.pipeline import (Pipeline, PipelineCancelled, PipelineError, constrain_source_ids,
+from distill.models import Evidence, KnowledgeUnit, Transcript, validate_bundle, validate_grounding
+from distill.pipeline import (Pipeline, PipelineCancelled, PipelineError, constrain_source_ids,
                                       invalid_source_ids, prepare_source, quote_mismatch_feedback, source_windows)
-from visual_learning.renderer import render_page
+from distill.renderer import render_page
 
 
 def test_quote_repair_points_to_exact_original_without_changing_evidence():
@@ -225,7 +225,7 @@ def test_grounding_review_deduplicates_quotes_without_losing_original_passages(t
 
 def test_source_id_schema_rejects_added_words_and_preserves_custom_import_ids():
     import re
-    from visual_learning.models import Extraction
+    from distill.models import Extraction
     schema = Extraction.model_json_schema()
     known = constrain_source_ids(schema, {"snippets": [{"id": "s000265.p001", "text": "Original words"}]})
     pattern = schema["$defs"]["Evidence"]["properties"]["snippet_ids"]["items"]["pattern"]

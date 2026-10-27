@@ -4,10 +4,10 @@ const test = base.extend({
   restorePreferences: [async ({request}, use) => {
     const saved = (await (await request.get('/api/settings')).json()).preferences;
     const html = await (await request.get('/')).text();
-    const token = html.match(/name="visual-learning-token" content="([^"]+)"/)[1];
+    const token = html.match(/name="distill-token" content="([^"]+)"/)[1];
     try { await use(); }
     finally {
-      const response = await request.put('/api/settings', {data: saved, headers: {'x-visual-learning': token}});
+      const response = await request.put('/api/settings', {data: saved, headers: {'x-distill': token}});
       expect(response.ok()).toBeTruthy();
     }
   }, {auto: true}],
@@ -69,7 +69,7 @@ test('options affect one page and can return to saved defaults', async ({page, r
 
   await page.getByRole('button', {name: 'Edit defaults', exact: true}).click();
   await expect(page.locator('#view-settings')).toBeVisible();
-  await page.getByRole('link', {name: 'Visual Learning home', exact: true}).click();
+  await page.getByRole('link', {name: 'Distill home', exact: true}).click();
   await expect(page.locator('#view-new')).toBeVisible();
   await expect(page.locator('#video-url')).toBeFocused();
 });

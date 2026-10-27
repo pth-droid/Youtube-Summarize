@@ -1,7 +1,7 @@
 """Authored standalone examples for the seven visual grammars, never video summaries."""
 from pathlib import Path
-from visual_learning.models import PresentationPlan, Relationship, Visual
-from visual_learning.renderer import render_page
+from distill.models import PresentationPlan, Relationship, Visual
+from distill.renderer import render_page
 from tests_app.learning_fixture import fixture
 
 
