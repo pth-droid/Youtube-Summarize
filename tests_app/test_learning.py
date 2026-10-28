@@ -50,9 +50,7 @@ class SemanticFixtureProvider:
                 return result
             return {"parts":[{"chapter_id":chapter["id"],"slides":slides(chapter)} for chapter in body["chapters"]]}
         if schema["title"]=="LectureFrame":
-            ids=[u["id"] for u in body["units"]]
-            return {"title":"Lecture: "+body["source_title"][:120],"objectives":["Explain the source model.","Identify its evidence."],"takeaways":[body["main_conclusion"][:250],"Check the cited passages."],
-                    "questions":[{"question":"What does the source explain?","options":["How its ideas connect","An unrelated topic"],"answer":0,"explanation":"The conclusion connects the ideas.","unit_ids":ids[:1]}]}
+            return {"title":"Lecture: "+body["source_title"][:120],"objectives":["Explain the source model.","Identify its evidence."],"takeaways":[body["main_conclusion"][:250],"Check the cited passages."]}
         if schema["title"]=="FigureSet":return {"figures":[]}
         raise AssertionError(schema["title"])
 

@@ -1,0 +1,58 @@
+/* Distill's additions to the slide-design layout library (slide-layouts.css, slide-data.css).
+   The library draws every content slide on the 1280x720 canvas; this file adds what a lecture needs and the
+   library does not have, and gives phones a plain stacked reading of the same markup. */
+
+/* === On the canvas (presenting and print) === */
+@media (min-width:761px){
+  /* Status marks sit in the 20px top bar. */
+  .slide-head .status{padding:1px 10px;line-height:1.15;font-size:13px}
+
+  /* A quotation with the points that explain it: the passage steps down from poster size to leave room. */
+  .layout-quote:has(.quote-points) blockquote{font-size:calc(var(--text) * 1.3)}
+  .layout-quote.variant-4:has(.quote-points) blockquote{font-size:calc(var(--text) * 1.5)}
+  .layout-quote .quote-points{margin-top:28px;display:grid;gap:8px;font-size:max(20px,calc(var(--text) * .86));color:var(--c-ink)}
+  .layout-quote .quote-points>li{position:relative;padding-left:1.05em}
+  .layout-quote .quote-points>li::before{content:"";position:absolute;left:0;top:.68em;width:.52em;height:2px;background:var(--c-accent)}
+  .layout-quote.variant-1 .quote-points{padding-left:104px}
+  .layout-quote.variant-2 .quote-points{justify-items:center;text-align:center;max-width:24em}
+  .layout-quote.variant-2 .quote-points>li{padding-left:0}
+  .layout-quote.variant-2 .quote-points>li::before{display:none}
+  /* Under the passage, past the speaker column and the 6px bar (4fr of 12 plus the 56px gap). */
+  .layout-quote.variant-3 .quote-points{padding-left:calc((100% - 56px) / 3 + 56px + 42px)}
+
+  /* The summary opens with the main conclusion, then the takeaways the room should keep. */
+  .slide .conclusion{margin-bottom:22px;font-size:calc(var(--text) * 1.08)}
+  .layout-big-bullets .conclusion+.big-list{margin-top:4px}
+  .slide .caveats{margin-top:14px;font-size:max(20px,calc(var(--text) * .78))}
+
+  /* Limits: the source and the honesty note under the list. */
+  .kind-limits .source-line{margin-top:14px;font-size:max(20px,var(--small))}
+}
+
+/* === Phones: the same slides as a readable stacked list, no fixed canvas === */
+@media screen and (max-width:760px){
+  .slide{gap:12px}
+  .slide h1{font-size:1.7rem;line-height:1.1}
+  .slide h2{font-size:1.35rem;line-height:1.15}
+  .slide h3{margin:0 0 4px;font:600 1.05rem/1.25 var(--display)}
+  .slide-content{display:grid;gap:12px}
+  .slide-content :is(ul,ol){margin:0;padding:0;list-style:none;display:grid;gap:10px}
+  .slide-content :is(.bullets,.big-list,.boxes,.icons,.small-icons,.timeline,.arrows,.levels,.kpis,.rings,.bars,.quote-points)>li,
+  .slide-content .col{padding-top:8px;border-top:2px solid var(--line)}
+  .slide-content p{margin:0}
+  .slide-content :is(time,.part-num,.kpi-value,.ring-value,.bar-value){display:block;font:600 1.15rem/1.2 var(--display);color:var(--accent)}
+  .slide-content :is(.lead,.label,.accent-label,.role,.level-value){font:600 .72rem/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .slide-content .glyph{display:none}
+  .slide-content .accent{padding:12px 14px;border-radius:10px;background:var(--tint)}
+  .slide-content .accent-statement{font:600 1.15rem/1.3 var(--display)}
+  .slide-content .quote{margin:0}
+  .slide-content blockquote{margin:0;padding-left:12px;border-left:4px solid var(--accent);font:500 1.1rem/1.35 var(--display)}
+  .slide-content figcaption{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.85rem;color:var(--muted)}
+  .slide-content .level-label{display:block;font-weight:600}
+  .slide-content .meta{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0}
+  .slide-content .meta dt{font:600 .7rem/1.3 var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+  .slide-content .meta dd{margin:0}
+  .slide-content .parts{display:none}
+  .slide-content .data-table{display:block;overflow-x:auto;border-collapse:collapse;font-size:.88rem}
+  .slide-content .data-table :is(th,td){padding:6px 8px;border-top:1px solid var(--line);text-align:left;vertical-align:top}
+}

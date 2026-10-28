@@ -14,11 +14,11 @@ from typing import Any, Callable
 from .models import (
     SCHEMA_VERSION, SKILL_VERSION, Chapter, Extraction, FigurePlan, FigureSet, GroundingCorrections, GroundingReview,
     KnowledgeModel, KnowledgeUnit, LectureFrame, LectureParts, LecturePlan, PresentationPlan, Relationship, Snippet,
-    Synthesis, Transcript, normalize_quote, validate_bundle, validate_figures, validate_grounding, validate_lecture,
+    Synthesis, Transcript, check_stats, normalize_quote, validate_bundle, validate_figures, validate_grounding, validate_lecture,
 )
 from .apparatus import catalogue
 from .chapters import assign_units, chapter_profile, detail_level, split_sections
-from .renderer import render_lecture, render_page
+from .renderer import SLIDE_THEMES, render_lecture, render_page
 from .providers import ProviderError
 from .model_profiles import resolve_profile
 from .metrics import display_metrics, evenly_spaced, source_positions, spread_by_source_position
@@ -516,6 +516,7 @@ class Pipeline:
                         raise ValueError("A slide cites ideas that were not supplied for its chapter")
                     if slide.layout == "quote" and not any(units[uid].evidence for uid in slide.unit_ids):
                         raise ValueError("A quote slide needs an idea with original evidence")
+                    check_stats(slide, units)
 
         context = {"language": preferences["language"], "knowledge_level": preferences["knowledge_level"],
                    "learning_goal": preferences["learning_goal"], "lecture_topic": knowledge.main_question}
@@ -539,18 +540,15 @@ class Pipeline:
 
         name = f"lecture_r{LECTURE_REVISION}_frame"
         frame_ids = list(dict.fromkeys([*knowledge.overview_ids, *(uid for chapter in knowledge.chapters for uid in chapter.unit_ids)]))[:24]
-        def check_frame(value):
-            if any(not set(question.unit_ids) <= set(frame_ids) for question in value.questions):
-                raise ValueError("A quiz question cites ideas that were not supplied")
         frame, cached = None, load(name)
         if cached is not None:
             try:
-                frame = LectureFrame.model_validate(cached)
-                check_frame(frame)
+                # Frames saved while decks still ended in a quiz keep their title, objectives and takeaways.
+                frame = LectureFrame.model_validate({key: value for key, value in cached.items() if key != "questions"})
             except ValueError:
                 frame = None
         if frame is None:
-            self._notify("rendering", "Writing lecture objectives and quiz")
+            self._notify("rendering", "Writing lecture objectives and summary")
             titles = {body["id"]: body["title"] for batch in batches for body in batch}
             body = context | {"source_title": source.title, "main_question": knowledge.main_question,
                 "main_conclusion": knowledge.main_conclusion, "main_conclusion_caveats": knowledge.main_conclusion_caveats,
@@ -558,8 +556,8 @@ class Pipeline:
                 "units": [{"id": units[uid].id, "title": units[uid].title, "summary": units[uid].summary, "kind": units[uid].kind,
                            "status": units[uid].status} for uid in frame_ids]}
             frame = self._request("lecture", LectureFrame, body,
-                "Write the lecture title, learning objectives, takeaways and three to five quiz questions. Questions cite only supplied idea IDs.",
-                work_dir, check_frame)
+                "Write the lecture title, objectives and takeaways for a presenter explaining the ideas to an audience.",
+                work_dir)
             save(name, frame.model_dump(mode="json"))
         lecture = LecturePlan(**frame.model_dump(), parts=parts)
         validate_lecture(knowledge, lecture)
@@ -631,8 +629,9 @@ class Pipeline:
         language = preferences.get("language", preferences.get("output_language", "vi"))
         if language not in ("vi", "en"):
             language = "vi"
-        # The output format only changes the final stages, so it stays out of the analysis fingerprint.
+        # The output format and the slide look only change the final stages, so they stay out of the analysis fingerprint.
         output_format = "lecture" if preferences.get("output_format") == "lecture" else "page"
+        slide_theme = preferences.get("slide_theme") if preferences.get("slide_theme") in SLIDE_THEMES else "forest"
         preferences = {"language": language, "knowledge_level": preferences.get("knowledge_level", "balanced"),
                        "learning_goal": preferences.get("learning_goal", preferences.get("goal", ""))}
         write_json(work_dir / "source.json", source.model_dump(mode="json"))
@@ -909,7 +908,7 @@ class Pipeline:
             lecture = self._lecture(source, knowledge, preferences, work_dir, load, save)
             self._notify("rendering", "Saving the lecture slides")
             self._check_cancelled()
-            page_path = render_lecture(source, knowledge, lecture, work_dir / "lecture.html", figures)
+            page_path = render_lecture(source, knowledge, lecture, work_dir / "lecture.html", figures, slide_theme)
         else:
             self._notify("rendering", "Saving the interactive learning page")
             self._check_cancelled()
@@ -919,6 +918,7 @@ class Pipeline:
             "output_format": output_format,
             "lecture_revision": LECTURE_REVISION if lecture else None,
             "lecture_slides": sum(len(part.slides) for part in lecture.parts) if lecture else None,
+            "slide_theme": slide_theme if lecture else None,
             "figure_revision": FIGURE_REVISION, "figures": [figure.type for figure in figures.figures],
             "analysis_windows": completed_windows,
             "initial_analysis_windows": len(windows), "model_profile": self.profile.as_dict(),
@@ -935,4 +935,5 @@ class Pipeline:
         return {"title": source.title, "summary": knowledge.main_conclusion, "source_id": source.source_id,
                 "knowledge_path": str(work_dir / "knowledge.json"), "presentation_path": str(work_dir / "presentation.json"),
                 "source_path": str(work_dir / "source.json"), "page_path": str(page_path), "output_format": output_format,
+                "slide_theme": slide_theme if lecture else None,
                 "generation_path": str(work_dir / "generation.json"), "warnings": knowledge.limitations}

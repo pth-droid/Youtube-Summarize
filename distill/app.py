@@ -77,6 +77,7 @@ class Preferences(StrictModel):
     deepseek_model: str | None = Field(None, max_length=100)
     api_connections: dict[ProviderName, APIConnection] | None = None
     output_format: Literal["page", "lecture"] | None = None
+    slide_theme: Literal["forest", "maroon"] | None = None
     transcription_providers: dict[Literal["video", "meeting", "lecture"], Literal["soniox", "groq"]] | None = None
     soniox_model: str | None = Field(None, pattern=r"^stt-async-[a-z0-9.-]{1,40}$")
     groq_model: Literal["whisper-large-v3", "whisper-large-v3-turbo"] | None = None
@@ -121,6 +122,13 @@ class LibraryLocation(StrictModel):
 
 def public_job(job: dict) -> dict:
     return {key: value for key, value in job.items() if key not in {"lease_owner", "lease_until", "heartbeat"}}
+
+
+def made_as(values: dict) -> tuple:
+    """What a generation is, or a request asks for: a page, or slides in one look (decks before looks are forest)."""
+    if values.get("output_format", "page") != "lecture":
+        return ("page",)
+    return ("lecture", values.get("slide_theme") or "forest")
 
 
 def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False) -> FastAPI:
@@ -396,15 +404,17 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
             return {"existing": existing, "job": None}
         selected = preferences(value.preferences, paid_usage_approved=value.paid_usage_approved)
         job = store.create_job({"kind": "youtube", "video_id": video_id, "url": "https://www.youtube.com/watch?v=" + video_id, "preferences": selected}, state="awaiting_approval")
-        # Reuse a validated source across language/model/goal changes. The first page or slides made
-        # from a source in the other format keep a compatible analysis; a new version gets a fresh one.
+        # Reuse a validated source across language/model/goal changes. The first page, the first slides
+        # or the first slides in another look keep a compatible analysis; a new version gets a fresh one.
         if existing:
             source = store.load_checkpoint(existing[0]["job_id"], "source")
             if source and (not selected.get("source_language") or source.get("language", "").lower() == selected["source_language"].lower()):
                 store.checkpoint(job["id"], "source", source)
                 store.write_json(job["id"], "source.json", source)
-                if all(g["metadata"].get("output_format", "page") != selected["output_format"] for g in existing):
-                    store.copy_checkpoints(existing[0]["job_id"], job["id"])
+                if all(made_as(g["metadata"]) != made_as(selected) for g in existing):
+                    # Slides in the same format bring their lecture plan too, so a new look only renders again.
+                    donor = next((g for g in existing if g["metadata"].get("output_format", "page") == selected["output_format"]), existing[0])
+                    store.copy_checkpoints(donor["job_id"], job["id"])
         job = store.update_job(job["id"], state="queued")
         return {"job": public_job(job), "existing": []}
 

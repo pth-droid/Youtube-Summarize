@@ -10,7 +10,7 @@ The app needs your signed-in Codex CLI to create new pages with your subscriptio
 
 ## Make your first page
 
-1. The app opens **What do you want to make?** Choose **Interactive page** or **Lecture slides**. The saved default carries a **Default** tag.
+1. The app opens **What do you want to make?** Choose **Interactive page** or **Lecture slides**. The saved default carries a **Default** tag. For slides, also choose a **Slide look**.
 2. Under **Source**, keep **YouTube link** and paste a video link, or choose **Transcript file** or **Audio file**.
 3. Select **Create interactive page** (or **Create lecture slides**), or press Enter in the link field. The app uses your saved settings. The Processing view shows progress.
 4. Open the saved page from your Library.
@@ -25,9 +25,11 @@ If the source already has a saved page, open it or create a new version. A new v
 
 At the top of the start view, choose what to create: **Interactive page** or **Lecture slides**. Set the usual choice in **Settings → Default output**.
 
-Lecture slides teach the same checked analysis as a talk. The deck has a title, learning objectives, the central question, an agenda, one part per chapter, a summary, a short quiz, and a final slide with limits and the source. Each content slide lists the times it comes from; a quote slide shows the speaker's original words. Inferences, added background and uncertain points keep their label. The lecture stage makes two or more extra AI requests after the analysis; it never re-reads the transcript.
+Lecture slides teach the same checked analysis as a talk you present to a group. The deck has a title, learning objectives, the central question, an agenda, one part per chapter, a summary, and a final slide with limits and the source. It has no quiz. Each content slide lists the times it comes from; a quote slide shows the speaker's original words. Inferences, added background and uncertain points keep their label. The lecture stage makes two or more extra AI requests after the analysis; it never re-reads the transcript.
 
-Present with the arrow keys, Page Up/Down or the space bar. Press **N** for presenter notes, **F** for full screen (in an exported file), or open **Slides** to jump. Select a quiz answer, or **Show answer**, to reveal the explanation. **Print / PDF** prints one 16:9 slide per page. On a phone the slides read as a scrolling list.
+The AI chooses each slide's structure: points, steps, a timeline, a comparison, parallel columns, a table, a pyramid, a funnel, stated figures or a quote. A figure is shown only when the cited ideas state it. The app then draws the slide with a layout from the slide-design library that fits the content: columns, cards, accent panels, timelines, arrows, pyramids, funnels, big numbers, tables and more, each in four variants. It rotates them so two neighbouring slides never share a frame. Re-rendering a deck keeps the same layouts.
+
+Present with a click, the mouse wheel or trackpad, the arrow keys, Page Up/Down (a presenter remote) or the space bar. Each advance first reveals the slide's next point, then moves to the next slide; going back hides the last point, and an earlier slide comes back complete. **Shift** with an arrow skips the remaining points. **B** or **.** blanks the screen; any key brings the slide back. Press **N** for presenter notes, **F** for full screen (again, or Esc, to leave it), or open **Slides** to jump. Full screen works in the app and in an exported file. Choose the deck's look under the format cards, in **Slide look**: **Forest green** matches the app, and **Maroon and beige** sets deep maroon on beige paper (beige on deep maroon in dark mode). **Settings → Slide look** sets the starting choice. For a video that already has slides, making them in another look reuses the saved analysis and slide plan, so it needs no AI requests. Light or dark mode stays a choice while you present. **Print / PDF** prints one 16:9 slide per page. On a phone the slides read as a scrolling list.
 
 When a YouTube video already has an interactive page, choosing lecture slides offers **Make lecture slides from it**. The saved analysis is reused when the language, level, goal, provider and model match, so only the lecture stage runs. The same applies in the other direction. **Create a new version** in a format the source already has always analyses again. **Export HTML** saves a deck as one offline file, like a page.
 

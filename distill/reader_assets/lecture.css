@@ -1,18 +1,40 @@
 /* Lecture deck. Without script, on narrow screens and as a fallback it reads as stacked cards;
-   .js-deck on a wide screen presents one 1280x720 slide at a time, scaled to fit. */
+   .js-deck on a wide screen presents one 1280x720 slide at a time, scaled to fit.
+   Design language: an editorial system on the app's own tokens, distilled from the frontend-slides
+   principles (MIT): a serif display voice, uppercase mono chrome, 2px hairlines instead of shadows,
+   tiles that rotate fills, one atmospheric device per slide, and one staggered entrance per slide. */
 :root{--paper:#f6f5f1;--surface:#fff;--ink:#222b30;--muted:#59666d;--line:#d9ddd9;--accent:#205e5b;--on-accent:#fff;--tint:#e8f1ed;--warning:#76501c;--warning-bg:#f6ecd9;--inference:#5b3fa8;
-  --h1:2rem;--h2:1.35rem;--text:1.05rem;--small:.85rem;--eyebrow:.72rem}
+  --feature:var(--accent);--on-feature:var(--on-accent);--focus:#237f85;
+  --display:"Sitka Heading","Sitka Display",Cambria,"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --mono:"Cascadia Mono","SF Mono",Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
+  --ease-out:cubic-bezier(.23,1,.32,1);--ease:var(--ease-out);
+  --h1:2.1rem;--h2:1.45rem;--text:1.05rem;--small:.8rem;--eyebrow:.7rem}
 [data-theme=dark]{color-scheme:dark;--paper:#111a18;--surface:#1b2925;--ink:#e5eee9;--muted:#a9bdb4;--line:#3b4d45;--accent:#94d8c9;--on-accent:#10201c;--tint:#293f35;--warning:#e9c48a;--warning-bg:#372f23;--inference:#c7b1ff}
+/* Maroon and beige look, chosen per deck: beige paper and deep maroon in light mode, deep maroon paper and beige in dark.
+   Statement slides fill with --feature. Text pairs meet WCAG AA; the five figure steps were checked for colour-vision
+   separation on #fbf6ee and #2a1217. Dark stays on screen, so print always uses the beige version. */
+:root[data-deck-theme=maroon]{--paper:#ece2d3;--surface:#fbf6ee;--ink:#2f1418;--muted:#6e5650;--line:#e3d5c2;--accent:#7a1c2a;--on-accent:#fbf6ee;
+  --tint:#f3e7d6;--warning:#8a5410;--warning-bg:#f6e5c8;--inference:#5b3fa8;--focus:#b0283f;--feature:#7a1c2a;--on-feature:#f7eedf;
+  --fig-1:#9b2335;--fig-2:#0f9d8a;--fig-3:#2a5fa8;--fig-4:#a07400;--fig-5:#6a55c2;--fig-gas:#857671;
+  --fig-metal:#ece4d8;--fig-outline:#6e5650;--fig-inner:#f6efe4;--fig-paper:#fbf6ee;--fig-grid:#e8dccb;--fig-axis:#cdbba6}
+@media screen{
+  :root[data-deck-theme=maroon][data-theme=dark]{--paper:#190b0e;--surface:#2a1217;--ink:#f2e7d7;--muted:#cfb9a8;--line:#4e2a31;--accent:#e6c99a;--on-accent:#2a1217;
+    --tint:#3b1b22;--warning:#f3a96b;--warning-bg:#43231a;--inference:#c9b3ff;--focus:#f0c98a;--feature:#7a1f2d;--on-feature:#f4e9d9;
+    --fig-1:#d4475a;--fig-2:#14a892;--fig-3:#4a84d6;--fig-4:#b88a17;--fig-5:#8c7be0;--fig-gas:#b9a79c;
+    --fig-metal:#3d2227;--fig-outline:#cfb9a8;--fig-inner:#1d0d10;--fig-paper:#34181d;--fig-grid:#40242a;--fig-axis:#5a3239}
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 var(--sans)}
 button{font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
 button:hover{border-color:var(--accent);background:var(--tint)}
 button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
-:focus-visible{outline:3px solid #237f85;outline-offset:3px}
+:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
 a{color:var(--accent);text-underline-offset:3px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .muted{color:var(--muted)}
 
+/* === Deck chrome outside the slides === */
 .deck-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--surface)}
 .wordmark{font-weight:750;white-space:nowrap}
 .wordmark span{color:var(--accent);font-size:1.3rem;vertical-align:middle;margin-right:4px}
@@ -20,71 +42,42 @@ a{color:var(--accent);text-underline-offset:3px}
 .deck-bar button{font-size:.82rem;padding:6px 10px}
 .deck{display:grid;gap:20px;max-width:1100px;margin:0 auto;padding:16px}
 .deck-nav{display:none}
-.slide-frame{display:grid;gap:10px}
+.slide-frame{display:grid;gap:10px;min-width:0}
+.slide-box,.slide,.slide-foot>*{min-width:0}
 
-.slide{position:relative;display:flex;flex-direction:column;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 22px 18px 28px;overflow:hidden}
-.slide::before{content:"";position:absolute;inset:0 auto 0 0;width:6px;background:var(--accent)}
+/* === Slide canvas: flat paper, no shadows === */
+.slide{position:relative;isolation:isolate;display:flex;flex-direction:column;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 24px 18px;overflow:hidden}
+
+/* Top bar: an uppercase mono label, status marks and the slide number. Foot line: source times and the deck. */
 .slide-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.eyebrow{margin:0;flex:1;font-size:var(--eyebrow);font-weight:750;letter-spacing:.13em;text-transform:uppercase;color:var(--accent)}
-.slide h1{font-size:var(--h1);line-height:1.15;margin:0;text-wrap:balance}
-.slide h2{font-size:var(--h2);line-height:1.2;margin:0;text-wrap:balance}
-.slide-content{flex:1;min-height:0;font-size:var(--text);line-height:1.4}
-.slide-foot{display:flex;justify-content:space-between;gap:12px;font-size:var(--small);color:var(--muted)}
-.time{text-decoration:none;margin-right:12px;white-space:nowrap}
-.status{font-size:var(--small);border-radius:99px;padding:2px 12px;border:1px solid currentColor}
+.eyebrow{margin:0;flex:1;min-width:0;font:600 var(--eyebrow)/1.35 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+.count{font:500 var(--eyebrow)/1 var(--mono);letter-spacing:.12em;color:var(--muted);font-variant-numeric:tabular-nums}
+.slide h1,.slide h2{font-family:var(--display);font-weight:600;letter-spacing:-.018em;margin:0;text-wrap:balance}
+.slide h1{font-size:var(--h1);line-height:1}
+.slide h2{font-size:var(--h2);line-height:1.06}
+.slide-content{flex:1;min-height:0;font-size:var(--text);line-height:1.38}
+.slide-foot{display:flex;justify-content:space-between;align-items:center;gap:16px;padding-top:10px;border-top:2px solid var(--line);
+  font:500 var(--small)/1.3 var(--mono);letter-spacing:.06em;color:var(--muted)}
+.deck-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase;letter-spacing:.12em;max-width:55%}
+.time{text-decoration:none;margin-right:14px;white-space:nowrap}
+.status{font:600 var(--small)/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;border-radius:99px;padding:4px 12px;border:2px solid currentColor}
 .status.uncertain{color:var(--warning);background:var(--warning-bg)}
 .status.inference{color:var(--inference)}
 .status.background{color:var(--muted)}
 
-.points,.objectives,.agenda,.takeaways,.caveats{margin:0;padding-left:1.3em}
-.points li,.objectives li,.agenda li,.takeaways li{margin:.3em 0}
-.points li::marker,.objectives li::marker,.agenda li::marker{color:var(--accent);font-weight:700}
-.points.small{font-size:.88em}
-.caveats{color:var(--warning);font-size:.88em;margin-top:.6em}
-.two-columns{columns:2;column-gap:48px}
-.two-columns li{break-inside:avoid}
-.steps{list-style:none;counter-reset:step;margin:0;padding:0;display:grid;gap:12px}
-.steps li{counter-increment:step;display:grid;grid-template-columns:2.1em 1fr;gap:14px;align-items:start}
-.steps li::before{content:counter(step);display:grid;place-items:center;width:2.1em;height:2.1em;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:750}
-.compare{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:stretch}
-.column{background:var(--tint);border-radius:12px;padding:14px 18px}
-.column h3{margin:0 0 6px;font-size:1.05em;line-height:1.25}
-.versus{align-self:center;font-weight:750;color:var(--muted);font-size:var(--small);text-transform:uppercase}
-.quote{margin:0 0 .8em;border-left:5px solid var(--accent);padding:2px 0 2px 20px}
-.quote blockquote{margin:0;font-size:1.08em;font-style:italic}
-.quote blockquote::before{content:"\201C"}
-.quote blockquote::after{content:"\201D"}
-.quote figcaption{margin-top:8px;font-size:var(--small);color:var(--muted)}
-.lead{color:inherit;opacity:.85;font-size:var(--text);margin:0}
-.big-question{font-size:calc(var(--h2) * 1.2);font-weight:650;line-height:1.3;margin:0;text-wrap:balance}
-.conclusion{font-size:1.06em;font-weight:600;margin:0 0 .7em}
-.kind-title,.kind-divider{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
-.kind-title::before,.kind-divider::before{display:none}
-.kind-title .eyebrow,.kind-divider .eyebrow,.kind-title .slide-foot,.kind-divider .slide-foot{color:inherit;opacity:.75}
-.kind-title .slide-content,.kind-divider .slide-content,.kind-question .slide-content{display:flex;flex-direction:column;justify-content:center;gap:16px}
-.part-number{font-size:calc(var(--h1) * 1.5);font-weight:800;line-height:1;margin:0;opacity:.5}
-.slide .part-title{font-size:var(--h1)}
-.part-time{margin:0;opacity:.8;font-size:var(--small)}
+/* Slide content comes from the slide-design layout library (slide-layouts.css, slide-data.css) and
+   Distill's additions in lecture-layouts.css. These two belong to every look. */
+.caveats{margin:.6em 0 0;padding-left:1.2em;color:var(--warning);font-size:.86em}
 .source-line{font-size:var(--small);color:var(--muted)}
 
-.options{list-style:none;margin:0;padding:0;display:grid;gap:10px}
-.option{width:100%;display:flex;gap:14px;text-align:left;font-size:1em;padding:10px 16px}
-.option b{color:var(--accent)}
-.option.right{border-color:var(--accent);background:var(--tint)}
-.option.right::after{content:"\2713";margin-left:auto;color:var(--accent);font-weight:800}
-.option.wrong{border-color:var(--warning);background:var(--warning-bg)}
-.answer{display:none;margin:.7em 0 0;padding:10px 16px;border-radius:10px;background:var(--tint)}
-.revealed .answer{display:block}
-.reveal{margin-top:.7em;font-size:var(--small)}
-.revealed .reveal{display:none}
 
+/* === Presenter notes and the slide outline === */
 .notes{display:none;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-size:.92rem}
 .show-notes .notes{display:block}
 .notes p{margin:.4em 0}
-.notes-label{font-size:.7rem;font-weight:750;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:12px 0 4px!important}
+.notes-label{font:600 .68rem/1.3 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:12px 0 4px!important}
 .notes blockquote{margin:6px 0;padding-left:12px;border-left:3px solid var(--line)}
 .notes cite{display:block;font-style:normal;font-size:.8rem;color:var(--muted)}
-
 dialog{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);width:min(560px,92vw);max-height:80vh;padding:18px 20px}
 dialog::backdrop{background:rgb(0 0 0 / .45)}
 dialog h2{margin:0 0 8px;font-size:1.1rem}
@@ -96,8 +89,6 @@ dialog h2{margin:0 0 8px;font-size:1.1rem}
   .deck-bar{gap:6px;padding:8px 12px}
   .deck-title{display:none}
   .deck-bar button{font-size:.76rem;padding:5px 8px}
-  .versus{display:none}
-  .compare{grid-template-columns:1fr}
 }
 @media screen and (min-width:761px){
   .js-deck body{height:100vh;display:flex;flex-direction:column;overflow:hidden}
@@ -109,31 +100,56 @@ dialog h2{margin:0 0 8px;font-size:1.1rem}
   .js-deck .notes{flex:none;width:calc(1280px * var(--scale, .5));max-height:28vh;overflow:auto}
   .js-deck .deck-nav{display:flex;align-items:center;gap:10px;padding:8px 16px;border-top:1px solid var(--line);background:var(--surface);font-size:.85rem}
   .progress{flex:1;height:4px;background:var(--line);border-radius:4px;overflow:hidden}
-  #progress-bar{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+  #progress-bar{display:block;height:100%;width:100%;background:var(--accent);transform:scaleX(0);transform-origin:0 50%;transition:transform 200ms var(--ease-out)}
   .keys{color:var(--muted);font-size:.78rem}
 }
-/* The 1280x720 canvas: presenting on a wide screen, and every printed page. */
+/* The 1280x720 canvas's padding, type sizes and dense steps come from the layout library; layouts such as
+   accent-left move the padding, so the deck never sets it with a stronger selector. */
+/* Motion follows the slide-design skill's motion rules, distilled from Emil Kowalski's animation skills
+   (github.com/emilkowalski/skills, MIT). A forward arrival staggers the content parts; the canvas, slide number
+   and footer stay still, since a canvas fading from 0 flashes the room's screen. Going back is one short fade of
+   the built slide. A build step answers its click at once. Reduced motion keeps short fades and drops movement. */
+:root{--arrive:deck-rise;--arrive-dur:300ms;--stagger:50ms;--build:deck-build;--back:deck-fade}
+@media (prefers-reduced-motion:reduce){:root{--arrive:deck-fade;--arrive-dur:200ms;--stagger:0ms;--build:deck-fade;--back:none}#progress-bar{transition:none}}
 @media screen and (min-width:761px){
-  .js-deck .slide{padding:54px 84px 38px;gap:22px;--h1:62px;--h2:44px;--text:30px;--small:19px;--eyebrow:17px}
-  .js-deck .slide.dense{--h2:38px;--text:25px}
-  .js-deck .slide.denser{--h2:34px;--text:21px}
-  .js-deck .steps.across{grid-auto-flow:column;grid-auto-columns:1fr;gap:30px}
-  .js-deck .steps.across li{grid-template-columns:1fr}
+  .js-deck .slide-frame.is-current[data-arrival=forward] [data-part]{
+    animation:var(--arrive) var(--arrive-dur) var(--ease-out) both;animation-delay:calc(var(--i, 0) * var(--stagger))}
+  .js-deck .slide-frame.is-current[data-arrival=back] [data-part]{animation:var(--back) 120ms var(--ease-out) both}
+  .js-deck [data-part="1"]{--i:1}
+  .js-deck [data-part="2"]{--i:2}
+  .js-deck [data-part="3"]{--i:3}
+  .js-deck [data-part="4"]{--i:4}
+  .js-deck [data-part="5"]{--i:5}
+  .js-deck [data-part="6"]{--i:6}
+  /* A build step rises on its own, 200 ms, when a click, scroll or key reveals it. The new animation name
+     restarts it on an item that already took part in the arrival. */
+  .js-deck .slide-frame.is-current[data-arrival] .slide .slide-content [data-part].build-shown{animation:var(--build) 200ms var(--ease-out) both}
 }
+/* Build steps wait in place, invisible, so fitting and layout never shift. While presenting a click
+   advances, so slide text is not selectable; the stacked and printed deck show every step. */
+@media screen and (min-width:761px){
+  .js-deck .slide{user-select:none}
+  /* While the deck measures text to fit it, nothing is mid-animation. */
+  .js-deck.fitting .slide *{animation:none!important;transition:none!important}
+  .js-deck .build-pending{opacity:0;pointer-events:none}
+  /* B or "." blanks the room's screen while the presenter talks. */
+  .js-deck .blanked::after{content:"";position:fixed;inset:0;z-index:50;background:#000}
+}
+/* No "to" frame: each part ends at its own opacity (dimmed numerals stay dimmed). */
+@keyframes deck-rise{from{opacity:0;translate:0 12px}}
+@keyframes deck-build{from{opacity:0;translate:0 8px}}
+@keyframes deck-fade{from{opacity:0}}
 @page{size:1280px 720px;margin:0}
 @media print{
   :root,[data-theme=dark]{color-scheme:light;--paper:#fff;--surface:#fff;--ink:#222b30;--muted:#59666d;--line:#d9ddd9;--accent:#205e5b;--on-accent:#fff;--tint:#e8f1ed;--warning:#76501c;--warning-bg:#f6ecd9;--inference:#5b3fa8}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body{display:block!important;height:auto!important;overflow:visible!important}
-  .deck-bar,.deck-nav,.notes,dialog,.reveal,.sr-only{display:none!important}
+  .deck-bar,.deck-nav,.notes,dialog,.sr-only{display:none!important}
   .deck{display:block!important;position:static!important;max-width:none!important;padding:0!important;margin:0!important}
   .slide-frame{position:static!important;display:block!important;visibility:visible!important;padding:0!important;break-after:page}
   .slide-frame:last-child{break-after:auto}
   .slide-box{width:1280px!important;height:720px!important}
-  .slide{width:1280px;height:720px;transform:none!important;border:0;border-radius:0;box-shadow:none!important;padding:54px 84px 38px;gap:22px;--h1:62px;--h2:44px;--text:30px;--small:19px;--eyebrow:17px}
-  .slide.dense{--h2:38px;--text:25px}
-  .slide.denser{--h2:34px;--text:21px}
-  .steps.across{grid-auto-flow:column;grid-auto-columns:1fr;gap:30px}
-  .steps.across li{grid-template-columns:1fr}
-  .answer{display:block}
+  .slide{width:1280px;height:720px;transform:none!important;border:0;border-radius:0;box-shadow:none!important}
 }
+
+.kind-title .deck-name{visibility:hidden}

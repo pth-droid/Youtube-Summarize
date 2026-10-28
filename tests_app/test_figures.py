@@ -96,7 +96,7 @@ def test_lecture_places_each_figure_after_its_chapter(tmp_path):
     source, knowledge, _ = figure_fixture()
     roast, extraction = figure_plans()
     deck = render_lecture(source, knowledge, lecture(), tmp_path / "roast.html", roast).read_text(encoding="utf-8")
-    kinds = [chunk.split('"', 1)[0] for chunk in deck.split('class="slide kind-')[1:]]
+    kinds = [chunk.split('"', 1)[0].split()[0] for chunk in deck.split('class="slide kind-')[1:]]
     first_part = kinds.index("points")
     # Part 1 slide, then the timeline, the states slide, the roaster, the levers and the scale ladder.
     assert kinds[first_part + 1:first_part + 6] == ["figure"] * 5
@@ -105,7 +105,7 @@ def test_lecture_places_each_figure_after_its_chapter(tmp_path):
     assert deck.count('data-key="fig1"') == 2  # the chart and the states slide move together
 
     deck = render_lecture(source, knowledge, lecture(), tmp_path / "brew.html", extraction).read_text(encoding="utf-8")
-    kinds = [chunk.split('"', 1)[0] for chunk in deck.split('class="slide kind-')[1:]]
+    kinds = [chunk.split('"', 1)[0].split()[0] for chunk in deck.split('class="slide kind-')[1:]]
     second_part = len(kinds) - 1 - kinds[::-1].index("points")
     assert kinds[second_part + 1:second_part + 5] == ["figure"] * 4 and kinds[second_part + 5] == "recap"
     assert "So với log" not in deck  # a presented deck has no file reader
