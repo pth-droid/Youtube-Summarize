@@ -24,6 +24,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .config import DEFAULT_SETTINGS, MAX_AUDIO_BYTES, MAX_IMPORT_BYTES, default_data_dir
+from .looks import SLIDE_THEMES, look_swatches
 from .storage import ACTIVE_STATES, Store
 
 WEB = Path(__file__).with_name("web")
@@ -77,7 +78,7 @@ class Preferences(StrictModel):
     deepseek_model: str | None = Field(None, max_length=100)
     api_connections: dict[ProviderName, APIConnection] | None = None
     output_format: Literal["page", "lecture"] | None = None
-    slide_theme: Literal["forest", "maroon"] | None = None
+    slide_theme: Literal[SLIDE_THEMES] | None = None
     transcription_providers: dict[Literal["video", "meeting", "lecture"], Literal["soniox", "groq"]] | None = None
     soniox_model: str | None = Field(None, pattern=r"^stt-async-[a-z0-9.-]{1,40}$")
     groq_model: Literal["whisper-large-v3", "whisper-large-v3-turbo"] | None = None
@@ -248,7 +249,8 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
         from .downloader import installed_version
         tools = {name: bool(shutil.which(name)) for name in ("codex", "claude", "ffmpeg", "deno")}
         tools["yt-dlp"] = installed_version() is not None  # the app runs yt-dlp from its own environment, not PATH
-        return {"preferences": settings, "credentials": credentials, "tools": tools, "storage": store.storage_info()}
+        return {"preferences": settings, "credentials": credentials, "tools": tools, "storage": store.storage_info(),
+                "looks": look_swatches()}
 
     @app.get("/api/tools/yt-dlp")
     def ytdlp_status(check: bool = False):

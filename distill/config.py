@@ -24,7 +24,7 @@ DEFAULT_SETTINGS = {
     "deepseek_model": "deepseek-flash",
     "api_connections": {},
     "output_format": "page",
-    # The look of new lecture decks: "forest" matches the app, "maroon" is maroon and beige.
+    # The look of new lecture decks, one of distill.looks.SLIDE_LOOKS; "forest" matches the app.
     "slide_theme": "forest",
     # Speech-to-text service per kind of source: a YouTube video without captions,
     # a meeting recording (several voices) and a lecture or talk.

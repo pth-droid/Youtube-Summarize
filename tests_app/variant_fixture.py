@@ -117,10 +117,11 @@ def variant_fixture():
 
 
 if __name__ == "__main__":
+    from distill.looks import SLIDE_THEMES
     from distill.renderer import render_lecture
     out = Path(".feasibility/variant-fixtures")
     source, knowledge, lectures = variant_fixture()
     for first, lecture in lectures.items():
-        for theme in ("forest", "maroon"):
+        for theme in SLIDE_THEMES:
             render_lecture(source, knowledge, lecture, out / f"gallery-{first}-{theme}.html", theme=theme)
     print(out.resolve())

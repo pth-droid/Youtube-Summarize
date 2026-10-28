@@ -1,0 +1,123 @@
+/* Copied from the slide-design skill (looks/presets.css): the seven deck looks, each with light and dark tokens.
+   Refresh it from the skill rather than editing it here, then run the skill's check_look.mjs on it. distill/looks.py
+   names the looks for the app; lecture.css derives the figure colours from these tokens. */
+/* Deck looks: colour tokens, light and dark, and type stacks for slides shown on a shared screen.
+   Pick one with <html data-look="NAME">; add data-theme="dark" for the dark version. Layout CSS reads
+   only these tokens, so a look can change without touching a layout.
+
+   Contract (every look defines all of them, in light and in dark):
+     --paper around and behind slides        --surface slide canvas        --line 2px hairlines
+     --ink body text    --muted secondary text    --accent text accents, links, ordinals, borders
+     --on-accent text on --accent    --tint soft fill    --feature big filled statement surfaces
+     --on-feature text on --feature    --warning / --warning-bg status chip    --inference label for
+     inferred claims    --focus focus ring    --data-1..5 categorical series, fixed order
+     --display / --sans / --mono type stacks (installed fonts only, nothing downloads)
+   Dark blocks live inside @media screen, so print always uses the light version.
+   Check a look before use:  node check_look.mjs presets.css [NAME]  */
+
+/* ---------- forest: teal on warm white. The default reading and teaching look. ----------
+   Sitka was drawn for screen reading at display sizes and covers Vietnamese; Cambria and Palatino back it up.
+   Cascadia Mono for chrome and code, system UI sans for body. */
+:root[data-look=forest]{color-scheme:light;
+  --paper:#f6f5f1;--surface:#fff;--ink:#222b30;--muted:#59666d;--line:#d9ddd9;--accent:#205e5b;--on-accent:#fff;
+  --tint:#e8f1ed;--feature:#205e5b;--on-feature:#fff;--warning:#76501c;--warning-bg:#f6ecd9;--inference:#5b3fa8;--focus:#237f85;
+  --data-1:#00897b;--data-2:#c0562b;--data-3:#2f6fb5;--data-4:#a07400;--data-5:#6a55c2;
+  --display:"Sitka Heading","Sitka Display",Cambria,"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"Cascadia Mono","SF Mono",Consolas,"Liberation Mono",monospace}
+@media screen{:root[data-look=forest][data-theme=dark]{color-scheme:dark;
+  --paper:#111a18;--surface:#1b2925;--ink:#e5eee9;--muted:#a9bdb4;--line:#3b4d45;--accent:#94d8c9;--on-accent:#10201c;
+  --tint:#293f35;--feature:#94d8c9;--on-feature:#10201c;--warning:#e9c48a;--warning-bg:#372f23;--inference:#c7b1ff;--focus:#237f85;
+  --data-1:#14a08e;--data-2:#d96f38;--data-3:#4f8fd8;--data-4:#b88a17;--data-5:#8c7be0}}
+
+/* ---------- maroon: deep maroon on beige. Humanities, history, ceremony; warm and serious. ----------
+   Same type as forest: the serif display carries the formality, the beige keeps it from feeling cold. */
+:root[data-look=maroon]{color-scheme:light;
+  --paper:#ece2d3;--surface:#fbf6ee;--ink:#2f1418;--muted:#6e5650;--line:#e3d5c2;--accent:#7a1c2a;--on-accent:#fbf6ee;
+  --tint:#f3e7d6;--feature:#7a1c2a;--on-feature:#f7eedf;--warning:#8a5410;--warning-bg:#f6e5c8;--inference:#5b3fa8;--focus:#b0283f;
+  --data-1:#9b2335;--data-2:#0f9d8a;--data-3:#2a5fa8;--data-4:#a07400;--data-5:#6a55c2;
+  --display:"Sitka Heading","Sitka Display",Cambria,"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"Cascadia Mono","SF Mono",Consolas,"Liberation Mono",monospace}
+@media screen{:root[data-look=maroon][data-theme=dark]{color-scheme:dark;
+  --paper:#190b0e;--surface:#2a1217;--ink:#f2e7d7;--muted:#cfb9a8;--line:#4e2a31;--accent:#e6c99a;--on-accent:#2a1217;
+  --tint:#3b1b22;--feature:#7a1f2d;--on-feature:#f4e9d9;--warning:#f3a96b;--warning-bg:#43231a;--inference:#c9b3ff;--focus:#f0c98a;
+  --data-1:#d4475a;--data-2:#14a892;--data-3:#4a84d6;--data-4:#b88a17;--data-5:#8c7be0}}
+
+/* ---------- navy: navy and ivory. Corporate reviews, client pitches, board updates. ----------
+   A neo-grotesque sans throughout, because that is what business decks are read in; Aptos (Office) is used
+   when installed, otherwise Segoe UI Variable or Helvetica. Ivory surface, deep navy statement slides,
+   brass in dark mode. */
+:root[data-look=navy]{color-scheme:light;
+  --paper:#e8e4da;--surface:#fcfaf5;--ink:#18223a;--muted:#4f586a;--line:#dcd5c8;--accent:#1f3f7a;--on-accent:#fcfaf5;
+  --tint:#e9edf4;--feature:#172a4f;--on-feature:#f5efe1;--warning:#874a0c;--warning-bg:#f7e8d0;--inference:#5a3ea6;--focus:#2b5fc7;
+  --data-1:#1f56a8;--data-2:#9a7400;--data-3:#6a55c2;--data-4:#c4621d;--data-5:#137f73;
+  --display:"Aptos Display","Segoe UI Variable Display","Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --sans:Aptos,"Segoe UI Variable Text","Segoe UI",-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --mono:"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace}
+@media screen{:root[data-look=navy][data-theme=dark]{color-scheme:dark;
+  --paper:#0b1220;--surface:#121c31;--ink:#eee8da;--muted:#b4bac7;--line:#2c3a56;--accent:#e2c487;--on-accent:#121c31;
+  --tint:#1c2945;--feature:#24406f;--on-feature:#f5efe1;--warning:#f2b36c;--warning-bg:#3b2a18;--inference:#c4b2ff;--focus:#e2c487;
+  --data-1:#5d92e6;--data-2:#c9a33a;--data-3:#9a87e8;--data-4:#e2853d;--data-5:#2bb09d}}
+
+/* ---------- contrast: near-black on white. Bright rooms, weak or washed-out projectors, far back rows. ----------
+   Ambient light lifts a projector's black, so pale tints and grey text vanish first. This look keeps
+   muted text near-black, hairlines and tints clearly darker than white, and data colours deep.
+   Sans display: thin serifs break up on low-resolution projectors. Dark mode is for dark rooms only. */
+:root[data-look=contrast]{color-scheme:light;
+  --paper:#e4e4e4;--surface:#fff;--ink:#0b0b0c;--muted:#33363b;--line:#9aa0a6;--accent:#0037a6;--on-accent:#fff;
+  --tint:#d3dff5;--feature:#111214;--on-feature:#fff;--warning:#7a3a00;--warning-bg:#ffe2b8;--inference:#4b22a8;--focus:#c2410c;
+  --data-1:#0050c8;--data-2:#cc4400;--data-3:#00796b;--data-4:#946200;--data-5:#6a3fd0;
+  --display:"Segoe UI Variable Display","Segoe UI",-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --sans:"Segoe UI Variable Text","Segoe UI",-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --mono:"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace}
+@media screen{:root[data-look=contrast][data-theme=dark]{color-scheme:dark;
+  --paper:#000;--surface:#0d0d0f;--ink:#fff;--muted:#d4d6da;--line:#6d7178;--accent:#ffd23f;--on-accent:#0d0d0f;
+  --tint:#24262b;--feature:#003d99;--on-feature:#fff;--warning:#ffab70;--warning-bg:#3b1d10;--inference:#cdb8ff;--focus:#ffd23f;
+  --data-1:#5c9dff;--data-2:#ff7d45;--data-3:#2fd1b0;--data-4:#e8c53a;--data-5:#b49cff}}
+
+/* ---------- editorial: warm paper, ink black and vermilion. Essays, journalism, book talks, culture. ----------
+   A book serif (Palatino Linotype on Windows, which covers Vietnamese; Iowan Old Style on Apple) for headlines,
+   a humanist sans for body, ink-black statement slides like a magazine section opener. */
+:root[data-look=editorial]{color-scheme:light;
+  --paper:#e7dfd0;--surface:#faf6ee;--ink:#1e1a15;--muted:#5d5448;--line:#ddd3c1;--accent:#a3361a;--on-accent:#faf6ee;
+  --tint:#f0e7d5;--feature:#1e1a15;--on-feature:#faf6ee;--warning:#735400;--warning-bg:#f4e6c0;--inference:#5a3ea6;--focus:#2d5fc0;
+  --data-1:#b2401c;--data-2:#2b6c99;--data-3:#9a7300;--data-4:#13806f;--data-5:#6a4fb0;
+  --display:"Iowan Old Style","Palatino Linotype",Palatino,Cambria,serif;
+  --sans:Seravek,"Gill Sans Nova","Segoe UI Variable Text","Segoe UI",-apple-system,sans-serif;
+  --mono:"SF Mono","Cascadia Mono",Consolas,monospace}
+@media screen{:root[data-look=editorial][data-theme=dark]{color-scheme:dark;
+  --paper:#12100d;--surface:#1d1915;--ink:#f0e8da;--muted:#bfb3a1;--line:#3b342b;--accent:#f2a07c;--on-accent:#1d1915;
+  --tint:#2a241d;--feature:#7e2e14;--on-feature:#f7efe2;--warning:#e9c46a;--warning-bg:#382c15;--inference:#c9b5ff;--focus:#86adff;
+  --data-1:#e2754d;--data-2:#4f9bd0;--data-3:#c49a2c;--data-4:#3fb59a;--data-5:#a68ae0}}
+
+/* ---------- slate: cool grey and petrol blue. Engineering reviews, architecture, data, code. ----------
+   Bahnschrift (Windows' DIN) or DIN Alternate (macOS) for headings reads as technical drawing labels and
+   covers Vietnamese; system sans for body; Cascadia Code for code. */
+:root[data-look=slate]{color-scheme:light;
+  --paper:#e8ecf0;--surface:#fbfcfd;--ink:#17202b;--muted:#4c5866;--line:#d3dae2;--accent:#0b5f8a;--on-accent:#fbfcfd;
+  --tint:#e3edf4;--feature:#243140;--on-feature:#eef3f8;--warning:#874800;--warning-bg:#fbead2;--inference:#5b3fa8;--focus:#0a7fb0;
+  --data-1:#2f6bc0;--data-2:#cf5f1c;--data-3:#13857a;--data-4:#946500;--data-5:#6a55c2;
+  --display:Bahnschrift,"DIN Alternate","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:"Cascadia Code","JetBrains Mono","SF Mono",Menlo,Consolas,monospace}
+@media screen{:root[data-look=slate][data-theme=dark]{color-scheme:dark;
+  --paper:#0d1117;--surface:#151b23;--ink:#e2e8ef;--muted:#9eabba;--line:#2d3743;--accent:#7cc4ea;--on-accent:#0d1117;
+  --tint:#1c2733;--feature:#23384d;--on-feature:#e9f0f8;--warning:#f2b562;--warning-bg:#382a17;--inference:#c3b1ff;--focus:#56c2e6;
+  --data-1:#5b94e8;--data-2:#e8803f;--data-3:#2fb5a2;--data-4:#c7a53a;--data-5:#9a87e8}}
+
+/* ---------- workshop: one vivid violet on quiet neutrals. Workshops, trainings, hackathons, kick-offs. ----------
+   The colour lives in statement slides and accents only; everything else stays neutral so exercises and
+   code stay readable. Avenir Next (macOS) or Candara (Windows, covers Vietnamese) for a friendlier display
+   voice. Inference is teal here so it never reads as the violet accent. */
+:root[data-look=workshop]{color-scheme:light;
+  --paper:#eeecf2;--surface:#fff;--ink:#1d1b24;--muted:#54515e;--line:#dedbe5;--accent:#5531d4;--on-accent:#fff;
+  --tint:#eeeaff;--feature:#5531d4;--on-feature:#fff;--warning:#844c00;--warning-bg:#fbebcf;--inference:#0b6f66;--focus:#d05a12;
+  --data-1:#5b3ad6;--data-2:#d0601b;--data-3:#0f857a;--data-4:#946500;--data-5:#2f6bc0;
+  --display:"Avenir Next",Candara,"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  --sans:"Avenir Next","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;
+  --mono:"Cascadia Code",Consolas,"SF Mono",Menlo,monospace}
+@media screen{:root[data-look=workshop][data-theme=dark]{color-scheme:dark;
+  --paper:#110f17;--surface:#1b1824;--ink:#ece9f5;--muted:#b4aec6;--line:#36304a;--accent:#b9a6ff;--on-accent:#1b1824;
+  --tint:#27213b;--feature:#5531d4;--on-feature:#fff;--warning:#f3b562;--warning-bg:#3a2b17;--inference:#5fd0bd;--focus:#ffc95c;
+  --data-1:#9a86ff;--data-2:#ef8a45;--data-3:#2fbfa9;--data-4:#d0ae3d;--data-5:#5b9ae8}}
