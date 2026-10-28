@@ -1,7 +1,7 @@
 """Local review tool for calibration runs: transcript beside extracted ideas, with quick marks.
 
-Usage:  python -m tools.calibration_review.server D:/temp/vl-calib-claude --port 8771
-Marks are saved per video as <run>/<video_id>/review-marks.json. Binds to 127.0.0.1 only.
+Usage:  python -m tools.calibration_review.server D:/temp/calibration --port 8771
+The run folder comes from `python -m tools.calibration_run`. Marks are saved per video as <run>/<video_id>/review-marks.json. Binds to 127.0.0.1 only.
 """
 from __future__ import annotations
 

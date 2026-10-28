@@ -114,4 +114,6 @@ Install the check tools with `.venv\Scripts\python.exe -m pip install -r require
 
 For browser checks, run `npm.cmd install`, `npx.cmd playwright install chromium`, then `npx.cmd playwright test`. These tests use headless Playwright Test, an isolated temporary library, authored semantic fixtures, and saved real-source artifacts when available. They do not send paid AI requests or audio to cloud services.
 
+To judge whether pages keep enough detail, run the pipeline on saved transcripts and review the result. `.venv\Scripts\python.exe -m tools.calibration_run D:\temp\calibration --transcripts .feasibility --provider claude_code` writes one folder per video and resumes after an interruption. It sends live requests to the chosen subscription provider. `.venv\Scripts\python.exe -m tools.calibration_review.server D:\temp\calibration` then opens http://127.0.0.1:8771, which shows the transcript beside the extracted ideas. Mark ideas as good, duplicate or wrong, select passages the page missed, and say whether the page should have been shorter or more detailed. Marks save next to each video as `review-marks.json`. Keep the folder path short, because Windows paths over 260 characters break the saved files.
+
 Read [BUILD_STATUS.md](BUILD_STATUS.md) for measured results and remaining limits. Read [MASTER_PLAN.md](MASTER_PLAN.md) for the product design.
