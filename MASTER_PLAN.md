@@ -1,4 +1,4 @@
-# Visual Learning App — Master Plan
+# Distill — Master Plan
 
 Status: Planning complete; implementation is not authorized by this document.
 

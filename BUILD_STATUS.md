@@ -1,4 +1,4 @@
-# Visual Learning build status
+# Distill build status
 
 Updated 2026-10-06. This is the local V1 implementation. The master plan's later online and live-AI stages remain deferred.
 
@@ -42,7 +42,7 @@ The 2026-10-05 folder-control update is live at the same local URL. A scoped app
 
 The app is available at **http://127.0.0.1:8765**. The health endpoint reported `status: ok` and `worker: running`. Its storage is `C:\Users\phant\AppData\Local\VisualLearning` on this machine. The current final-development launch is hidden and opens no browser automatically. The normal double-click launcher keeps a visible window that the owner can close.
 
-To start again, use **Start Visual Learning.cmd**. Setup and restore details are in the guide. The web service listens only on loopback. The worker can continue while the browser is closed, and managed work survives a worker restart. Windows shutdown stops the worker's descendants, including nested CLI or media processes.
+To start again, use **Start Distill.cmd**. Setup and restore details are in the guide. The web service listens only on loopback. The worker can continue while the browser is closed, and managed work survives a worker restart. Windows shutdown stops the worker's descendants, including nested CLI or media processes.
 
 ## Remaining limits
 
@@ -58,4 +58,4 @@ To start again, use **Start Visual Learning.cmd**. Setup and restore details are
 
 ## Main implementation files
 
-`visual_learning/app.py` serves local routes. `storage.py` manages metadata and artifacts. `worker.py` runs saved jobs. `ingest.py`, `providers.py`, and `audio.py` connect source and AI services. `models.py`, `pipeline.py`, `renderer.py`, and `reader_assets/` provide the semantic-to-visual path. `skills/visual-synthesis/` holds reusable agent instructions and references.
+`distill/app.py` serves local routes. `storage.py` manages metadata and artifacts. `worker.py` runs saved jobs. `ingest.py`, `providers.py`, and `audio.py` connect source and AI services. `models.py`, `pipeline.py`, `renderer.py`, and `reader_assets/` provide the semantic-to-visual path. `skills/visual-synthesis/` holds reusable agent instructions and references.

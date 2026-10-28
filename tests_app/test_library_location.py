@@ -6,16 +6,16 @@ import pytest
 from fastapi.testclient import TestClient
 
 from tests_app.test_core import saved_page, new_job
-from visual_learning.app import create_app
-from visual_learning.config import default_data_dir
-from visual_learning.storage import LibraryRelocated, Store
-from visual_learning.worker import Worker
+from distill.app import create_app
+from distill.config import default_data_dir
+from distill.storage import LibraryRelocated, Store
+from distill.worker import Worker
 
 
 @pytest.fixture(autouse=True)
 def isolated_locator(tmp_path, monkeypatch):
-    monkeypatch.setenv("VISUAL_LEARNING_CONFIG_DIR", str(tmp_path / "config"))
-    monkeypatch.delenv("VISUAL_LEARNING_DATA_DIR", raising=False)
+    monkeypatch.setenv("DISTILL_CONFIG_DIR", str(tmp_path / "config"))
+    monkeypatch.delenv("DISTILL_DATA_DIR", raising=False)
 
 
 def test_move_keeps_pages_sources_preferences_and_remembers_restart(tmp_path):
@@ -82,7 +82,7 @@ def test_locator_failure_keeps_original_writable_and_complete_copy(tmp_path, mon
     page = saved_page(store)
     def fail(_folder):
         raise OSError("Cannot save library selection")
-    monkeypatch.setattr("visual_learning.storage.remember_data_dir", fail)
+    monkeypatch.setattr("distill.storage.remember_data_dir", fail)
     target = tmp_path / "selected"
     with pytest.raises(OSError):
         store.relocate(str(target))
@@ -95,7 +95,7 @@ def test_api_folder_switch_keeps_reader_available_and_new_jobs_in_selected_folde
     app = create_app(tmp_path / "original")
     page = saved_page(app.state.store)
     with TestClient(app, base_url="http://127.0.0.1") as client:
-        client.headers["x-visual-learning"] = app.state.csrf_token
+        client.headers["x-distill"] = app.state.csrf_token
         result = client.put("/api/library/location", json={"path": str(tmp_path / "selected")})
         assert result.status_code == 200, result.text
         assert client.get("/api/settings").json()["storage"]["path"] == str(tmp_path / "selected")

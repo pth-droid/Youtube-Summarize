@@ -116,7 +116,7 @@ class Worker:
         if code in {"approval_required", "audio_approval_required", "audio_approval"}:
             self.update_job(job_id, state="awaiting_approval", error={"code": code, "message": message or str(error)})
             return
-        safe_pipeline_error = type(error).__module__ == "visual_learning.pipeline" and type(error).__name__ == "PipelineError"
+        safe_pipeline_error = type(error).__module__ == "distill.pipeline" and type(error).__name__ == "PipelineError"
         safe_message = message or (str(error) if isinstance(error, (ValueError, FileNotFoundError)) or safe_pipeline_error else "Processing could not finish. Your transcript and completed sections are saved. Retry, switch provider, or import a transcript.")
         error_record = {"code": code or "processing_failed", "message": safe_message[:1000]}
         if isinstance(diagnostics, dict) and diagnostics:
@@ -177,7 +177,7 @@ class Worker:
                 else:
                     source = normalized(transcribe_youtube(job["input"]["video_id"], work_dir, approval, progress=audio_progress, cancelled=cancelled, checkpoint=checkpoint, load_checkpoint=load_checkpoint))
             elif job["input"]["kind"] == "audio_import":
-                self.update_job(job_id, state="awaiting_approval", progress={"stage": "awaiting_approval", "message": "Approve sending this audio to Groq, or import a transcript."})
+                self.update_job(job_id, state="awaiting_approval", progress={"stage": "awaiting_approval", "message": "Approve sending this audio for transcription, or import a transcript."})
                 return
             else:
                 try:
@@ -187,8 +187,12 @@ class Worker:
                         raise InterruptedError()
                     if getattr(error, "retry_after", None):
                         raise
-                    request = {"approved": False, "job_id": job_id, "source": job["input"]["video_id"], "provider": "groq", "model": preferences.get("groq_model", "whisper-large-v3-turbo"), "free_only": bool(preferences.get("groq_free_only", True)), "free_account_confirmed": False, "retain_audio": bool(preferences.get("retain_audio")), "source_language": preferences.get("source_language") or None, "reason": getattr(error, "message", str(error)), "duration": None, "quota": "Remaining Groq account quota is unknown.", "languages": getattr(error, "languages", []), "caption_error": getattr(error, "code", "unavailable")}
-                    self.update_job(job_id, state="awaiting_approval", approval=request, error={"code": request["caption_error"], "message": request["reason"]}, progress={"stage": "awaiting_approval", "message": "Caption retrieval stopped. Choose audio transcription or import a transcript."})
+                    from .audio import approval_request
+                    request = approval_request(preferences, job_id, job["input"]["video_id"], getattr(error, "message", str(error)), languages=getattr(error, "languages", []), caption_error=getattr(error, "code", "unavailable"))
+                    caption_error = {"code": request["caption_error"], "message": request["reason"]}
+                    if getattr(error, "diagnostics", None):
+                        caption_error["diagnostics"] = error.diagnostics  # why the free yt-dlp route failed too
+                    self.update_job(job_id, state="awaiting_approval", approval=request, error=caption_error, progress={"stage": "awaiting_approval", "message": "Caption retrieval stopped. Choose audio transcription or import a transcript."})
                     return
             # Validate before saving the source checkpoint. Do not cache invalid ingestion.
             source = Transcript.model_validate(source).model_dump(mode="json")
@@ -214,7 +218,7 @@ class Worker:
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Process Visual Learning jobs independently of the browser.")
+    parser = argparse.ArgumentParser(description="Process Distill jobs independently of the browser.")
     parser.add_argument("--data-dir", type=Path, default=default_data_dir())
     parser.add_argument("--once", action="store_true", help="Process at most one ready job.")
     args = parser.parse_args(argv)

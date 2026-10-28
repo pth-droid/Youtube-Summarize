@@ -7,4 +7,4 @@ if (-not (Test-Path -LiteralPath $appPython)) {
 }
 & $appPython -m pip install -r requirements-app.txt
 if ($LASTEXITCODE -ne 0) { throw 'App dependencies could not be installed.' }
-Write-Host 'Setup complete. Run start-app.ps1 to open Visual Learning.'
+Write-Host 'Setup complete. Run start-app.ps1 to open Distill.'

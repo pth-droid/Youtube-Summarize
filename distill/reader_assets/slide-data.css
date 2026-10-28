@@ -1,0 +1,838 @@
+/* Copied from the slide-design skill (layouts/data.css), the layout library this deck draws from.
+   Refresh it from the skill rather than editing it here; Distill's additions live in lecture-layouts.css.
+   The renderer applies it only to the 1280x720 canvas (presenting and print). */
+/* data.css — slide layouts for pyramids & funnels, statistics & charts, images and embeds.
+   Contract: <section class="slide layout-NAME variant-N"> on a 1280x720 canvas; head, h2, .slide-content, foot.
+   Colour only through tokens. Charts are drawn by charts.js from the <table> inside <figure class="chart">;
+   without script the table shows. See LAYOUTS-data.md for markup, limits and build steps. */
+
+/* ===================================================================================================
+   1. Looks and the base canvas. Everything here is wrapped in :where() (zero specificity), so a theme
+      file or layouts.css that sets the same tokens or canvas rules always wins, whatever the load order.
+   =================================================================================================== */
+:where(:root){
+  --paper:#f6f5f1;--surface:#fff;--ink:#222b30;--muted:#59666d;--line:#d9ddd9;--accent:#205e5b;--on-accent:#fff;
+  --tint:#e8f1ed;--feature:#205e5b;--on-feature:#fff;--warning:#76501c;--warning-bg:#f6ecd9;--focus:#237f85;
+  --data-1:#00897b;--data-2:#c0562b;--data-3:#2f6fb5;--data-4:#a07400;--data-5:#6a55c2;
+  --display:"Sitka Heading","Sitka Display",Cambria,"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --mono:"Cascadia Mono","SF Mono",Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,"Segoe UI",sans-serif;
+  --ease:cubic-bezier(.16,1,.3,1)}
+:where(:root[data-deck-theme=maroon]){
+  --paper:#ece2d3;--surface:#fbf6ee;--ink:#2f1418;--muted:#6e5650;--line:#e3d5c2;--accent:#7a1c2a;--on-accent:#fbf6ee;
+  --tint:#f3e7d6;--feature:#7a1c2a;--on-feature:#f7eedf;--warning:#8a5410;--warning-bg:#f6e5c8;--focus:#b0283f;
+  --data-1:#9b2335;--data-2:#0f9d8a;--data-3:#2a5fa8;--data-4:#a07400;--data-5:#6a55c2}
+/* Dark is a screen-only choice: print always falls back to the light look of the same deck. */
+@media screen{
+  :where(:root[data-theme=dark]){color-scheme:dark;
+    --paper:#111a18;--surface:#1b2925;--ink:#e5eee9;--muted:#a9bdb4;--line:#3b4d45;--accent:#94d8c9;--on-accent:#10201c;
+    --tint:#293f35;--feature:#94d8c9;--on-feature:#10201c;--warning:#e9c48a;--warning-bg:#372f23;--focus:#94d8c9;
+    --data-1:#14a08e;--data-2:#d96f38;--data-3:#4f8fd8;--data-4:#b88a17;--data-5:#8c7be0}
+  :where(:root[data-deck-theme=maroon][data-theme=dark]){color-scheme:dark;
+    --paper:#190b0e;--surface:#2a1217;--ink:#f2e7d7;--muted:#cfb9a8;--line:#4e2a31;--accent:#e6c99a;--on-accent:#2a1217;
+    --tint:#3b1b22;--feature:#7a1f2d;--on-feature:#f4e9d9;--warning:#f3a96b;--warning-bg:#43231a;--focus:#f0c98a;
+    --data-1:#d4475a;--data-2:#14a892;--data-3:#4a84d6;--data-4:#b88a17;--data-5:#8c7be0}
+}
+
+:where(.slide){box-sizing:border-box;position:relative;isolation:isolate;width:1280px;height:720px;overflow:hidden;
+  padding:44px 72px 34px;display:flex;flex-direction:column;gap:20px;background:var(--surface);color:var(--ink);
+  font:400 16px/1.38 var(--sans);--h1:68px;--h2:50px;--text:27px;--small:15px;--eyebrow:15px}
+:where(.slide.dense){--h2:42px;--text:23px}
+:where(.slide.denser){--h2:36px;--text:20px}
+:where(.slide *,.slide *::before,.slide *::after){box-sizing:border-box}
+:where(.slide .slide-head){display:flex;align-items:center;gap:10px}
+:where(.slide .eyebrow){margin:0;flex:1;min-width:0;font:600 var(--eyebrow)/1.35 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+:where(.slide .count){font:500 var(--eyebrow)/1 var(--mono);letter-spacing:.12em;color:var(--muted);font-variant-numeric:tabular-nums}
+:where(.slide h2){margin:0;font:600 var(--h2)/1.06 var(--display);letter-spacing:-.018em;text-wrap:balance}
+:where(.slide .slide-content){flex:1;min-height:0;min-width:0;position:relative;font-size:var(--text);line-height:1.38}
+:where(.slide .slide-foot){display:flex;justify-content:space-between;align-items:center;gap:16px;padding-top:10px;border-top:2px solid var(--line);
+  font:500 var(--small)/1.3 var(--mono);letter-spacing:.06em;color:var(--muted)}
+:where(.slide .slide-foot>*){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* A build step keeps its space while hidden, so revealing it never moves anything. */
+:where(.slide .build-pending){opacity:0}
+
+/* Derived tokens every data layout uses. They are set per slide so a slide-level look change follows. */
+:where(.slide){
+  --mark-muted:color-mix(in srgb,var(--muted) 48%,var(--surface));
+  --track:color-mix(in srgb,var(--line) 80%,var(--surface));
+  --leader:color-mix(in srgb,var(--muted) 40%,var(--surface));
+  --chart-bg:var(--surface);--on-data:#fff;
+  --t-label:calc(var(--text) * 1.1);            /* display-serif labels, ~30px */
+  --t-note:max(20px,calc(var(--text) * .82));   /* supporting body text, ~22px, never under 20px */
+  --t-tag:calc(var(--small) + 2px)}             /* uppercase mono tags, 17px */
+
+/* Shared atoms */
+:is(.layout-big-numbers,.layout-bar-stats,.layout-circle-stats,.layout-chart-column,.layout-chart-bar,.layout-chart-line,.layout-chart-pie,.layout-chart-donut) :is(.kpi-tag,.insight-tag){
+  margin:0;font:600 var(--t-tag)/1.35 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+/* ===================================================================================================
+   2. Levels engine: funnels and pyramids. <ol class="levels"> with 3-5 <li>. Each <li> draws its own
+      band with ::before; --i is the level (0 = top), --n the count. A band is a trapezoid whose side
+      insets run from --s0 (top of the shape) to --s1 (bottom), as fractions of the shape width.
+   =================================================================================================== */
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .slide-content{display:flex;flex-direction:column}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .levels{
+  --n:3;--n1:4;--gap:6px;--shape-x:0%;--shape-w:100%;--s0:0;--s1:.3;--den:var(--n);
+  list-style:none;margin:0;padding:0;flex:1;min-height:0;position:relative;counter-reset:lv var(--n1);
+  display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:repeat(var(--n),minmax(0,1fr))}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .levels:not(:has(>li:nth-child(3))){--n:2;--n1:3}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .levels:has(>li:nth-child(4)){--n:4;--n1:5}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .levels:has(>li:nth-child(5)){--n:5;--n1:6}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .levels:has(>li:nth-child(6)){--n:6;--n1:7}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .levels>li{
+  --i:0;counter-increment:lv -1;position:relative;z-index:0;min-width:0;min-height:0;display:grid;align-content:center;
+  --ti:calc((var(--s0) + (var(--s1) - var(--s0)) * var(--i) / var(--den)) * 100%);
+  --bi:calc((var(--s0) + (var(--s1) - var(--s0)) * (var(--i) + 1) / var(--den)) * 100%);
+  --fill:color-mix(in srgb,var(--feature) calc(12% + 22% * var(--i) / max(1,var(--n) - 1)),var(--surface));--fg:var(--ink)}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .levels>li:nth-child(2){--i:1}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .levels>li:nth-child(3){--i:2}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .levels>li:nth-child(4){--i:3}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .levels>li:nth-child(5){--i:4}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .levels>li:nth-child(6){--i:5}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .levels>li::before{
+  content:"";position:absolute;z-index:-1;top:0;bottom:var(--gap);left:var(--shape-x);width:var(--shape-w);background:var(--fill);
+  clip-path:polygon(var(--ti) 0,calc(100% - var(--ti)) 0,calc(100% - var(--bi)) 100%,var(--bi) 100%)}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .levels>li.is-key{--fill:var(--feature);--fg:var(--on-feature)}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) :is(.level-label,.level-value,.level-note){margin:0;min-width:0}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .level-label{font:600 var(--t-label)/1.14 var(--display);letter-spacing:-.01em;text-wrap:balance}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .level-value{font:600 calc(var(--text) * 1.35)/1 var(--display);letter-spacing:-.02em;white-space:nowrap;font-variant-numeric:lining-nums}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .level-note{font-size:var(--t-note);line-height:1.3}
+/* Five or more levels: tighter leading so two-line notes fit a band even under a two-line title. */
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .levels:has(>li:nth-child(5)) .level-note{line-height:1.2;font-size:max(20px,calc(var(--text) * .76))}
+:is(.layout-funnel,.layout-pyramid,.layout-pyramid-outline,.layout-pyramid-left) .levels:has(>li:nth-child(5)) .level-label{line-height:1.06}
+
+/* ---------- Funnel with text ---------- */
+.layout-funnel .levels>li:last-child{--fill:var(--feature);--fg:var(--on-feature)}
+/* v1 — funnel on the left, value and stage inside each band, the explanation beside it on hairlines */
+.layout-funnel.variant-1 .levels{--shape-w:55%}
+.layout-funnel.variant-1 .levels>li{grid-template-columns:55% minmax(0,1fr);column-gap:36px;align-content:stretch;align-items:center}
+.layout-funnel.variant-1 :is(.level-value,.level-label){grid-column:1;text-align:center;color:var(--fg);margin-bottom:var(--gap)}
+.layout-funnel.variant-1 .level-value{grid-row:1;align-self:end;font-size:calc(var(--text) * 1.25)}
+.layout-funnel.variant-1 .level-label{grid-row:2;align-self:start;font-size:var(--text)}
+.layout-funnel.variant-1 .level-label:only-child,.layout-funnel.variant-1 .level-label:first-child:nth-last-child(2){grid-row:1 / 3;align-self:center}
+.layout-funnel.variant-1 .level-note{grid-column:2;grid-row:1 / 3;align-self:center;color:var(--ink)}
+.layout-funnel.variant-1 .levels>li+li::after{content:"";position:absolute;left:calc(55% + 36px);right:0;top:-1px;height:2px;background:var(--line)}
+/* v2 — a full-width funnel; the stated value leads each band */
+.layout-funnel.variant-2 .levels{--shape-x:3%;--shape-w:94%;--s1:.25;--gap:8px}
+.layout-funnel.variant-2 .levels>li{grid-template-columns:auto auto;justify-content:center;align-items:baseline;column-gap:18px;padding-bottom:var(--gap);color:var(--fg);text-align:center}
+.layout-funnel.variant-2 .level-value{grid-row:1;grid-column:1;font-size:calc(var(--text) * 1.6)}
+.layout-funnel.variant-2 .level-label{grid-row:1;grid-column:2}
+.layout-funnel.variant-2 .level-label:first-child{grid-column:1 / -1}
+.layout-funnel.variant-2 .level-note{grid-column:1 / -1;margin-top:2px}
+/* v3 — sideways: stages run left to right and the band narrows in height */
+.layout-funnel.variant-3 .levels{--s1:.32;--gap:6px;grid-template-rows:minmax(0,1fr);grid-template-columns:repeat(var(--n),minmax(0,1fr));column-gap:var(--gap)}
+.layout-funnel.variant-3 .levels>li{grid-template-rows:44% auto auto;align-content:start;row-gap:8px}
+.layout-funnel.variant-3 .levels>li::before{bottom:auto;height:44%;left:0;width:100%;
+  clip-path:polygon(0 var(--ti),100% var(--bi),100% calc(100% - var(--bi)),0 calc(100% - var(--ti)))}
+.layout-funnel.variant-3 .level-value{grid-row:1;place-self:center;color:var(--fg);font-size:calc(var(--text) * 1.45)}
+.layout-funnel.variant-3 .level-label{grid-row:2;margin-top:14px;padding-top:12px;border-top:2px solid var(--line)}
+.layout-funnel.variant-3 .level-note{grid-row:3;color:var(--muted)}
+/* v4 — proportional: each bar's width is its stated value over the first (set --v on li, --max on ol) */
+.layout-funnel.variant-4 .levels{--max:100;--gap:10px}
+.layout-funnel.variant-4 .levels>li{--v-auto:calc(var(--max) * (1 - var(--i) * .2));grid-template-columns:28% minmax(0,1fr) 17%;
+  grid-template-rows:auto auto;column-gap:24px;align-content:center}
+.layout-funnel.variant-4 .levels>li::before{position:static;z-index:auto;grid-column:2;grid-row:1 / 3;justify-self:center;align-self:center;
+  width:min(100%,calc(var(--v, var(--v-auto)) / var(--max) * 100%));height:min(56px,calc(100% - var(--gap)));min-width:8px;
+  clip-path:none;border-radius:6px;background:var(--data-1)}
+.layout-funnel.variant-4 .level-label{grid-column:1;grid-row:1;text-align:right;font-size:var(--text)}
+.layout-funnel.variant-4 .level-note{grid-column:1;grid-row:2;text-align:right;color:var(--muted)}
+.layout-funnel.variant-4 .level-label:last-child{grid-row:1 / 3}
+.layout-funnel.variant-4 .level-value{grid-column:3;grid-row:1 / 3;align-self:center;font-size:calc(var(--text) * 1.4)}
+
+/* ---------- Stepped pyramid (centred steps) ---------- */
+.layout-pyramid .levels{--s0:.33;--s1:0;--den:max(1,var(--n) - 1)}
+.layout-pyramid .levels>li{--inf:calc(var(--s0) + (var(--s1) - var(--s0)) * var(--i) / var(--den))}
+.layout-pyramid .levels>li::before{clip-path:none;border-radius:8px;
+  left:calc(var(--shape-x) + var(--shape-w) * var(--inf));width:calc(var(--shape-w) * (1 - 2 * var(--inf)))}
+/* v1 — centred, text inside, the foundation carries the weight */
+.layout-pyramid.variant-1 .levels>li:last-child{--fill:var(--feature);--fg:var(--on-feature)}
+.layout-pyramid.variant-1 .levels>li{justify-items:center;text-align:center;padding:0 0 var(--gap);color:var(--fg)}
+.layout-pyramid.variant-1 :is(.level-label,.level-note){max-width:calc(var(--shape-w) * (1 - 2 * var(--inf)) - 40px)}
+/* v2 — pyramid on the left with ordinals, labels on the right joined by leader lines; the apex leads */
+.layout-pyramid.variant-2 .levels{--shape-w:46%;--s0:.3}
+.layout-pyramid.variant-2 .levels>li:first-child{--fill:var(--feature);--fg:var(--on-feature)}
+.layout-pyramid.variant-2 .levels>li{grid-template-columns:46% minmax(0,1fr);column-gap:48px;align-content:center;padding-bottom:var(--gap)}
+.layout-pyramid.variant-2 .levels>li::before{content:counter(lv,decimal-leading-zero);display:grid;place-items:center;color:var(--fg);
+  font:600 calc(var(--text) * 1.15)/1 var(--display);letter-spacing:.02em}
+.layout-pyramid.variant-2 :is(.level-label,.level-note){grid-column:2}
+.layout-pyramid.variant-2 .level-note{color:var(--muted)}
+.layout-pyramid.variant-2 .levels>li::after{content:"";position:absolute;top:calc(50% - var(--gap) / 2 - 1px);height:2px;background:var(--leader);
+  left:calc(var(--shape-w) * (1 - var(--inf)) + 10px);width:calc(46% + 30px - var(--shape-w) * (1 - var(--inf)) - 10px)}
+/* v3 — mirrored: labels on the left, outlined steps on the right, one key level filled */
+.layout-pyramid.variant-3 .levels{--shape-x:52%;--shape-w:48%;--s0:.3}
+.layout-pyramid.variant-3 .levels>li{--fill:transparent;--fg:var(--accent);grid-template-columns:minmax(0,1fr) 48%;column-gap:48px;align-content:center;padding-bottom:var(--gap);text-align:right}
+.layout-pyramid.variant-3 .levels>li.is-key{--fill:var(--feature);--fg:var(--on-feature)}
+.layout-pyramid.variant-3 .levels>li::before{border:2px solid var(--accent);content:counter(lv,decimal-leading-zero);display:grid;place-items:center;color:var(--fg);
+  font:600 calc(var(--text) * 1.15)/1 var(--display)}
+.layout-pyramid.variant-3 .levels>li.is-key::before{border-color:var(--feature)}
+.layout-pyramid.variant-3 :is(.level-label,.level-note){grid-column:1}
+.layout-pyramid.variant-3 .level-note{color:var(--muted)}
+.layout-pyramid.variant-3 .levels>li::after{content:"";position:absolute;top:calc(50% - var(--gap) / 2 - 1px);height:2px;background:var(--leader);
+  left:calc(52% - 34px);width:calc(34px + var(--shape-w) * var(--inf) - 10px)}
+/* v4 — wide tiers: a shallow pyramid with ordinal, label and note on one line inside each tier */
+.layout-pyramid.variant-4 .levels{--s0:.17}
+.layout-pyramid.variant-4 .levels>li{--fill:var(--tint);grid-template-columns:auto auto minmax(0,1fr);align-items:baseline;align-content:center;column-gap:22px;
+  padding:0 calc(var(--shape-w) * var(--inf) + 28px) var(--gap);color:var(--fg)}
+.layout-pyramid.variant-4 .levels>li.is-key{--fill:var(--feature);--fg:var(--on-feature)}
+.layout-pyramid.variant-4 .levels>li::after{content:counter(lv,decimal-leading-zero);order:-1;font:600 var(--t-tag)/1 var(--mono);letter-spacing:.12em;color:inherit;opacity:.8}
+.layout-pyramid.variant-4 .level-note{color:inherit}
+
+/* ---------- Pyramid with outline (a triangle drawn as a 2px line, split by 2px dividers) ---------- */
+.layout-pyramid-outline .levels{--gap:0px;--s0:.5;--s1:0;
+  --outline:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpolyline points='0,100 50,0 100,100' fill='none' stroke='%23000' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E")}
+.layout-pyramid-outline .levels>li{--fill:transparent;
+  --din:calc(var(--s0) + (var(--s1) - var(--s0)) * var(--i) / var(--n));
+  --mid:calc(var(--s0) + (var(--s1) - var(--s0)) * (var(--i) + .5) / var(--n))}
+.layout-pyramid-outline .levels>li.is-key{--fill:var(--feature);--fg:var(--on-feature)}
+.layout-pyramid-outline .levels::after{content:"";position:absolute;z-index:2;pointer-events:none;top:0;bottom:0;left:var(--shape-x);width:var(--shape-w);
+  background:var(--accent);-webkit-mask:var(--outline) 0 0/100% 100% no-repeat;mask:var(--outline) 0 0/100% 100% no-repeat}
+.layout-pyramid-outline .levels::before{content:"";position:absolute;z-index:2;left:var(--shape-x);width:var(--shape-w);bottom:0;height:2px;background:var(--accent)}
+.layout-pyramid-outline .levels>li::after{content:"";position:absolute;z-index:2;top:0;height:2px;background:var(--accent);
+  left:calc(var(--shape-x) + var(--shape-w) * var(--din));width:calc(var(--shape-w) * (1 - 2 * var(--din)))}
+.layout-pyramid-outline .level-note{color:var(--muted)}
+.layout-pyramid-outline .levels>li .level-label::before{content:"";position:absolute;top:calc(50% - 1px);height:2px;background:var(--leader)}
+/* v1 — triangle on the left, labels on the right with leaders from the edge */
+.layout-pyramid-outline.variant-1 .levels{--shape-w:42%}
+.layout-pyramid-outline.variant-1 .levels>li{grid-template-columns:42% minmax(0,1fr);column-gap:56px}
+.layout-pyramid-outline.variant-1 :is(.level-label,.level-note){grid-column:2}
+.layout-pyramid-outline.variant-1 .level-label::before{left:calc(var(--shape-w) * (1 - var(--mid)) + 8px);width:calc(42% + 40px - var(--shape-w) * (1 - var(--mid)) - 8px)}
+/* v2 — a flat-topped pyramid, wide enough to hold every label inside its band */
+.layout-pyramid-outline.variant-2 .levels{--shape-x:4%;--shape-w:92%;--s0:.3;
+  --outline:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpolyline points='0,100 30,0 70,0 100,100' fill='none' stroke='%23000' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E")}
+.layout-pyramid-outline.variant-2 .levels>li{justify-items:center;text-align:center;padding:4px 0 0;color:var(--fg)}
+.layout-pyramid-outline.variant-2 .level-label::before{display:none}
+.layout-pyramid-outline.variant-2 .level-note{color:inherit}
+.layout-pyramid-outline.variant-2 .levels>li:not(.is-key) .level-note{color:var(--muted)}
+.layout-pyramid-outline.variant-2 :is(.level-label,.level-note){max-width:calc(var(--shape-w) * (1 - 2 * var(--din)) - 60px)}
+/* v3 — centred triangle, labels alternate right and left */
+.layout-pyramid-outline.variant-3 .levels{--shape-x:33%;--shape-w:34%}
+.layout-pyramid-outline.variant-3 .levels>li{grid-template-columns:33% 34% 33%}
+.layout-pyramid-outline.variant-3 .levels>li:nth-child(odd) :is(.level-label,.level-note){grid-column:3;padding-left:34px}
+.layout-pyramid-outline.variant-3 .levels>li:nth-child(even) :is(.level-label,.level-note){grid-column:1;padding-right:34px;text-align:right}
+.layout-pyramid-outline.variant-3 .levels>li:nth-child(odd) .level-label::before{left:calc(var(--shape-x) + var(--shape-w) * (1 - var(--mid)) + 8px);width:calc(67% + 26px - var(--shape-x) - var(--shape-w) * (1 - var(--mid)) - 8px)}
+.layout-pyramid-outline.variant-3 .levels>li:nth-child(even) .level-label::before{left:calc(33% - 26px);width:calc(26px + var(--shape-w) * var(--mid) - 8px)}
+/* v4 — labels on the left, triangle on the right, the apex filled as the goal (or the .is-key band) */
+.layout-pyramid-outline.variant-4 .levels{--shape-x:56%;--shape-w:44%}
+.layout-pyramid-outline.variant-4 .levels:not(:has(>.is-key))>li:first-child{--fill:var(--feature)}
+.layout-pyramid-outline.variant-4 .levels>li{grid-template-columns:minmax(0,1fr) 44%;column-gap:64px;text-align:right}
+.layout-pyramid-outline.variant-4 :is(.level-label,.level-note){grid-column:1}
+.layout-pyramid-outline.variant-4 .level-label::before{left:calc(56% - 46px);width:calc(46px + var(--shape-w) * var(--mid) - 8px)}
+
+/* ---------- Left-stepped pyramid (a staircase on a straight left edge) ---------- */
+.layout-pyramid-left .levels{--w0:.3;--w1:.64;--den:max(1,var(--n) - 1)}
+.layout-pyramid-left .levels>li{--wf:calc(var(--w0) + (var(--w1) - var(--w0)) * var(--i) / var(--den))}
+.layout-pyramid-left .levels>li::before{clip-path:none;left:0;width:calc(var(--shape-w) * var(--wf));border-radius:0 8px 8px 0}
+/* v1 — label inside the step, the note starts where the step ends */
+.layout-pyramid-left.variant-1 .levels>li:last-child{--fill:var(--feature);--fg:var(--on-feature)}
+.layout-pyramid-left.variant-1 .levels>li{grid-template-columns:calc(100% * var(--wf)) minmax(0,1fr);align-items:center;padding-bottom:var(--gap)}
+.layout-pyramid-left.variant-1 .level-label{grid-column:1;padding:0 22px;color:var(--fg)}
+.layout-pyramid-left.variant-1 .level-note{grid-column:2;padding-left:30px}
+/* v2 — ordinals on the steps, labels in one straight column; leaders show the staircase */
+.layout-pyramid-left.variant-2 .levels{--w0:.2;--w1:.54}
+.layout-pyramid-left.variant-2 .levels>li{--fill:var(--tint);grid-template-columns:minmax(0,1fr) 40%;column-gap:0;align-content:center;padding-bottom:var(--gap)}
+.layout-pyramid-left.variant-2 .levels>li.is-key{--fill:var(--feature);--fg:var(--on-feature)}
+.layout-pyramid-left.variant-2 .levels>li::before{content:counter(lv,decimal-leading-zero);display:flex;align-items:center;padding-left:22px;color:var(--fg);
+  font:600 calc(var(--text) * 1.15)/1 var(--display)}
+.layout-pyramid-left.variant-2 :is(.level-label,.level-note){grid-column:2}
+.layout-pyramid-left.variant-2 .level-note{color:var(--muted)}
+.layout-pyramid-left.variant-2 .levels>li::after{content:"";position:absolute;top:calc(50% - var(--gap) / 2 - 1px);height:2px;background:var(--leader);
+  left:calc(100% * var(--wf) + 10px);right:calc(40% + 18px)}
+/* v3 — climbing steps: columns rise left to right, each label rides on its step */
+.layout-pyramid-left.variant-3 .levels{--h0:.2;--h1:.62;grid-template-rows:minmax(0,1fr);grid-template-columns:repeat(var(--n),minmax(0,1fr));column-gap:6px;direction:rtl}
+.layout-pyramid-left.variant-3 .levels>li:first-child{--fill:var(--feature);--fg:var(--on-feature)}
+.layout-pyramid-left.variant-3 .levels>li{direction:ltr;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;
+  --fill:color-mix(in srgb,var(--feature) calc(34% - 22% * var(--i) / max(1,var(--n) - 1)),var(--surface))}
+.layout-pyramid-left.variant-3 .levels>li::before{position:static;z-index:auto;order:9;width:auto;flex:0 0 calc((var(--h1) - (var(--h1) - var(--h0)) * var(--i) / var(--den)) * 100%);
+  margin-top:12px;border-radius:8px 8px 0 0;content:counter(lv,decimal-leading-zero);display:flex;align-items:flex-end;padding:0 0 16px 18px;color:var(--fg);
+  font:600 calc(var(--text) * 1.3)/1 var(--display)}
+.layout-pyramid-left.variant-3 :is(.level-label,.level-note){padding:0 6px}
+.layout-pyramid-left.variant-3 .level-label{font-size:var(--text)}
+.layout-pyramid-left.variant-3 .level-note{color:var(--muted)}
+/* v4 — wide outlined steps holding all their text; the key level is filled */
+.layout-pyramid-left.variant-4 .levels{--w0:.5;--w1:1}
+.layout-pyramid-left.variant-4 .levels>li{--fill:transparent;--fg:var(--ink);grid-template-columns:calc(100% * var(--wf));align-content:center;padding:0 0 var(--gap);color:var(--fg)}
+.layout-pyramid-left.variant-4 .levels>li.is-key{--fill:var(--feature);--fg:var(--on-feature)}
+.layout-pyramid-left.variant-4 .levels>li::before{border:2px solid var(--accent);border-left-width:6px}
+.layout-pyramid-left.variant-4 .levels>li.is-key::before{border-color:var(--feature)}
+.layout-pyramid-left.variant-4 :is(.level-label,.level-note){padding:0 26px 0 30px}
+.layout-pyramid-left.variant-4 .level-note{opacity:.88}
+
+/* ===================================================================================================
+   3. Big numbers: <ul class="kpis"> with 2-4 <li class="kpi">: .kpi-tag, .kpi-value (+ .unit), .kpi-note
+   =================================================================================================== */
+.layout-big-numbers .slide-content{display:flex;flex-direction:column}
+.layout-big-numbers .kpis{--n:3;--fig:128px;list-style:none;margin:0;padding:0;flex:1;min-height:0;display:grid}
+.layout-big-numbers .kpis:not(:has(>li:nth-child(3))){--n:2;--fig:150px}
+.layout-big-numbers .kpis:has(>li:nth-child(4)){--n:4;--fig:104px}
+.layout-big-numbers .kpi{min-width:0;min-height:0;margin:0}
+.layout-big-numbers .kpi>*{margin:0}
+.layout-big-numbers .kpi-value{font:600 var(--fig)/.9 var(--display);letter-spacing:-.035em;color:var(--accent);white-space:nowrap;font-variant-numeric:lining-nums proportional-nums}
+.layout-big-numbers .kpi-value .unit{font-size:.46em;letter-spacing:-.01em;margin-left:.06em;color:var(--ink)}
+.layout-big-numbers .kpi-note{font-size:var(--t-note);line-height:1.32;color:var(--ink);text-wrap:pretty}
+/* v1 — a KPI row under one accent rule */
+.layout-big-numbers.variant-1 .kpis{flex:none;margin-block:auto;grid-template-columns:repeat(var(--n),minmax(0,1fr));column-gap:48px;border-top:2px solid var(--accent)}
+.layout-big-numbers.variant-1 .kpi{display:flex;flex-direction:column;gap:16px;padding-top:30px}
+.layout-big-numbers.variant-1 .kpi-note{max-width:30ch}
+/* v2 — bento: one giant figure on a filled tile, the others on quiet tiles */
+.layout-big-numbers.variant-2 .kpis{gap:14px;grid-template-columns:1.25fr 1fr;grid-template-rows:repeat(2,minmax(0,1fr))}
+.layout-big-numbers.variant-2 .kpis:not(:has(>li:nth-child(3))){grid-template-rows:minmax(0,1fr)}
+.layout-big-numbers.variant-2 .kpis:has(>li:nth-child(4)){grid-template-columns:1.2fr 1fr 1fr}
+.layout-big-numbers.variant-2 .kpis:has(>li:nth-child(4))>li:nth-child(4){grid-column:2 / 4}
+.layout-big-numbers.variant-2 .kpi{display:flex;flex-direction:column;justify-content:space-between;gap:10px;padding:22px 26px;border-radius:10px;background:var(--tint)}
+.layout-big-numbers.variant-2 .kpi:first-child{grid-row:1 / -1;background:var(--feature);color:var(--on-feature);padding:30px 34px}
+.layout-big-numbers.variant-2 .kpi:first-child :is(.kpi-tag,.kpi-value,.unit,.kpi-note){color:inherit}
+.layout-big-numbers.variant-2 .kpi:first-child .kpi-tag{opacity:.85}
+.layout-big-numbers.variant-2 .kpi:first-child .kpi-value{font-size:150px;margin-top:auto}
+.layout-big-numbers.variant-2 .kpi:first-child .kpi-note{font:500 calc(var(--text) * 1.05)/1.3 var(--display);max-width:26ch}
+.layout-big-numbers.variant-2 .kpi:not(:first-child) .kpi-value{font-size:76px}
+.layout-big-numbers.variant-2 .kpi:not(:first-child) .kpi-note{font-size:max(20px,calc(var(--text) * .78))}
+/* v3 — findings: one row per figure, split by hairlines; four figures fall into two columns */
+.layout-big-numbers.variant-3 .kpis{--fig:112px;grid-template-columns:minmax(0,1fr);grid-auto-rows:minmax(0,1fr);column-gap:56px}
+.layout-big-numbers.variant-3 .kpis:not(:has(>li:nth-child(3))){--fig:128px}
+.layout-big-numbers.variant-3 .kpis:has(>li:nth-child(4)){--fig:96px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.layout-big-numbers.variant-3 .kpi{display:grid;grid-template-columns:40% minmax(0,1fr);grid-template-rows:auto auto;column-gap:28px;row-gap:6px;align-content:center;border-top:2px solid var(--line)}
+.layout-big-numbers.variant-3 .kpis:has(>li:nth-child(4)) .kpi{grid-template-columns:46% minmax(0,1fr)}
+.layout-big-numbers.variant-3 .kpi-value{grid-column:1;grid-row:1 / 3;align-self:center}
+.layout-big-numbers.variant-3 :is(.kpi-tag,.kpi-note){grid-column:2}
+.layout-big-numbers.variant-3 .kpi-tag{align-self:end}
+.layout-big-numbers.variant-3 .kpi-note{align-self:start}
+/* v4 — the lead figure reads as a sentence; the rest sit in a strip below one rule */
+.layout-big-numbers.variant-4 .kpis{grid-template-columns:repeat(calc(var(--n) - 1),minmax(0,1fr));grid-template-rows:minmax(0,1fr) auto;column-gap:0}
+.layout-big-numbers.variant-4 .kpi:first-child{grid-column:1 / -1;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:40px;align-items:end;align-content:center;padding-bottom:22px}
+.layout-big-numbers.variant-4 .kpi:first-child .kpi-value{grid-row:1 / 3;font-size:150px}
+.layout-big-numbers.variant-4 .kpi:first-child .kpi-tag{grid-column:2;align-self:end}
+.layout-big-numbers.variant-4 .kpi:first-child .kpi-note{grid-column:2;font:500 calc(var(--text) * 1.18)/1.22 var(--display);letter-spacing:-.008em;padding-bottom:10px}
+.layout-big-numbers.variant-4 .kpi:not(:first-child){display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:22px;align-items:center;padding:18px 28px 8px;border-top:2px solid var(--accent)}
+.layout-big-numbers.variant-4 .kpi:nth-child(n+3){border-left:2px solid var(--line)}
+.layout-big-numbers.variant-4 .kpi:nth-child(2){padding-left:0}
+.layout-big-numbers.variant-4 .kpi:not(:first-child) .kpi-value{grid-row:1 / 3;font-size:72px}
+.layout-big-numbers.variant-4 .kpi:not(:first-child) :is(.kpi-tag,.kpi-note){grid-column:2}
+.layout-big-numbers.variant-4 .kpi:not(:first-child) .kpi-note{font-size:max(20px,calc(var(--text) * .78))}
+
+/* ===================================================================================================
+   4. Bar stats: <ul class="bars" style="--max:100"> with 3-6 <li style="--v:72">: .bar-label, .bar-value
+      The bar is drawn by li::after from --v/--max; the printed value is the .bar-value text.
+   =================================================================================================== */
+.layout-bar-stats .slide-content{display:flex;flex-direction:column}
+.layout-bar-stats .bars{--n:3;--max:100;list-style:none;margin:0;padding:0;flex:1;min-height:0;display:grid;
+  grid-template-columns:minmax(0,1fr);grid-template-rows:repeat(var(--n),minmax(0,1fr));align-content:center}
+.layout-bar-stats .bars:has(>li:nth-child(4)){--n:4}
+.layout-bar-stats .bars:has(>li:nth-child(5)){--n:5}
+.layout-bar-stats .bars:has(>li:nth-child(6)){--n:6}
+.layout-bar-stats .bars>li{--v:0;min-width:0;min-height:0;display:grid;align-content:center}
+.layout-bar-stats .bars>li::after{content:"";grid-area:bar;align-self:center;height:var(--bar-h,18px);min-width:4px;border-radius:0 4px 4px 0;background:var(--data-1);
+  width:min(100%,calc(var(--v) / var(--max) * 100%))}
+.layout-bar-stats .bar-label{grid-area:label;min-width:0;margin:0;font-size:var(--text);line-height:1.2}
+.layout-bar-stats .bar-value{grid-area:value;margin:0;font:600 calc(var(--text) * 1.25)/1 var(--display);white-space:nowrap;font-variant-numeric:lining-nums}
+/* v1 — meter rows: label and value above a full-length track */
+.layout-bar-stats.variant-1 .bars>li{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"label value" "bar bar";column-gap:24px;row-gap:10px}
+.layout-bar-stats.variant-1 .bars>li::before{content:"";grid-area:bar;align-self:center;height:var(--bar-h,18px);border-radius:4px;background:var(--track)}
+.layout-bar-stats.variant-1 .bar-value{align-self:end}
+/* v2 — the value leads each row in large serif; bars underline the label */
+.layout-bar-stats.variant-2 .bars{--vw:220px}
+.layout-bar-stats.variant-2 .bars:has(>li:nth-child(5)){--vw:180px}
+.layout-bar-stats.variant-2 .bars>li{--bar-h:14px;grid-template-columns:var(--vw) minmax(0,1fr);grid-template-areas:"value label" "value bar";column-gap:28px;row-gap:10px;border-top:2px solid var(--line)}
+.layout-bar-stats.variant-2 .bar-value{align-self:center;font-size:72px;letter-spacing:-.03em;color:var(--accent)}
+.layout-bar-stats.variant-2 .bars:has(>li:nth-child(5)) .bar-value{font-size:58px}
+.layout-bar-stats.variant-2 .bar-label{align-self:end}
+/* v3 — ranked: labels in a column, values at the bar tips, the key bar coloured and the rest quiet */
+.layout-bar-stats.variant-3 .bars>li{--bar-h:28px;--room:120px;grid-template-columns:31% minmax(0,1fr);grid-template-areas:"label bar";column-gap:28px}
+.layout-bar-stats.variant-3 .bars>li::after{width:calc((100% - var(--room)) * min(1,var(--v) / var(--max)))}
+.layout-bar-stats.variant-3 .bar-label{align-self:center;text-align:right}
+.layout-bar-stats.variant-3 .bar-value{grid-area:bar;align-self:center;justify-self:start;margin-left:calc((100% - var(--room)) * min(1,var(--v) / var(--max)) + 14px);font-size:calc(var(--text) * 1.15)}
+.layout-bar-stats.variant-3 .bars:has(>.is-key)>li:not(.is-key)::after{background:var(--mark-muted)}
+.layout-bar-stats.variant-3 .bars:has(>.is-key)>li:not(.is-key) .bar-value{color:var(--muted);font-weight:500}
+.layout-bar-stats.variant-3 .bars>li.is-key .bar-label{font-weight:650}
+/* v4 — tiles: each figure on its own tile with a meter at its foot */
+.layout-bar-stats.variant-4 .bars{grid-template-rows:none;grid-template-columns:repeat(var(--n),minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:14px;align-content:stretch}
+.layout-bar-stats.variant-4 .bars:has(>li:nth-child(4)){grid-template-columns:repeat(2,minmax(0,1fr))}
+.layout-bar-stats.variant-4 .bars:has(>li:nth-child(5)){grid-template-columns:repeat(3,minmax(0,1fr))}
+.layout-bar-stats.variant-4 .bars>li{--bar-h:12px;grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:"value" "label" "bar";row-gap:10px;align-content:stretch;
+  padding:24px 26px 26px;border-radius:10px;background:var(--tint)}
+.layout-bar-stats.variant-4 .bars>li::before{content:"";grid-area:bar;align-self:end;height:var(--bar-h);border-radius:4px;background:color-mix(in srgb,var(--line) 70%,var(--tint))}
+.layout-bar-stats.variant-4 .bars>li::after{align-self:end}
+.layout-bar-stats.variant-4 .bar-value{font-size:76px;letter-spacing:-.03em;color:var(--accent)}
+.layout-bar-stats.variant-4 .bars:has(>li:nth-child(4)) .bar-value{font-size:64px}
+.layout-bar-stats.variant-4 .bar-label{font-size:var(--t-note);line-height:1.3}
+
+/* ===================================================================================================
+   5. Circle stats: <ul class="rings"> with 2-4 <li style="--p:68">: .ring-value, .ring-label, .ring-note
+      The ring is li::before (conic gradient masked to a ring); --p is the percentage, 0-100.
+   =================================================================================================== */
+.layout-circle-stats .slide-content{display:flex;flex-direction:column}
+.layout-circle-stats .rings{--n:3;--ring:236px;--ring-w:18px;--ring-fig:68px;list-style:none;margin:0;padding:0;flex:1;min-height:0;display:grid}
+.layout-circle-stats .rings:not(:has(>li:nth-child(3))){--n:2;--ring:260px;--ring-fig:76px}
+.layout-circle-stats .rings:has(>li:nth-child(4)){--n:4;--ring:210px;--ring-fig:60px}
+.layout-circle-stats .rings>li{--p:0;min-width:0;min-height:0;display:grid;grid-template-areas:"ring" "label" "note";grid-template-rows:auto auto auto;align-content:center}
+.layout-circle-stats .rings>li::before{content:"";grid-area:ring;width:var(--ring);aspect-ratio:1;border-radius:50%;
+  background:conic-gradient(var(--data-1) calc(var(--p) * 1%),var(--track) 0);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - var(--ring-w) - .5px),#000 calc(100% - var(--ring-w)));
+  mask:radial-gradient(farthest-side,transparent calc(100% - var(--ring-w) - .5px),#000 calc(100% - var(--ring-w)))}
+.layout-circle-stats .ring-value{grid-area:ring;place-self:center;margin:0;font:600 var(--ring-fig)/1 var(--display);letter-spacing:-.03em;white-space:nowrap;font-variant-numeric:lining-nums}
+.layout-circle-stats .ring-label{grid-area:label;margin:0;font:600 var(--t-label)/1.15 var(--display);text-wrap:balance}
+.layout-circle-stats .ring-note{grid-area:note;margin:4px 0 0;font-size:var(--t-note);line-height:1.3;color:var(--muted);text-wrap:pretty}
+/* v1 — a row of rings, value inside, label below */
+.layout-circle-stats.variant-1 .rings{grid-template-columns:repeat(var(--n),minmax(0,1fr));column-gap:40px;align-content:center}
+.layout-circle-stats.variant-1 .rings>li{justify-items:center;text-align:center;align-content:start}
+.layout-circle-stats.variant-1 .ring-label{margin-top:22px}
+/* v2 — a list: small ring on the left, label and note on the right */
+.layout-circle-stats.variant-2 .rings{--ring:150px;--ring-w:14px;--ring-fig:44px;grid-template-rows:repeat(var(--n),minmax(0,1fr));align-content:center}
+.layout-circle-stats.variant-2 .rings:not(:has(>li:nth-child(3))){--ring:180px;--ring-fig:52px}
+.layout-circle-stats.variant-2 .rings:has(>li:nth-child(4)){--ring:140px;--ring-w:13px;--ring-fig:40px;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));column-gap:44px}
+.layout-circle-stats.variant-2 .rings>li{grid-template-columns:var(--ring) minmax(0,1fr);grid-template-areas:"ring label" "ring note";grid-template-rows:auto auto;column-gap:30px;
+  align-content:center;border-top:2px solid var(--line)}
+.layout-circle-stats.variant-2 .rings>li::before{grid-row:1 / 3;align-self:center}
+.layout-circle-stats.variant-2 .ring-label{align-self:end}
+.layout-circle-stats.variant-2 .ring-note{align-self:start}
+/* v3 — one hero ring carries the headline; the others sit small beside it */
+.layout-circle-stats.variant-3 .rings{grid-template-columns:400px minmax(0,1fr);grid-template-rows:repeat(2,minmax(0,1fr));column-gap:48px}
+.layout-circle-stats.variant-3 .rings:not(:has(>li:nth-child(3))){grid-template-rows:minmax(0,1fr)}
+.layout-circle-stats.variant-3 .rings:has(>li:nth-child(4)){grid-template-rows:repeat(3,minmax(0,1fr))}
+.layout-circle-stats.variant-3 .rings>li:first-child{--ring:300px;--ring-w:24px;--ring-fig:104px;grid-row:1 / -1;justify-items:center;text-align:center}
+.layout-circle-stats.variant-3 .rings>li:first-child .ring-label{margin-top:18px}
+.layout-circle-stats.variant-3 .rings>li:not(:first-child){--ring:110px;--ring-w:12px;--ring-fig:34px;grid-column:2;grid-template-columns:var(--ring) minmax(0,1fr);
+  grid-template-areas:"ring label" "ring note";column-gap:26px;border-top:2px solid var(--line)}
+.layout-circle-stats.variant-3 .rings>li:not(:first-child)::before{grid-row:1 / 3;align-self:center}
+.layout-circle-stats.variant-3 .rings>li:not(:first-child) .ring-label{align-self:end;font-size:var(--text)}
+.layout-circle-stats.variant-3 .rings>li:not(:first-child) .ring-note{align-self:start}
+/* v4 — half-circle gauges, the value sitting in the arc */
+.layout-circle-stats.variant-4 .rings{--gauge:300px;--ring-w:20px;grid-template-columns:repeat(var(--n),minmax(0,1fr));column-gap:40px;align-content:center}
+.layout-circle-stats.variant-4 .rings:has(>li:nth-child(4)){--gauge:236px;--ring-w:16px}
+.layout-circle-stats.variant-4 .rings>li{justify-items:center;text-align:center;align-content:start}
+.layout-circle-stats.variant-4 .rings>li::before{width:var(--gauge);aspect-ratio:2;border-radius:var(--gauge) var(--gauge) 0 0;
+  background:conic-gradient(from -90deg at 50% 100%,var(--data-1) calc(var(--p) * 1.8deg),var(--track) 0 180deg,transparent 0);
+  -webkit-mask:radial-gradient(circle farthest-side at 50% 100%,transparent calc(100% - var(--ring-w) - .5px),#000 calc(100% - var(--ring-w)));
+  mask:radial-gradient(circle farthest-side at 50% 100%,transparent calc(100% - var(--ring-w) - .5px),#000 calc(100% - var(--ring-w)))}
+.layout-circle-stats.variant-4 .ring-value{align-self:end;margin-bottom:-6px}
+.layout-circle-stats.variant-4 .ring-label{margin-top:24px;padding-top:14px;border-top:2px solid var(--line);width:100%}
+
+/* ===================================================================================================
+   6. Tables: <table class="data-table"> with <thead> and <tbody>; row headers are <th scope="row">.
+      .num right-aligns numeric cells; tr.is-key marks a row; .key-col-N on the table marks column N.
+   =================================================================================================== */
+:is(.layout-table,.layout-table-3row) .slide-content{display:flex;flex-direction:column;justify-content:center}
+:is(.layout-table,.layout-table-3row) .data-table{width:100%;border-collapse:collapse;font-size:var(--text);line-height:1.25;font-variant-numeric:lining-nums}
+:is(.layout-table,.layout-table-3row) .data-table :is(th,td){padding:14px 20px;text-align:left;vertical-align:middle}
+:is(.layout-table,.layout-table-3row) .data-table :is(th,td):first-child{padding-left:0}
+:is(.layout-table,.layout-table-3row) .data-table :is(th,td):last-child{padding-right:0}
+:is(.layout-table,.layout-table-3row) .data-table thead th{padding-bottom:12px;font:600 var(--t-tag)/1.3 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--ink);vertical-align:bottom}
+:is(.layout-table,.layout-table-3row) .data-table tbody th{font:600 calc(var(--text) * 1.05)/1.18 var(--display);letter-spacing:-.006em}
+:is(.layout-table,.layout-table-3row) .data-table tbody tr+tr>*{border-top:2px solid var(--line)}
+:is(.layout-table,.layout-table-3row) .data-table .num{text-align:right;font-variant-numeric:tabular-nums lining-nums;white-space:nowrap}
+:is(.layout-table,.layout-table-3row) .data-table td small{display:block;font-size:var(--t-note);color:var(--muted);line-height:1.3}
+/* 3-row table: three tall rows that fill the slide */
+.layout-table-3row .data-table{height:100%}
+.layout-table-3row .data-table tbody th{font-size:calc(var(--text) * 1.2);width:28%}
+/* v1 — ruled */
+/* v2 — the row headers become filled tabs */
+.layout-table-3row.variant-2 .data-table{border-collapse:separate;border-spacing:0 8px;margin-top:-8px}
+.layout-table-3row.variant-2 .data-table tbody tr+tr>*{border-top:0}
+.layout-table-3row.variant-2 .data-table tbody>tr>*{border-bottom:2px solid var(--line)}
+.layout-table-3row.variant-2 .data-table tbody th{background:var(--feature);color:var(--on-feature);border-radius:8px;padding-left:24px;border-bottom:0}
+.layout-table-3row.variant-2 .data-table tbody td:nth-child(2){padding-left:28px}
+.layout-table-3row.variant-2 .data-table thead th{border-bottom:0}
+/* v3 — one recommended row raised on tint, with an accent edge */
+.layout-table-3row.variant-3 .data-table tbody tr.is-key>*{background:var(--tint);border-top-color:transparent}
+.layout-table-3row.variant-3 .data-table tbody tr.is-key+tr>*{border-top-color:transparent}
+.layout-table-3row.variant-3 .data-table tbody tr.is-key>th{box-shadow:inset 6px 0 0 var(--accent);padding-left:28px;color:var(--accent)}
+.layout-table-3row.variant-3 .data-table tbody tr.is-key>td{font-weight:600}
+.layout-table-3row.variant-3 .data-table tbody tr.is-key>:last-child{padding-right:20px}
+/* v4 — each row is its own card; columns split by surface gaps */
+.layout-table-3row.variant-4 .data-table{border-collapse:separate;border-spacing:0 12px;margin:-12px 0}
+.layout-table-3row.variant-4 .data-table thead th{border-bottom:0;padding-bottom:0}
+.layout-table-3row.variant-4 .data-table tbody tr+tr>*{border-top:0}
+.layout-table-3row.variant-4 .data-table tbody :is(th,td){background:var(--tint);border-left:3px solid var(--surface)}
+.layout-table-3row.variant-4 .data-table tbody th{border-left:0;border-radius:10px 0 0 10px;padding-left:26px}
+.layout-table-3row.variant-4 .data-table tbody :is(th,td):last-child{border-radius:0 10px 10px 0;padding-right:26px}
+.layout-table-3row.variant-4 .data-table thead th:first-child{padding-left:26px}
+.layout-table-3row.variant-4 .data-table tbody tr.is-key>*{background:var(--feature);color:var(--on-feature)}
+.layout-table-3row.variant-4 .data-table tbody tr.is-key small{color:inherit;opacity:.85}
+
+/* Small table: 2-4 columns x 2-5 rows */
+/* v1 — editorial: hairlines only, numbers right-aligned */
+/* v2 — one column carried on a tinted band, its head filled */
+.layout-table.variant-2 .data-table{border-collapse:separate;border-spacing:0}
+.layout-table.variant-2 .data-table:is(.key-col-2,.key-col-3,.key-col-4,.key-col-5) :is(th,td){border-top-width:0}
+.layout-table.variant-2 .data-table tbody tr+tr>*{border-top:2px solid var(--line)}
+.layout-table.variant-2 .data-table.key-col-2 :is(th,td):nth-child(2),.layout-table.variant-2 .data-table.key-col-3 :is(th,td):nth-child(3),
+.layout-table.variant-2 .data-table.key-col-4 :is(th,td):nth-child(4),.layout-table.variant-2 .data-table.key-col-5 :is(th,td):nth-child(5){
+  background:var(--tint);padding-left:22px;padding-right:22px;font-weight:600}
+.layout-table.variant-2 .data-table.key-col-2 thead th:nth-child(2),.layout-table.variant-2 .data-table.key-col-3 thead th:nth-child(3),
+.layout-table.variant-2 .data-table.key-col-4 thead th:nth-child(4),.layout-table.variant-2 .data-table.key-col-5 thead th:nth-child(5){
+  background:var(--feature);color:var(--on-feature);border-radius:8px 8px 0 0;border-bottom-color:var(--feature);padding-top:12px}
+.layout-table.variant-2 .data-table.key-col-2 tbody tr:last-child>:nth-child(2),.layout-table.variant-2 .data-table.key-col-3 tbody tr:last-child>:nth-child(3),
+.layout-table.variant-2 .data-table.key-col-4 tbody tr:last-child>:nth-child(4),.layout-table.variant-2 .data-table.key-col-5 tbody tr:last-child>:nth-child(5){border-radius:0 0 8px 8px}
+.layout-table.variant-2 .data-table tbody tr+tr>*{border-top-color:var(--line)}
+/* v3 — a matrix: every cell boxed by 2px rules, row heads on tint, values centred */
+.layout-table.variant-3 .data-table :is(th,td){border:2px solid var(--line);padding:14px 20px}
+.layout-table.variant-3 .data-table thead th{border-bottom:2px solid var(--line);text-align:center;padding:12px 16px}
+.layout-table.variant-3 .data-table thead th:first-child{border-color:transparent transparent var(--line) transparent;text-align:left;padding-left:0}
+.layout-table.variant-3 .data-table tbody th{background:var(--tint);padding-left:20px;font-size:var(--text)}
+.layout-table.variant-3 .data-table td{text-align:center}
+.layout-table.variant-3 .data-table :is(th,td):first-child{padding-left:20px}
+.layout-table.variant-3 .data-table :is(th,td):last-child{padding-right:20px}
+/* v4 — the figures are the hero: numeric cells in display serif, row heads in mono */
+.layout-table.variant-4 .data-table tbody th{font:600 var(--t-tag)/1.35 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);width:30%}
+.layout-table.variant-4 .data-table td{font-size:var(--t-note)}
+.layout-table.variant-4 .data-table td.num{font:600 calc(var(--text) * 1.6)/1 var(--display);letter-spacing:-.02em;font-variant-numeric:lining-nums proportional-nums}
+.layout-table.variant-4 .data-table thead th{border-bottom-color:var(--accent)}
+.layout-table.variant-4 .data-table tbody tr.is-key td.num{color:var(--accent)}
+
+/* ===================================================================================================
+   7. Charts: <figure class="chart" data-chart="column|bar|line|pie|donut"> holding a <table class="chart-data">
+      (first column = categories, other columns = series). charts.js draws an SVG into .chart-plot and adds
+      .is-drawn; until then (or without script) the table itself is the chart. Variant-2 adds an
+      <aside class="chart-insight"> beside the figure.
+   =================================================================================================== */
+:is(.layout-chart-column,.layout-chart-bar,.layout-chart-line,.layout-chart-pie,.layout-chart-donut) .slide-content{
+  display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);column-gap:48px}
+:is(.layout-chart-column,.layout-chart-bar,.layout-chart-line,.layout-chart-pie,.layout-chart-donut) .chart{
+  margin:0;min-width:0;min-height:0;position:relative;container-type:size;
+  display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"legend" "plot" "caption";row-gap:14px}
+.chart .chart-legend{grid-area:legend;display:flex;flex-wrap:wrap;gap:6px 30px;margin:0;padding:0;list-style:none;font:500 var(--t-note)/1.25 var(--sans);color:var(--ink)}
+.chart .chart-legend li{display:flex;align-items:center;gap:10px}
+.chart .chart-legend .sw{flex:none;width:18px;height:18px;border-radius:4px;background:var(--c)}
+.chart .chart-legend .sw.ln{height:4px;width:26px;border-radius:2px}
+.chart .chart-plot{grid-area:plot;position:relative;min-width:0;min-height:0}
+.chart .chart-plot>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;display:block}
+.chart .chart-caption{grid-area:caption;margin:0;font:500 var(--small)/1.35 var(--mono);letter-spacing:.06em;color:var(--muted)}
+/* The data table: the chart before drawing, without script, and the source the script reads. */
+.chart .chart-data{grid-area:plot;align-self:start;border-collapse:collapse;font-size:max(20px,calc(var(--text) * .8));line-height:1.25;font-variant-numeric:tabular-nums lining-nums}
+.chart .chart-data :is(th,td){padding:6px 18px 6px 0;text-align:right;border-bottom:2px solid var(--line)}
+.chart .chart-data :is(th:first-child){text-align:left}
+.chart .chart-data thead th{font:600 var(--t-tag)/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.chart.is-drawn .chart-data{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+/* SVG marks and text. Text always wears text tokens; marks carry the series colour (--c). */
+.chart svg text{font-family:var(--sans);fill:var(--ink)}
+.chart svg .tick{font:500 17px var(--mono);fill:var(--muted)}
+.chart svg .cat{font-size:20px;fill:var(--ink)}
+.chart svg .val{font-size:20px;font-weight:650;fill:var(--ink)}
+.chart svg .val.sm{font-size:17px}
+.chart svg .val.dim,.chart svg .cat.dim{fill:var(--muted);font-weight:500}
+.chart svg .val.in{fill:var(--on-data)}
+.chart svg .end-name{font-size:20px;font-weight:600}
+.chart svg .big{font-family:var(--display);font-weight:600;letter-spacing:-.02em}
+.chart svg .grid{stroke:var(--line);stroke-width:1}
+.chart svg .base{stroke:var(--muted);stroke-width:2}
+.chart svg .lead{stroke:var(--muted);stroke-width:1.5}
+.chart svg .mark{fill:var(--c)}
+.chart svg .slice{fill:var(--c);stroke:var(--chart-bg);stroke-width:2;stroke-linejoin:round}
+.chart svg .line{fill:none;stroke:var(--c);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.chart svg .area{fill:var(--c);opacity:.12}
+.chart svg .dot{fill:var(--c);stroke:var(--chart-bg);stroke-width:2}
+/* Callout (variant-3, written by the script from the key row or series) and the insight aside (variant-2). */
+.chart .chart-callout{grid-area:callout;display:flex;flex-direction:column;justify-content:center;gap:10px;min-width:0}
+.chart .callout-value{font:600 108px/.9 var(--display);letter-spacing:-.035em;color:var(--accent);white-space:nowrap}
+.chart .callout-value.long{font-size:80px}
+.chart .callout-label{font:500 var(--t-note)/1.3 var(--sans);color:var(--ink)}
+:is(.layout-chart-column,.layout-chart-bar,.layout-chart-line,.layout-chart-pie,.layout-chart-donut) .chart-insight{
+  min-width:0;display:flex;flex-direction:column;justify-content:center;gap:14px;padding-left:34px;border-left:2px solid var(--line)}
+:is(.layout-chart-column,.layout-chart-bar,.layout-chart-line,.layout-chart-pie,.layout-chart-donut) .chart-insight>*{margin:0}
+:is(.layout-chart-column,.layout-chart-bar,.layout-chart-line,.layout-chart-pie,.layout-chart-donut) .insight-value{font:600 112px/.9 var(--display);letter-spacing:-.035em;color:var(--accent);white-space:nowrap}
+:is(.layout-chart-column,.layout-chart-bar,.layout-chart-line,.layout-chart-pie,.layout-chart-donut) .insight-value .unit{font-size:.46em;color:var(--ink);margin-left:.05em}
+:is(.layout-chart-column,.layout-chart-bar,.layout-chart-line,.layout-chart-pie,.layout-chart-donut) .insight-text{font-size:var(--t-note);line-height:1.35;text-wrap:pretty}
+/* variant-2: chart + insight; the aside appears only here */
+:is(.layout-chart-column,.layout-chart-bar,.layout-chart-line,.layout-chart-pie,.layout-chart-donut).variant-2 .slide-content{grid-template-columns:minmax(0,1fr) 320px}
+:is(.layout-chart-column,.layout-chart-bar,.layout-chart-line,.layout-chart-pie,.layout-chart-donut):not(.variant-2) .chart-insight{display:none}
+/* variant-3: the callout column on the left of the chart */
+:is(.layout-chart-column,.layout-chart-bar,.layout-chart-line).variant-3 .chart.has-callout{grid-template-columns:300px minmax(0,1fr);column-gap:40px;
+  grid-template-areas:"callout legend" "callout plot" "callout caption"}
+/* Column variant-4: the table stays visible beside the chart */
+.layout-chart-column.variant-4 .chart{grid-template-columns:minmax(0,1fr) auto;column-gap:44px;grid-template-areas:"legend legend" "plot table" "caption caption"}
+.layout-chart-column.variant-4 .chart.is-drawn .chart-data,.layout-chart-column.variant-4 .chart .chart-data{grid-area:table;position:static;width:auto;height:auto;overflow:visible;clip-path:none;white-space:normal;align-self:center}
+.layout-chart-column.variant-4 .chart .chart-data tbody tr.is-key>*{color:var(--accent);font-weight:650}
+/* Line variant-4: small multiples share one scale; the legend is the panel titles */
+/* Pie and donut: a square plot beside a legend made from the table itself (swatch, label, value). */
+:is(.layout-chart-pie,.layout-chart-donut) .chart{--pie:min(100cqh,48cqw);grid-template-columns:auto minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;column-gap:56px;
+  grid-template-areas:"plot legend" "plot caption"}
+:is(.layout-chart-pie,.layout-chart-donut) .chart .chart-plot{width:var(--pie);height:var(--pie);align-self:center}
+:is(.layout-chart-pie,.layout-chart-donut) .chart .chart-data,:is(.layout-chart-pie,.layout-chart-donut) .chart.is-drawn .chart-data{
+  grid-area:legend;align-self:center;position:static;width:100%;height:auto;overflow:visible;clip-path:none;white-space:normal;font-size:var(--t-note)}
+:is(.layout-chart-pie,.layout-chart-donut) .chart .chart-data thead{display:none}
+:is(.layout-chart-pie,.layout-chart-donut) .chart .chart-data :is(th,td){padding:12px 0;border-bottom:2px solid var(--line);vertical-align:middle}
+:is(.layout-chart-pie,.layout-chart-donut) .chart .chart-data tbody th{font:500 var(--t-note)/1.25 var(--sans);text-align:left;padding-right:16px}
+:is(.layout-chart-pie,.layout-chart-donut) .chart .chart-data tbody th::before{content:"";display:inline-block;width:18px;height:18px;border-radius:4px;margin-right:14px;vertical-align:-2px;background:var(--c)}
+:is(.layout-chart-pie,.layout-chart-donut) .chart .chart-data tbody td{font:600 calc(var(--text) * 1.3)/1 var(--display);letter-spacing:-.01em;padding-left:16px;font-variant-numeric:lining-nums proportional-nums}
+:is(.layout-chart-pie,.layout-chart-donut) .chart .chart-data tbody tr:nth-child(1){--c:var(--data-1)}
+:is(.layout-chart-pie,.layout-chart-donut) .chart .chart-data tbody tr:nth-child(2){--c:var(--data-2)}
+:is(.layout-chart-pie,.layout-chart-donut) .chart .chart-data tbody tr:nth-child(3){--c:var(--data-3)}
+:is(.layout-chart-pie,.layout-chart-donut) .chart .chart-data tbody tr:nth-child(4){--c:var(--data-4)}
+:is(.layout-chart-pie,.layout-chart-donut) .chart .chart-data tbody tr:nth-child(5){--c:var(--data-5)}
+:is(.layout-chart-pie,.layout-chart-donut).variant-3 .chart-data:has(tr.is-key) tbody tr:not(.is-key){--c:var(--mark-muted)}
+:is(.layout-chart-pie,.layout-chart-donut).variant-3 .chart-data:has(tr.is-key) tbody tr:not(.is-key) td{color:var(--muted)}
+:is(.layout-chart-pie,.layout-chart-donut) .chart .chart-center{grid-area:plot;place-self:center;margin:0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;max-width:calc(var(--pie) * .5);z-index:1}
+:is(.layout-chart-pie,.layout-chart-donut) .chart-plot .chart-center{position:absolute;transform:translate(-50%,-50%)}
+:is(.layout-chart-pie,.layout-chart-donut) .chart .chart-center b{font:600 calc(var(--pie) * .17)/.95 var(--display);letter-spacing:-.03em;color:var(--ink);white-space:nowrap}
+:is(.layout-chart-pie,.layout-chart-donut) .chart .chart-center span{font:500 max(20px,calc(var(--text) * .74))/1.25 var(--sans);color:var(--muted)}
+/* Pie v3 and donut v3: the key slice is the hero; pie v3 puts the callout under the legend */
+.layout-chart-pie.variant-3 .chart.has-callout{grid-template-rows:auto auto minmax(0,1fr) auto;grid-template-areas:"plot ." "plot callout" "plot legend" "plot caption";row-gap:18px}
+.layout-chart-pie.variant-3 .chart.has-callout .chart-data{align-self:start}
+.layout-chart-pie.variant-3 .chart.has-callout .chart-data :is(th,td){padding:7px 0}
+.layout-chart-pie.variant-3 .chart.has-callout .chart-data tbody td{font-size:calc(var(--text) * 1.1);padding-left:16px}
+.layout-chart-pie.variant-3 .chart.has-callout .callout-value{font-size:96px}
+/* Pie v4: two wholes side by side; the table (two value columns) is the legend */
+.layout-chart-pie.variant-4 .chart{--pie:min(100cqh,60cqw);grid-template-columns:minmax(0,1fr) 340px}
+.layout-chart-pie.variant-4 .chart .chart-plot{width:100%}
+.layout-chart-pie.variant-4 .chart .chart-data thead{display:table-header-group}
+.layout-chart-pie.variant-4 .chart .chart-data thead th{font:600 var(--t-tag)/1.3 var(--mono);text-align:right;padding:0 0 10px 12px}
+.layout-chart-pie.variant-4 .chart .chart-data tbody td{font-size:calc(var(--text) * 1.1);text-align:right;padding-left:12px}
+/* Donut v4: a half donut, the stated total under the arc */
+.layout-chart-donut.variant-4 .chart{--pie:min(100cqh,56cqw);grid-template-columns:minmax(0,1fr) 380px}
+.layout-chart-donut.variant-4 .chart .chart-plot{width:100%;height:min(100cqh,calc((100cqw - 436px) / 2 + 20px))}
+.layout-chart-donut.variant-4 .chart-plot .chart-center{transform:translate(-50%,-100%)}
+
+/* ===================================================================================================
+   8. Images: <img> fills its frame with object-fit:cover; <span class="img-ph" role="img" aria-label=…>
+      is the placeholder when no image is given. .text-only on the slide is the no-image fallback.
+   =================================================================================================== */
+:is(.layout-images-2,.layout-images-3,.layout-images-4,.layout-image-text,.layout-gallery,.layout-team) :is(img,.img-ph){
+  display:block;width:100%;height:100%;min-height:0;object-fit:cover;border-radius:8px}
+:is(.layout-images-2,.layout-images-3,.layout-images-4,.layout-image-text,.layout-gallery,.layout-team) .img-ph{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;text-align:center;overflow:hidden;
+  background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--accent) 7%,transparent) 0 2px,transparent 2px 16px),var(--tint);
+  color:var(--muted);font:500 max(20px,calc(var(--text) * .74))/1.3 var(--sans)}
+:is(.layout-images-2,.layout-images-3,.layout-images-4,.layout-image-text,.layout-gallery) .img-ph::before{content:"";flex:none;width:46px;height:34px;border:2px solid currentColor;border-radius:5px;opacity:.7;
+  background:radial-gradient(circle at 72% 32%,currentColor 0 4px,transparent 5px),linear-gradient(135deg,transparent 58%,currentColor 58% 64%,transparent 64%)}
+:is(.layout-images-2,.layout-images-3,.layout-images-4,.layout-image-text,.layout-gallery) .slide-content{display:flex;flex-direction:column}
+:is(.layout-images-2,.layout-images-3,.layout-images-4,.layout-image-text,.layout-gallery) figure{margin:0;min-width:0;min-height:0}
+:is(.layout-images-2,.layout-images-3,.layout-images-4,.layout-image-text,.layout-gallery) figcaption{min-width:0}
+:is(.layout-images-2,.layout-images-3,.layout-images-4,.layout-gallery) .media{flex:1;min-height:0;display:grid;counter-reset:fig}
+:is(.layout-images-2,.layout-images-3,.layout-images-4,.layout-gallery) .media>figure{counter-increment:fig;display:grid;grid-template-rows:minmax(0,1fr) auto;row-gap:14px}
+:is(.layout-images-2,.layout-images-3,.layout-images-4,.layout-gallery) .media figcaption{display:flex;flex-direction:column;gap:4px}
+:is(.layout-images-2,.layout-images-3,.layout-images-4,.layout-image-text,.layout-gallery) .media-title{font:600 calc(var(--text) * 1.02)/1.15 var(--display);letter-spacing:-.006em;text-wrap:balance}
+:is(.layout-images-2,.layout-images-3,.layout-images-4,.layout-image-text,.layout-gallery) .media-text{font-size:var(--t-note);line-height:1.3;color:var(--muted);text-wrap:pretty}
+/* Image columns: 2, 3 or 4 */
+.layout-images-2 .media{--cols:2;column-gap:36px}
+.layout-images-3 .media{--cols:3;column-gap:30px}
+.layout-images-4 .media{--cols:4;column-gap:24px}
+:is(.layout-images-2,.layout-images-3,.layout-images-4) .media{grid-template-columns:repeat(var(--cols),minmax(0,1fr))}
+:is(.layout-images-2,.layout-images-3,.layout-images-4):is(.variant-1,.variant-3,.variant-4) .media{grid-template-rows:minmax(0,1fr) auto}
+:is(.layout-images-2,.layout-images-3,.layout-images-4):is(.variant-1,.variant-3,.variant-4) .media>figure{grid-row:span 2;grid-template-rows:subgrid}
+.layout-images-4 .media-title{font-size:var(--text)}
+/* v1 — equal columns, caption under each */
+/* v2 — zigzag: every second column flips, caption above the picture, with a mono ordinal */
+:is(.layout-images-2,.layout-images-3,.layout-images-4).variant-2 .media>figure:nth-child(even){grid-template-rows:auto minmax(0,1fr)}
+:is(.layout-images-2,.layout-images-3,.layout-images-4).variant-2 .media>figure:nth-child(even) figcaption{order:-1}
+:is(.layout-images-2,.layout-images-3,.layout-images-4).variant-2 .media>figure figcaption::before{content:counter(fig,decimal-leading-zero);font:600 var(--t-tag)/1 var(--mono);letter-spacing:.14em;color:var(--accent);margin-bottom:4px}
+:is(.layout-images-2,.layout-images-3,.layout-images-4).variant-2 .media>figure:nth-child(odd) :is(img,.img-ph){border-radius:8px 8px 8px 0}
+:is(.layout-images-2,.layout-images-3,.layout-images-4).variant-2 .media>figure:nth-child(even) :is(img,.img-ph){border-radius:0 8px 8px 8px}
+/* v3 — the lead picture takes the wide column */
+.layout-images-2.variant-3 .media{grid-template-columns:1.75fr 1fr}
+.layout-images-3.variant-3 .media{grid-template-columns:1.8fr 1fr 1fr}
+.layout-images-4.variant-3 .media{grid-template-columns:1.9fr 1fr 1fr 1fr}
+:is(.layout-images-2,.layout-images-3,.layout-images-4).variant-3 .media>figure:first-child .media-title{font-size:calc(var(--text) * 1.25)}
+/* v4 — cards: each picture with its caption on a tinted card */
+:is(.layout-images-2,.layout-images-3,.layout-images-4).variant-4 .media>figure{background:var(--tint);border-radius:10px;padding:12px 12px 20px;row-gap:16px}
+:is(.layout-images-2,.layout-images-3,.layout-images-4).variant-4 .media figcaption{padding:0 10px}
+:is(.layout-images-2,.layout-images-3,.layout-images-4).variant-4 .img-ph{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--accent) 9%,transparent) 0 2px,transparent 2px 16px),var(--surface)}
+:is(.layout-images-2,.layout-images-3,.layout-images-4).variant-4 :is(img,.img-ph){border-radius:6px}
+
+/* Images with text: <figure class="media-main"> (1-2) and <div class="media-copy"> (.media-lead + .media-points) */
+.layout-image-text .slide-content{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);column-gap:52px}
+.layout-image-text .media-main{display:grid;grid-template-rows:minmax(0,1fr) auto;row-gap:10px}
+.layout-image-text .media-main figcaption{font:500 var(--small)/1.35 var(--mono);letter-spacing:.06em;color:var(--muted)}
+.layout-image-text .media-copy{min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:22px}
+.layout-image-text .media-lead{margin:0;font:500 calc(var(--text) * 1.22)/1.22 var(--display);letter-spacing:-.008em;text-wrap:pretty}
+.layout-image-text .media-points{list-style:none;margin:0;padding:0;counter-reset:pt}
+.layout-image-text .media-points li{counter-increment:pt;display:grid;grid-template-columns:2.4em minmax(0,1fr);gap:.4em;padding:.45em 0;border-top:2px solid var(--line);font-size:var(--t-note);line-height:1.3}
+.layout-image-text .media-points li::before{content:counter(pt,decimal-leading-zero);padding-top:.25em;font:600 .7em/1.4 var(--mono);letter-spacing:.12em;color:var(--accent)}
+/* v1 — picture left, text right */
+/* v2 — text left, picture bleeding off the right edge */
+.layout-image-text.variant-2 .slide-content{grid-template-columns:minmax(0,1fr) minmax(0,1.05fr)}
+.layout-image-text.variant-2 .media-copy{order:-1}
+.layout-image-text.variant-2 .media-main{margin-right:-72px}
+.layout-image-text.variant-2 .media-main :is(img,.img-ph){border-radius:8px 0 0 8px}
+.layout-image-text.variant-2 .media-main figcaption{padding-right:72px}
+.layout-image-text.variant-2 .media-lead{font-size:calc(var(--text) * 1.4)}
+/* v3 — a wide picture band on top, text in two columns below */
+.layout-image-text.variant-3 .slide-content{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1.25fr) minmax(0,1fr);row-gap:22px}
+.layout-image-text.variant-3 .media-main{grid-column:1 / -1;grid-template-rows:minmax(0,1fr);position:relative}
+.layout-image-text.variant-3 .media-main figcaption{position:absolute;right:0;bottom:-30px}
+.layout-image-text.variant-3 .media-copy{display:contents}
+.layout-image-text.variant-3 .media-lead{align-self:start;padding-top:18px;font-size:calc(var(--text) * 1.15)}
+.layout-image-text.variant-3 .media-points{align-self:start;padding-top:8px}
+/* v4 — two pictures stacked on the left, text on the right (one picture also works) */
+.layout-image-text.variant-4 .slide-content{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);grid-template-rows:repeat(2,minmax(0,1fr));row-gap:14px}
+.layout-image-text.variant-4 .media-main{grid-column:1;grid-template-rows:minmax(0,1fr)}
+.layout-image-text.variant-4 .media-main:only-of-type{grid-row:1 / -1}
+.layout-image-text.variant-4 .media-main figcaption{display:none}
+.layout-image-text.variant-4 .media-copy{grid-column:2;grid-row:1 / -1}
+
+/* Image gallery: 3-6 figures */
+.layout-gallery .media{--g:12px;gap:var(--g);grid-auto-rows:minmax(0,1fr)}
+.layout-gallery .media>figure{row-gap:8px}
+.layout-gallery .media .media-title{font:500 var(--t-note)/1.25 var(--sans);letter-spacing:0}
+/* v1 — even grid */
+.layout-gallery.variant-1 .media{grid-template-columns:repeat(6,minmax(0,1fr))}
+.layout-gallery.variant-1 .media>figure{grid-column:span 2}
+.layout-gallery.variant-1 .media:has(>figure:nth-child(4):last-child)>figure{grid-column:span 3}
+.layout-gallery.variant-1 .media:has(>figure:nth-child(5):last-child)>figure:nth-child(n+4){grid-column:span 3}
+/* v2 — mosaic: one large picture and smaller ones around it */
+.layout-gallery.variant-2 .media{grid-template-columns:2fr 1fr 1fr;grid-template-rows:repeat(2,minmax(0,1fr))}
+.layout-gallery.variant-2 .media>figure:first-child{grid-row:1 / -1}
+.layout-gallery.variant-2 .media:has(>figure:nth-child(3):last-child){grid-template-columns:2fr 1.2fr}
+.layout-gallery.variant-2 .media:has(>figure:nth-child(4):last-child)>figure:nth-child(4){grid-column:2 / 4}
+.layout-gallery.variant-2 .media:has(>figure:nth-child(6)){grid-template-columns:1.7fr 1fr 1fr 1fr}
+.layout-gallery.variant-2 .media:has(>figure:nth-child(6))>figure:nth-child(6){grid-column:span 2}
+/* v3 — filmstrip: one row of tall pictures with numbered captions */
+.layout-gallery.variant-3 .media{grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);--g:14px}
+.layout-gallery.variant-3 .media figcaption{flex-direction:row;gap:10px;align-items:baseline}
+.layout-gallery.variant-3 .media figcaption::before{content:counter(fig,decimal-leading-zero);font:600 var(--t-tag)/1 var(--mono);letter-spacing:.12em;color:var(--accent)}
+/* v4 — two lead pictures above, the rest as a row of thumbnails */
+.layout-gallery.variant-4 .media{grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:minmax(0,1.7fr) minmax(0,1fr);grid-auto-rows:0}
+.layout-gallery.variant-4 .media>figure{grid-column:span 4}
+.layout-gallery.variant-4 .media>figure:nth-child(-n+2){grid-column:span 6}
+.layout-gallery.variant-4 .media:has(>figure:nth-child(4):last-child)>figure:nth-child(n+3){grid-column:span 6}
+.layout-gallery.variant-4 .media:has(>figure:nth-child(6))>figure:nth-child(n+3){grid-column:span 3}
+.layout-gallery.variant-4 .media>figure:nth-child(n+3){grid-template-rows:minmax(0,1fr);grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);column-gap:12px;align-items:center}
+.layout-gallery.variant-4 .media:has(>figure:nth-child(6))>figure:nth-child(n+3){grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
+
+/* Team photos: <ul class="people"> with 2-6 <li>: photo, .person-name, .person-role, .person-note */
+.layout-team .slide-content{display:flex;flex-direction:column}
+.layout-team .people{--n:3;--ph:180px;list-style:none;margin:0;padding:0;flex:1;min-height:0;display:grid}
+.layout-team .people:not(:has(>li:nth-child(3))){--n:2;--ph:200px}
+.layout-team .people:has(>li:nth-child(4)){--n:4;--ph:170px}
+.layout-team .people:has(>li:nth-child(5)){--n:5;--ph:150px}
+.layout-team .people:has(>li:nth-child(6)){--n:6;--ph:136px}
+.layout-team .people>li{min-width:0;min-height:0;display:grid;align-content:center}
+.layout-team .people>li>*{margin:0;min-width:0}
+.layout-team .people :is(img,.img-ph){grid-area:photo}
+.layout-team .people .img-ph{font:600 calc(var(--ph) * .3)/1 var(--display);letter-spacing:.02em;color:var(--accent);padding:0}
+.layout-team .person-name{grid-area:name;font:600 var(--t-label)/1.15 var(--display);letter-spacing:-.008em;text-wrap:balance}
+.layout-team .person-role{grid-area:role;font:600 var(--t-tag)/1.35 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.layout-team .person-note{grid-area:note;font-size:var(--t-note);line-height:1.3;color:var(--muted);text-wrap:pretty}
+/* v1 — a row of round portraits, centred names */
+.layout-team.variant-1 .people{grid-template-columns:repeat(var(--n),minmax(0,1fr));column-gap:28px;align-content:center}
+.layout-team.variant-1 .people>li{grid-template-areas:"photo" "name" "role" "note";justify-items:center;text-align:center;row-gap:6px;align-content:start}
+.layout-team.variant-1 .people :is(img,.img-ph){width:var(--ph);height:var(--ph);border-radius:50%;margin-bottom:16px}
+/* v2 — portrait cards filling the height, names left-aligned under them */
+.layout-team.variant-2 .people{grid-template-columns:repeat(var(--n),minmax(0,1fr));grid-template-rows:minmax(0,1fr) auto auto auto;column-gap:22px;row-gap:6px}
+.layout-team.variant-2 .people>li{grid-row:span 4;grid-template-rows:subgrid;grid-template-areas:"photo" "name" "role" "note";align-content:stretch}
+.layout-team.variant-2 .people :is(img,.img-ph){margin-bottom:12px}
+.layout-team.variant-2 .people:has(>li:nth-child(5)) .person-name{font-size:var(--text)}
+/* v3 — a two-column directory: small portrait, name, role and a line of context */
+.layout-team.variant-3 .people{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);column-gap:48px;align-content:center}
+.layout-team.variant-3 .people:not(:has(>li:nth-child(5))){grid-template-columns:repeat(2,minmax(0,1fr))}
+.layout-team.variant-3 .people>li{--ph:104px;grid-template-columns:var(--ph) minmax(0,1fr);grid-template-areas:"photo name" "photo role" "photo note";column-gap:24px;row-gap:4px;
+  align-content:center;border-top:2px solid var(--line);padding:12px 0}
+.layout-team.variant-3 .people:has(>li:nth-child(5))>li{--ph:84px}
+.layout-team.variant-3 .people :is(img,.img-ph){width:var(--ph);height:var(--ph);border-radius:50%;align-self:center}
+.layout-team.variant-3 .people .img-ph{font-size:calc(var(--ph) * .34)}
+.layout-team.variant-3 .person-name{font-size:var(--text);align-self:end}
+.layout-team.variant-3 .person-note{align-self:start}
+/* v4 — one lead person large with a line in their words; the rest listed beside */
+.layout-team.variant-4 .people{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);grid-auto-rows:minmax(0,1fr);column-gap:52px}
+.layout-team.variant-4 .people>li:first-child{grid-row:1 / span 5;grid-template-columns:minmax(0,.9fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto auto minmax(0,1fr);
+  grid-template-areas:"photo ." "photo name" "photo role" "photo note" "photo .";column-gap:28px;row-gap:8px;align-content:stretch}
+.layout-team.variant-4 .people>li:first-child :is(img,.img-ph){height:100%}
+.layout-team.variant-4 .people>li:first-child .img-ph{font-size:96px}
+.layout-team.variant-4 .people>li:first-child .person-name{font-size:calc(var(--text) * 1.4)}
+.layout-team.variant-4 .people>li:first-child .person-note{font:500 var(--t-note)/1.35 var(--display);font-style:italic;color:var(--ink)}
+.layout-team.variant-4 .people>li:not(:first-child){--ph:78px;grid-column:2;grid-template-columns:var(--ph) minmax(0,1fr);grid-template-areas:"photo name" "photo role";column-gap:20px;
+  align-content:center;border-top:2px solid var(--line)}
+.layout-team.variant-4 .people>li:not(:first-child) :is(img,.img-ph){width:var(--ph);height:var(--ph);border-radius:50%;align-self:center}
+.layout-team.variant-4 .people>li:not(:first-child) .img-ph{font-size:28px}
+.layout-team.variant-4 .people>li:not(:first-child) .person-name{font-size:var(--text);align-self:end}
+.layout-team.variant-4 .people>li:not(:first-child) .person-role{align-self:start}
+.layout-team.variant-4 .people>li:not(:first-child) .person-note{display:none}
+
+/* Text-only fallback for every image layout: <section class="slide layout-… variant-N text-only"> */
+.slide.text-only:is(.layout-images-2,.layout-images-3,.layout-images-4,.layout-image-text,.layout-gallery,.layout-team) :is(img,.img-ph){display:none}
+.slide.text-only:is(.layout-images-2,.layout-images-3,.layout-images-4,.layout-gallery) .media{align-content:center}
+.slide.text-only:is(.layout-images-2,.layout-images-3,.layout-images-4,.layout-gallery) .media>figure{grid-template-rows:auto;align-content:start;padding:22px 0 0;border-top:2px solid var(--accent);background:none;border-radius:0}
+.slide.text-only:is(.layout-images-2,.layout-images-3,.layout-images-4,.layout-gallery) .media figcaption{order:0;padding:0;flex-direction:column}
+.slide.text-only:is(.layout-images-2,.layout-images-3,.layout-images-4,.layout-gallery) .media figcaption::before{content:counter(fig,decimal-leading-zero);font:600 var(--t-tag)/1 var(--mono);letter-spacing:.14em;color:var(--accent);margin-bottom:8px}
+.slide.text-only:is(.layout-images-2,.layout-images-3,.layout-images-4) .media .media-title{font-size:calc(var(--text) * 1.2)}
+.slide.text-only:is(.layout-images-2,.layout-images-3,.layout-images-4) .media .media-text{font-size:var(--text);color:var(--ink)}
+.slide.text-only.layout-gallery .media{grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-flow:row;grid-template-rows:none;grid-auto-rows:auto;row-gap:30px}
+.slide.text-only.layout-gallery .media>figure{grid-column:auto;grid-row:auto}
+.slide.text-only.layout-image-text .slide-content{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+.slide.text-only.layout-image-text .media-main{display:none}
+.slide.text-only.layout-image-text .media-copy{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:52px;align-content:center;grid-column:1;grid-row:1;order:0}
+.slide.text-only.layout-team .people>li{grid-template-columns:minmax(0,1fr);grid-template-areas:"name" "role" "note";grid-row:auto;grid-column:auto;justify-items:start;text-align:left;
+  align-content:start;padding-top:20px;border-top:2px solid var(--accent)}
+.slide.text-only.layout-team .people{grid-template-columns:repeat(min(var(--n),3),minmax(0,1fr));grid-auto-rows:auto;align-content:center;column-gap:36px;row-gap:30px}
+.slide.text-only.layout-team .people>li .person-note{display:block}
+
+/* ===================================================================================================
+   9. Embeds: <figure class="embed"><div class="embed-frame" data-url="https://…"><iframe …></iframe></div>
+      <figcaption>.embed-title .embed-text .embed-link</figcaption></figure>, optional <ol class="embed-points">.
+      The frame keeps 16:9 (webpages add a 44px browser bar). No iframe = placeholder; print shows data-url.
+      --fw-px is the frame width, computed from the content box (a size container) so 16:9 always fits.
+   =================================================================================================== */
+:is(.layout-video,.layout-webpage) .slide-content{container-type:size;display:grid;grid-template-rows:minmax(0,1fr)}
+:is(.layout-video,.layout-webpage) .embed{--bar:0px;margin:0;min-width:0;min-height:0;display:grid;column-gap:40px;row-gap:16px}
+.layout-webpage .embed{--bar:44px}
+:is(.layout-video,.layout-webpage) .embed-frame{position:relative;width:var(--fw-px);height:calc(var(--fw-px) * 9 / 16 + var(--bar));border-radius:10px;overflow:hidden;
+  background:var(--ink);border:2px solid var(--line);
+  --play-mark:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 88 88'%3E%3Ccircle cx='44' cy='44' r='42' fill='none' stroke='%23000' stroke-width='2.5'/%3E%3Cpath d='M36 29 L61 44 L36 59 Z'/%3E%3C/svg%3E")}
+:is(.layout-video,.layout-webpage) .embed-frame iframe{position:absolute;left:0;right:0;bottom:0;top:var(--bar);width:100%;height:calc(100% - var(--bar));border:0;display:block}
+:is(.layout-video,.layout-webpage) .embed-frame:not(:has(iframe)){background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--accent) 7%,transparent) 0 2px,transparent 2px 16px),var(--tint)}
+/* Placeholder (and print): the address, centred; video adds a play mark above it. */
+:is(.layout-video,.layout-webpage) .embed-frame:not(:has(iframe))::after{content:attr(data-url);position:absolute;left:0;right:0;top:var(--bar);bottom:0;display:flex;align-items:center;justify-content:center;
+  padding:0 28px;font:500 var(--t-tag)/1.4 var(--mono);letter-spacing:.03em;color:var(--muted);text-align:center;overflow-wrap:anywhere}
+.layout-video .embed-frame:not(:has(iframe))::after{padding-top:130px}
+.layout-video .embed-frame:not(:has(iframe))::before{content:"";position:absolute;left:calc(50% - 44px);top:calc(50% - 64px);width:88px;height:88px;background:var(--accent);
+  -webkit-mask:var(--play-mark) center/contain no-repeat;mask:var(--play-mark) center/contain no-repeat}
+:is(.layout-video,.layout-webpage) .embed figcaption{min-width:0;display:flex;flex-direction:column;gap:10px}
+:is(.layout-video,.layout-webpage) .embed-title{font:600 var(--t-label)/1.15 var(--display);letter-spacing:-.008em;text-wrap:balance}
+:is(.layout-video,.layout-webpage) .embed-text{font-size:var(--t-note);line-height:1.35;color:var(--ink);text-wrap:pretty}
+:is(.layout-video,.layout-webpage) .embed-link{font:500 var(--t-tag)/1.35 var(--mono);letter-spacing:.03em;color:var(--accent);text-decoration:none;overflow-wrap:anywhere;border-top:2px solid var(--line);padding-top:10px}
+:is(.layout-video,.layout-webpage) .embed-points{list-style:none;margin:0;padding:0;min-width:0;display:flex;flex-direction:column;justify-content:center;counter-reset:pt}
+:is(.layout-video,.layout-webpage) .embed-points li{counter-increment:pt;display:grid;grid-template-columns:4.4em minmax(0,1fr);gap:14px;align-items:baseline;padding:13px 0;border-top:2px solid var(--line);font-size:var(--t-note);line-height:1.3}
+:is(.layout-video,.layout-webpage) .embed-points :is(time,.point-key){font:600 var(--t-tag)/1.3 var(--mono);letter-spacing:.08em;color:var(--accent)}
+/* Webpage: a quiet browser bar showing the address */
+.layout-webpage .embed-frame{background:var(--surface)}
+.layout-webpage .embed-frame::before{content:attr(data-url);position:absolute;z-index:1;left:0;right:0;top:0;height:var(--bar);display:flex;align-items:center;
+  padding:0 18px 0 96px;font:500 var(--small)/1 var(--mono);letter-spacing:.02em;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  background:radial-gradient(circle at 24px 50%,var(--line) 0 6px,transparent 7px),radial-gradient(circle at 46px 50%,var(--line) 0 6px,transparent 7px),
+    radial-gradient(circle at 68px 50%,var(--line) 0 6px,transparent 7px),var(--tint);border-bottom:2px solid var(--line)}
+/* v1 — the largest frame, caption in a column on the right */
+:is(.layout-video,.layout-webpage).variant-1 .embed{--fw-px:min(100cqw - 360px,(100cqh - var(--bar)) * 16 / 9);grid-template-columns:var(--fw-px) minmax(0,1fr);align-items:end}
+:is(.layout-video,.layout-webpage).variant-1 .embed-frame{align-self:center}
+/* Video v2 — cinema: the frame centred, one caption line beneath */
+.layout-video.variant-2 .embed{--fw-px:min(100cqw,(100cqh - 124px) * 16 / 9);grid-template-columns:var(--fw-px);justify-content:center;align-content:center;row-gap:16px}
+:is(.layout-video.variant-2,.layout-video.variant-3,.layout-webpage.variant-2) .embed figcaption{gap:4px}
+:is(.layout-video.variant-2,.layout-video.variant-3,.layout-webpage.variant-2) .embed-title{font-size:var(--text)}
+:is(.layout-video.variant-2,.layout-video.variant-3,.layout-webpage.variant-2) .embed-link{border-top:0;padding-top:0}
+/* Webpage v2 — annotated: frame left, numbered callouts right */
+.layout-webpage.variant-2 .slide-content{grid-template-columns:auto minmax(0,1fr);column-gap:44px}
+.layout-webpage.variant-2 .embed{--fw-px:min(100cqw - 420px,(100cqh - var(--bar) - 124px) * 16 / 9);grid-template-columns:var(--fw-px);align-content:center}
+.layout-webpage.variant-2 .embed-points li{grid-template-columns:2.2em minmax(0,1fr)}
+.layout-webpage.variant-2 .embed-points li::before{content:counter(pt);display:grid;place-items:center;width:1.7em;height:1.7em;border-radius:50%;background:var(--feature);color:var(--on-feature);
+  font:600 .78em/1 var(--mono);align-self:start}
+/* Video v3 — watch-for: frame left with its caption, timestamps right */
+.layout-video.variant-3 .slide-content{grid-template-columns:auto minmax(0,1fr);column-gap:44px}
+.layout-video.variant-3 .embed{--fw-px:min(100cqw - 400px,(100cqh - 124px) * 16 / 9);grid-template-columns:var(--fw-px);align-content:center}
+/* Webpage v3 — compare: two pages side by side */
+.layout-webpage.variant-3 .slide-content{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:36px}
+.layout-webpage.variant-3 .embed{--fw-px:min(50cqw - 18px,(100cqh - var(--bar) - 112px) * 16 / 9);grid-template-columns:var(--fw-px);align-content:center}
+.layout-webpage.variant-3 .embed figcaption{gap:4px}
+.layout-webpage.variant-3 .embed-title{font-size:var(--text)}
+.layout-webpage.variant-3 .embed-link{border-top:0;padding-top:0}
+/* Video v4 — stage: the frame on a filled band with the caption in the band's colours */
+.layout-video.variant-4 .embed{--fw-px:min(100cqw - 400px - 56px,(100cqh - 56px) * 16 / 9);grid-template-columns:var(--fw-px) minmax(0,1fr);align-items:center;column-gap:36px;
+  padding:28px;border-radius:12px;background:var(--feature);color:var(--on-feature)}
+.layout-video.variant-4 .embed-frame{border-color:color-mix(in srgb,var(--on-feature) 30%,transparent)}
+.layout-video.variant-4 :is(.embed-text,.embed-link){color:inherit}
+.layout-video.variant-4 .embed-link{border-top-color:color-mix(in srgb,var(--on-feature) 35%,transparent)}
+/* Webpage v4 — visit: a smaller frame and the address set large for the room to type */
+.layout-webpage.variant-4 .embed{--fw-px:min(54cqw,(100cqh - var(--bar)) * 16 / 9);grid-template-columns:var(--fw-px) minmax(0,1fr);align-items:center;column-gap:52px}
+.layout-webpage.variant-4 .embed figcaption{gap:16px}
+.layout-webpage.variant-4 .embed-link{order:-1;border-top:0;padding:0;font:600 calc(var(--text) * 1.45)/1.12 var(--display);letter-spacing:-.01em;color:var(--accent);overflow-wrap:anywhere}
+
+/* ===================================================================================================
+   10. Print: one slide per page on the same canvas, every build step visible, embeds replaced by their URL.
+   =================================================================================================== */
+@page{size:1280px 720px;margin:0}
+@media print{
+  :where(.slide){break-after:page;break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  :where(.slide .build-pending){opacity:1}
+  :is(.layout-video,.layout-webpage) .embed-frame iframe{display:none}
+  :is(.layout-video,.layout-webpage) .embed-frame{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--accent) 7%,transparent) 0 2px,transparent 2px 16px),var(--tint)}
+  :is(.layout-video,.layout-webpage) .embed-frame::after{content:attr(data-url);position:absolute;left:0;right:0;top:var(--bar);bottom:0;display:flex;align-items:center;justify-content:center;
+    padding:0 28px;font:600 var(--t-tag)/1.4 var(--mono);letter-spacing:.03em;color:var(--ink);text-align:center;overflow-wrap:anywhere}
+  .layout-video .embed-frame::after{padding-top:130px}
+  .layout-video .embed-frame::before{content:"";position:absolute;left:calc(50% - 44px);top:calc(50% - 64px);width:88px;height:88px;background:var(--accent);
+    -webkit-mask:var(--play-mark) center/contain no-repeat;mask:var(--play-mark) center/contain no-repeat}
+}

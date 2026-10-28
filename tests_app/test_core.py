@@ -12,13 +12,13 @@ from fastapi.testclient import TestClient
 
 from tests_app.learning_fixture import fixture
 from tests_app.test_learning import SemanticFixtureProvider
-from visual_learning.app import create_app
-from visual_learning.config import DEFAULT_SETTINGS
-from visual_learning.ingest import CaptionError
-from visual_learning.providers import ProviderError
-from visual_learning.renderer import render_page
-from visual_learning.storage import Store
-from visual_learning.worker import Worker
+from distill.app import create_app
+from distill.config import DEFAULT_SETTINGS
+from distill.ingest import CaptionError
+from distill.providers import ProviderError
+from distill.renderer import render_page
+from distill.storage import Store
+from distill.worker import Worker
 
 
 def new_job(store, kind="import", **preferences):
@@ -38,7 +38,7 @@ def saved_page(store):
 def client(tmp_path):
     app = create_app(tmp_path)
     with TestClient(app, base_url="http://127.0.0.1") as result:
-        result.headers["x-visual-learning"] = app.state.csrf_token
+        result.headers["x-distill"] = app.state.csrf_token
         result.store = app.state.store
         yield result
 
@@ -83,7 +83,7 @@ def test_worker_import_completes_and_restart_reuses_source(tmp_path, monkeypatch
     job = new_job(store, language="en")
     store.checkpoint(job["id"], "source", source.model_dump(mode="json"))
     provider = SemanticFixtureProvider()
-    monkeypatch.setattr("visual_learning.providers.make_provider", lambda *_args, **_kwargs: provider)
+    monkeypatch.setattr("distill.providers.make_provider", lambda *_args, **_kwargs: provider)
     assert Worker(store).run_once()
     complete = store.get_job(job["id"])
     assert complete["state"] == "complete"
@@ -119,8 +119,8 @@ def test_caption_failure_waits_for_explicit_audio_approval(tmp_path, monkeypatch
     job = new_job(store, kind="youtube")
     def unavailable(*_args, **_kwargs):
         raise CaptionError("no_captions", "Captions unavailable")
-    monkeypatch.setattr("visual_learning.ingest.fetch_youtube", unavailable)
-    monkeypatch.setattr("visual_learning.audio.transcribe_youtube", lambda *_a, **_k: pytest.fail("Audio must not start"))
+    monkeypatch.setattr("distill.ingest.fetch_youtube", unavailable)
+    monkeypatch.setattr("distill.audio.transcribe_youtube", lambda *_a, **_k: pytest.fail("Audio must not start"))
     Worker(store).run_once()
     waiting = store.get_job(job["id"])
     assert waiting["state"] == "awaiting_approval"
@@ -130,7 +130,7 @@ def test_caption_failure_waits_for_explicit_audio_approval(tmp_path, monkeypatch
 
 def test_local_boundary_validation_and_secret_values_not_echoed(client):
     assert client.post("/api/jobs", json={"url": "https://youtu.be/L_Guz73e6fw"}, headers={"origin": "https://other.example"}).status_code == 403
-    assert client.post("/api/jobs", json={"url": "https://youtu.be/L_Guz73e6fw"}, headers={"x-visual-learning": "invalid"}).status_code == 403
+    assert client.post("/api/jobs", json={"url": "https://youtu.be/L_Guz73e6fw"}, headers={"x-distill": "invalid"}).status_code == 403
     assert client.get("/api/health", headers={"host": "other.example"}).status_code == 403
     response = client.put("/api/credentials/deepseek", json={"key": "SECRET", "extra": "SECRET"})
     assert response.status_code == 422 and "SECRET" not in response.text
@@ -189,14 +189,33 @@ def test_import_is_not_claimable_until_its_source_is_durable(client, monkeypatch
 
 
 def test_audio_import_stays_local_until_approval_and_cannot_bypass_free_confirmation(client):
+    client.store.save_settings({"transcription_providers": {"video": "soniox", "meeting": "groq", "lecture": "soniox"}})
     response = client.post("/api/audio-import", files={"file": ("sample.wav", b"AUTHORED TEST NOT REAL AUDIO")})
     assert response.status_code == 201
     job = response.json()["job"]
-    assert job["state"] == "awaiting_approval"
+    assert job["state"] == "awaiting_approval" and job["approval"]["provider"] == "groq"
+    assert job["input"]["recording_type"] == "meeting" and job["approval"]["workflow"] == "meeting"
+    lecture = client.post("/api/audio-import", data={"recording_type": "lecture"}, files={"file": ("talk.wav", b"AUTHORED TEST NOT REAL AUDIO")})
+    assert lecture.status_code == 201 and lecture.json()["job"]["approval"]["provider"] == "soniox"
+    assert client.post("/api/audio-import", data={"recording_type": "podcast"}, files={"file": ("x.wav", b"AUDIO")}).status_code == 422
     path = f"/api/jobs/{job['id']}/approve"
     assert client.post(path, json={"approved": True}).status_code == 409
     approved = client.post(path, json={"approved": True, "free_account_confirmed": True})
     assert approved.status_code == 200 and approved.json()["approval"]["approved"]
+
+
+def test_audio_import_defaults_to_soniox_speaker_labels_and_needs_paid_consent(client):
+    response = client.post("/api/audio-import", files={"file": ("meeting.m4a", b"AUTHORED TEST NOT REAL AUDIO")})
+    job = response.json()["job"]
+    assert job["approval"]["provider"] == "soniox" and job["approval"]["speaker_labels"]
+    assert "Soniox" in job["progress"]["message"]
+    path = f"/api/jobs/{job['id']}/approve"
+    assert client.post(path, json={"approved": True, "free_account_confirmed": True}).status_code == 409
+    approved = client.post(path, json={"approved": True, "paid_usage_approved": True})
+    assert approved.status_code == 200 and approved.json()["approval"]["paid_usage_approved"]
+    assert client.put("/api/settings", json={"transcription_providers": {"meeting": "elsewhere"}}).status_code == 422
+    assert client.put("/api/settings", json={"transcription_providers": {"podcast": "soniox"}}).status_code == 422
+    assert client.put("/api/settings", json={"output_format": "poster"}).status_code == 422
 
 
 def test_library_export_backup_restore_and_managed_delete(client, tmp_path):

@@ -7,5 +7,5 @@ if not exist ".venv\Scripts\python.exe" (
     exit /b 1
   )
 )
-".venv\Scripts\python.exe" -m visual_learning
+".venv\Scripts\python.exe" -m distill
 if errorlevel 1 pause

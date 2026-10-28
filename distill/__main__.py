@@ -19,7 +19,7 @@ def event_loop():
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Open your local Visual Learning workspace.")
+    parser = argparse.ArgumentParser(description="Open your local Distill workspace.")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--data-dir", type=Path, default=default_data_dir())
     parser.add_argument("--no-browser", action="store_true")
@@ -31,14 +31,14 @@ def main(argv=None):
     from .app import create_app
 
     url = f"http://127.0.0.1:{args.port}"
-    print(f"Visual Learning: {url}")
+    print(f"Distill: {url}")
     print(f"Your saved library: {args.data_dir.resolve()}")
     print("Keep this process running while pages are being generated. Press Ctrl+C to stop.")
     if not args.no_browser:
         timer = threading.Timer(1.5, lambda: webbrowser.open(url))
         timer.daemon = True
         timer.start()
-    uvicorn.run(create_app(args.data_dir, auto_worker=not args.no_worker), host="127.0.0.1", port=args.port, access_log=False, loop="visual_learning.__main__:event_loop")
+    uvicorn.run(create_app(args.data_dir, auto_worker=not args.no_worker), host="127.0.0.1", port=args.port, access_log=False, loop="distill.__main__:event_loop")
 
 
 if __name__ == "__main__":

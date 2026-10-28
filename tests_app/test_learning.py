@@ -4,10 +4,10 @@ from pathlib import Path
 import pytest
 
 from tests_app.learning_fixture import fixture
-from visual_learning.models import Evidence, KnowledgeUnit, Transcript, validate_bundle, validate_grounding
-from visual_learning.pipeline import (Pipeline, PipelineCancelled, PipelineError, constrain_source_ids,
+from distill.models import Evidence, KnowledgeUnit, Transcript, validate_bundle, validate_grounding
+from distill.pipeline import (Pipeline, PipelineCancelled, PipelineError, constrain_source_ids,
                                       invalid_source_ids, prepare_source, quote_mismatch_feedback, source_windows)
-from visual_learning.renderer import render_page
+from distill.renderer import render_page
 
 
 def test_quote_repair_points_to_exact_original_without_changing_evidence():
@@ -41,6 +41,17 @@ class SemanticFixtureProvider:
             input_units=body["units"]
             return {"main_question":"What does the source explain?","main_conclusion":"The source connects its ideas.","main_conclusion_evidence":input_units[0]["evidence"],"units":[unit("parent","Source model",input_units[0]["evidence"],[u["id"] for u in input_units])],"relationships":[],"limitations":[]}
         if schema["title"]=="PresentationPlan":return {"visuals":[{"id":"overview","type":"concept_map","title":"Major ideas","reader_question":"What connects them?","rationale":"Orient around the source model","node_ids":body["overview_ids"],"relationship_ids":[],"section_ids":[]}],"reading_order":["overview"]}
+        if schema["title"]=="LectureParts":
+            def slides(chapter):
+                ids=[u["id"] for u in chapter["units"]]
+                result=[{"layout":"points","title":chapter["title"],"points":[u["summary"] for u in chapter["units"][:4]],"columns":[],"unit_ids":ids[:4],"notes":"Explain how the supplied ideas connect."}]
+                quoted=[u["id"] for u in chapter["units"] if u["has_original_quote"]]
+                if quoted:result.append({"layout":"quote","title":"In the speaker's words","points":["Why this passage matters."],"columns":[],"unit_ids":quoted[:1],"notes":""})
+                return result
+            return {"parts":[{"chapter_id":chapter["id"],"slides":slides(chapter)} for chapter in body["chapters"]]}
+        if schema["title"]=="LectureFrame":
+            return {"title":"Lecture: "+body["source_title"][:120],"objectives":["Explain the source model.","Identify its evidence."],"takeaways":[body["main_conclusion"][:250],"Check the cited passages."]}
+        if schema["title"]=="FigureSet":return {"figures":[]}
         raise AssertionError(schema["title"])
 
 
@@ -225,7 +236,7 @@ def test_grounding_review_deduplicates_quotes_without_losing_original_passages(t
 
 def test_source_id_schema_rejects_added_words_and_preserves_custom_import_ids():
     import re
-    from visual_learning.models import Extraction
+    from distill.models import Extraction
     schema = Extraction.model_json_schema()
     known = constrain_source_ids(schema, {"snippets": [{"id": "s000265.p001", "text": "Original words"}]})
     pattern = schema["$defs"]["Evidence"]["properties"]["snippet_ids"]["items"]["pattern"]

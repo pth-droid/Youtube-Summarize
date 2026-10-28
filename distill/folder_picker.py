@@ -11,7 +11,7 @@ def main():
     root.withdraw()
     root.attributes("-topmost", True)
     try:
-        folder = filedialog.askdirectory(parent=root, title="Choose your Visual Learning library folder", initialdir=options.get("initialdir") or None, mustexist=False)
+        folder = filedialog.askdirectory(parent=root, title="Choose your Distill library folder", initialdir=options.get("initialdir") or None, mustexist=False)
         print(json.dumps({"path": folder or None}, ensure_ascii=True))
     finally:
         root.destroy()

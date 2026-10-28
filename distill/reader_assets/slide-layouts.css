@@ -1,0 +1,848 @@
+/* Copied from the slide-design skill (layouts/layouts.css), the layout library this deck draws from.
+   Refresh it from the skill rather than editing it here; Distill's additions live in lecture-layouts.css.
+   The renderer applies it only to the 1280x720 canvas (presenting and print). */
+/* ==========================================================================
+   Slide layouts: 24 layouts x 4 variants on a fixed 1280x720 canvas.
+   Markup: <section class="slide layout-NAME variant-N"> holding header.slide-head,
+   h2 (h1 on covers), div.slide-content, footer.slide-foot. LAYOUTS.md lists each
+   layout's markup, content limits and build steps.
+
+   Colour comes only from the look tokens (--paper --surface --ink --muted --line
+   --accent --on-accent --tint --feature --on-feature --focus); this file holds no
+   colour values. Components read context tokens (--c-ink --c-accent --c-muted
+   --c-rule --c-bg --c-on-accent) that filled and tinted regions switch, so
+   ordinals, rules and labels follow whatever surface they sit on.
+   Treatments (filled / tinted / outlined) are assigned in one table at the end.
+   ========================================================================== */
+
+/* ---------- 1. Canvas ---------- */
+:where(:root){
+  --display:"Sitka Heading","Sitka Display",Cambria,"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --mono:"Cascadia Mono","SF Mono",Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
+  --ease:cubic-bezier(.16,1,.3,1)}
+.slide{--h1:68px;--h2:50px;--text:27px;--small:15px;--eyebrow:15px;--label:18px;
+  --c-ink:var(--ink);--c-accent:var(--accent);--c-muted:var(--muted);--c-rule:var(--line);--c-bg:var(--surface);--c-on-accent:var(--on-accent);
+  position:relative;isolation:isolate;box-sizing:border-box;width:1280px;height:720px;overflow:hidden;
+  display:flex;flex-direction:column;gap:20px;padding:44px 72px 34px;
+  background:var(--surface);color:var(--ink);font:400 var(--text)/1.38 var(--sans);font-kerning:normal}
+.slide.dense{--h2:42px;--text:23px}
+.slide.denser{--h2:36px;--text:20px}
+.slide *,.slide ::before,.slide ::after{box-sizing:border-box}
+.slide :is(p,ul,ol,dl,dd,figure,blockquote,h3,h4){margin:0}
+.slide :is(ul,ol){list-style:none;padding:0}
+.slide-head{flex:none;display:flex;align-items:center;gap:16px;height:20px;min-width:0;text-align:left}
+.slide-head .eyebrow{margin:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font:600 var(--eyebrow)/20px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--c-accent)}
+.slide-head .count{flex:none;font:500 var(--eyebrow)/20px var(--mono);letter-spacing:.12em;color:var(--c-muted);font-variant-numeric:tabular-nums}
+.slide :is(h1,h2){flex:none;margin:0;font-family:var(--display);font-weight:600;letter-spacing:-.018em;text-wrap:balance;color:var(--c-ink)}
+.slide h1{font-size:var(--h1);line-height:1.06}
+.slide h2{font-size:var(--h2);line-height:1.1}
+.slide h3{font:600 calc(var(--text) * 1.1)/1.18 var(--display);letter-spacing:-.01em;color:var(--c-ink);text-wrap:balance}
+.slide-content{flex:1;min-height:0;min-width:0;position:relative}
+.slide-foot{flex:none;display:flex;justify-content:space-between;gap:24px;padding-top:10px;border-top:2px solid var(--c-rule);
+  font:500 var(--small)/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--c-muted)}
+.slide-foot>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slide .build-pending{opacity:0;pointer-events:none}
+.slide :focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+
+/* ---------- 2. Shared content parts ---------- */
+.slide-content p:not([class])+p:not([class]){margin-top:.55em}
+.slide strong{font-weight:650;color:var(--c-ink)}
+.slide .lede{font:500 calc(var(--text) * 1.18)/1.28 var(--display);letter-spacing:-.008em;color:var(--c-ink);text-wrap:pretty}
+.slide .label{font:600 var(--label)/1.3 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--c-accent)}
+/* A plain <ul> inside content reads as a dash list. */
+.slide-content ul:not([class])>li{position:relative;padding-left:1.05em}
+.slide-content ul:not([class])>li+li{margin-top:.42em}
+.slide-content ul:not([class])>li::before{content:"";position:absolute;left:0;top:.68em;width:.52em;height:2px;background:var(--c-accent)}
+
+/* Mono ordinals: every counter label shares one voice. */
+:is(
+  :is(.layout-two-col,.layout-two-col-head,.layout-three-col,.layout-three-col-head,.layout-four-col):is(.variant-1,.variant-2) .col,
+  .layout-four-col.variant-4 .col,
+  .layout-bullets:is(.variant-1,.variant-4) .bullets>li,
+  .layout-big-bullets:is(.variant-1,.variant-4) .big-list>li,
+  .layout-text-boxes .boxes>li,
+  .layout-arrows:is(.variant-1,.variant-3) .arrows h3,
+  .layout-nested.variant-1 .nested>li,
+  .layout-section .parts>li,
+  .layout-toggles.variant-3 .toggles>li
+)::before{font:600 var(--label)/1.3 var(--mono);letter-spacing:.14em;color:var(--c-accent);font-variant-numeric:tabular-nums}
+.layout-big-bullets.variant-3 .big-list>li::after{font:600 var(--label)/1.3 var(--mono);letter-spacing:.14em;color:var(--c-accent);font-variant-numeric:tabular-nums}
+/* Serif numerals: the display face, large, in accent. */
+:is(
+  :is(.layout-two-col,.layout-three-col,.layout-four-col).variant-3 .col,
+  .layout-big-bullets.variant-2 .big-list>li,
+  .layout-arrows.variant-4 .arrows>li,
+  .layout-nested.variant-2 .nested>li,
+  .layout-toggles.variant-4 .toggles>li
+)::before{display:block;font:600 calc(var(--text) * 2.3)/.92 var(--display);letter-spacing:-.035em;color:var(--c-accent);font-variant-numeric:lining-nums}
+
+/* ---------- 3. Columns: two-col, two-col-head, three-col, three-col-head, four-col ---------- */
+.slide .cols{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);column-gap:40px;height:100%;counter-reset:col}
+.slide .col{counter-increment:col;min-width:0;display:flex;flex-direction:column;gap:14px}
+:is(.layout-two-col,.layout-two-col-head) .cols{column-gap:56px}
+.layout-two-col .col ul,.layout-two-col-head .col :is(p,ul){font-size:max(20px,.94em)}
+.layout-three-col .col,.layout-three-col-head .col p,.layout-three-col-head .col ul{font-size:max(20px,.93em)}
+.layout-four-col .cols{column-gap:28px}
+.layout-four-col .col{font-size:max(20px,calc(var(--text) * .86))}
+.layout-four-col .col h3{font-size:calc(var(--text) * 1.02)}
+
+/* Open variants (no enclosing tiles) sit at the optical centre rather than hanging from the title. */
+:is(:is(.layout-two-col,.layout-three-col,.layout-four-col):is(.variant-1,.variant-3),:is(.layout-two-col-head,.layout-three-col-head):is(.variant-1,.variant-4),.layout-three-col.variant-4) .slide-content{display:flex;flex-direction:column;justify-content:center}
+:is(:is(.layout-two-col,.layout-three-col,.layout-four-col):is(.variant-1,.variant-3),:is(.layout-two-col-head,.layout-three-col-head):is(.variant-1,.variant-4),.layout-three-col.variant-4) .cols{height:auto}
+/* v1 Ruled: an accent rule over each column and a mono ordinal. */
+:is(.layout-two-col,.layout-two-col-head,.layout-three-col,.layout-three-col-head,.layout-four-col).variant-1 .col{border-top:2px solid var(--c-accent);padding-top:16px}
+:is(.layout-two-col,.layout-two-col-head,.layout-three-col,.layout-three-col-head,.layout-four-col):is(.variant-1,.variant-2) .col::before{content:counter(col,decimal-leading-zero)}
+.layout-two-col-head.variant-2 .col::before{content:none}
+
+/* v2: enclosed tiles. two-col: filled + outlined panels; two-col-head: outlined boxes under a filled heading strip;
+   three-col: filled lead tile + outlined; three-col-head: tinted cards, title anchored low; four-col: filled/outlined alternating. */
+:is(.layout-two-col,.layout-three-col,.layout-three-col-head,.layout-four-col).variant-2 .col{border-width:2px;border-style:solid;border-radius:8px;padding:24px 26px}
+.layout-two-col.variant-2 .col{padding:30px 34px;justify-content:center;border-radius:10px}
+.layout-two-col-head.variant-2 .col{border-width:2px;border-style:solid;border-radius:10px;overflow:hidden;padding:0 30px 22px;gap:14px}
+.layout-two-col-head.variant-2 .col>h3{margin:0 -30px;padding:14px 30px 12px}
+.layout-three-col-head.variant-2 .cols{grid-template-rows:1fr auto auto;row-gap:0}
+.layout-three-col-head.variant-2 .col{grid-row:1/4;display:grid;grid-template-rows:subgrid;row-gap:12px;padding-bottom:28px}
+.layout-three-col-head.variant-2 .col::before{align-self:start}
+.layout-three-col-head.variant-2 .col>h3{align-self:end;font-size:calc(var(--text) * 1.25)}
+.layout-four-col.variant-2 .col{padding:22px 22px}
+
+/* v3: divided columns with big serif numerals (two-col, three-col, four-col). */
+:is(.layout-two-col,.layout-three-col,.layout-four-col).variant-3 .col::before{content:counter(col,decimal-leading-zero);margin-bottom:6px}
+:is(.layout-two-col,.layout-three-col,.layout-four-col).variant-3 .col+.col{border-left:2px solid var(--c-rule);padding-left:40px}
+.layout-two-col.variant-3 .col+.col{padding-left:56px}
+.layout-four-col.variant-3 .col+.col{padding-left:28px}
+.layout-four-col.variant-3 .col::before{font-size:calc(var(--text) * 2)}
+/* two-col-head v3 Versus: filled against outlined with a mono stamp between. */
+.layout-two-col-head.variant-3 .cols{column-gap:72px}
+.layout-two-col-head.variant-3 .col{border-width:2px;border-style:solid;border-radius:10px;padding:28px 32px}
+.layout-two-col-head.variant-3 .cols::after{content:"vs";position:absolute;left:50%;top:50%;translate:-50% -50%;display:grid;place-items:center;width:52px;height:52px;border-radius:50%;
+  border:2px solid var(--c-rule);background:var(--c-bg);font:600 var(--small)/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--c-muted)}
+/* three-col-head v3 Feature middle: the recommended column stands taller and filled. */
+.layout-three-col-head.variant-3 .cols{column-gap:22px}
+.layout-three-col-head.variant-3 .col{border-width:2px;border-style:solid;border-radius:10px;padding:24px 26px;margin:28px 0}
+.layout-three-col-head.variant-3 .col:nth-child(2){margin:0;padding:30px 28px}
+.layout-three-col-head.variant-3 .col:nth-child(2)>h3{font-size:calc(var(--text) * 1.3)}
+
+/* v4: emphasis. */
+.layout-two-col.variant-4 .cols{grid-auto-flow:row;grid-template-columns:minmax(0,5fr) minmax(0,6fr);column-gap:64px;align-content:center;align-items:start}
+.layout-two-col.variant-4 .col:first-child{font:500 calc(var(--text) * 1.14)/1.3 var(--display);letter-spacing:-.006em;color:var(--c-ink);border-left:6px solid var(--c-accent);padding-left:28px}
+:is(.layout-two-col-head,.layout-three-col-head).variant-4 .col>h3{font-size:calc(var(--text) * 1.5);line-height:1.1;color:var(--c-accent);margin-bottom:6px}
+.layout-two-col-head.variant-4 .col+.col{border-left:2px solid var(--c-rule);padding-left:56px}
+.layout-three-col-head.variant-4 .col+.col{border-left:2px solid var(--c-rule);padding-left:40px}
+.layout-three-col-head.variant-4 .col>h3{font-size:calc(var(--text) * 1.32)}
+.layout-three-col.variant-4 .cols{grid-auto-flow:row;grid-template-columns:minmax(0,1.4fr) repeat(2,minmax(0,1fr));align-items:start}
+.layout-three-col.variant-4 .col:first-child{align-self:stretch;justify-content:center;min-height:240px;border-radius:10px;padding:30px 32px;font:500 calc(var(--text) * 1.1)/1.3 var(--display);color:var(--c-ink)}
+.layout-three-col.variant-4 .col:not(:first-child){border-top:2px solid var(--c-accent);padding-top:16px}
+.layout-four-col.variant-4 .slide-content{display:flex;flex-direction:column;justify-content:center}
+.layout-four-col.variant-4 .cols{height:auto;column-gap:0;border-radius:10px;padding:34px 0 38px}
+.layout-four-col.variant-4 .col{padding:0 26px}
+.layout-four-col.variant-4 .col+.col{border-left:2px solid var(--c-rule)}
+.layout-four-col.variant-4 .col::before{content:counter(col,decimal-leading-zero)}
+
+/* ---------- 4. Title with bullets ---------- */
+.slide .bullets{counter-reset:b}
+.slide .bullets>li{counter-increment:b;min-width:0}
+/* v1 Rows */
+.layout-bullets.variant-1 .slide-content{display:flex;flex-direction:column;justify-content:center}
+.layout-bullets.variant-1 .bullets>li{display:grid;grid-template-columns:68px minmax(0,1fr);align-items:first baseline;padding:11px 0;border-top:2px solid var(--c-rule)}
+.layout-bullets.variant-1 .bullets>li:last-child{border-bottom:2px solid var(--c-rule)}
+.layout-bullets.variant-1 .bullets>li::before{content:counter(b,decimal-leading-zero)}
+.layout-bullets.variant-1 .bullets:not(:has(>li:nth-child(5))){font-size:1.08em}
+/* v2 Side title: the heading takes the left column, points the right. */
+.layout-bullets.variant-2{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);grid-template-rows:auto minmax(0,1fr) auto;column-gap:56px}
+.layout-bullets.variant-2 :is(.slide-head,.slide-foot){grid-column:1/-1}
+.layout-bullets.variant-2 h2{grid-column:1;grid-row:2;align-self:center;font-size:calc(var(--h2) * 1.06)}
+.layout-bullets.variant-2 .slide-content{grid-column:2;grid-row:2;display:flex;flex-direction:column;justify-content:center;border-left:2px solid var(--c-accent);padding-left:44px}
+.layout-bullets.variant-2 .bullets{font-size:max(20px,.92em)}
+.layout-bullets.variant-2 .bullets>li{position:relative;padding:10px 0 10px 1.15em}
+.layout-bullets.variant-2 .bullets>li+li{border-top:2px solid var(--c-rule)}
+.layout-bullets.variant-2 .bullets>li::before{content:"";position:absolute;left:0;top:calc(10px + .68em);width:.52em;height:2px;background:var(--c-accent)}
+/* v3 Panel: one tinted panel, points flow into two columns from four items up. */
+.layout-bullets.variant-3 .slide-content{display:flex;align-items:center;padding:32px 44px;border-radius:10px}
+.layout-bullets.variant-3 .bullets{width:100%;columns:2;column-gap:64px}
+.layout-bullets.variant-3 .bullets:not(:has(>li:nth-child(4))){columns:1;font-size:1.08em}
+.layout-bullets.variant-3 .bullets>li{position:relative;break-inside:avoid;padding-left:1.15em;padding-bottom:.7em}
+.layout-bullets.variant-3 .bullets>li::before{content:"";position:absolute;left:0;top:.45em;width:.48em;height:.48em;border-radius:2px;background:var(--c-accent)}
+/* v4 Cells: a grid of ruled cells with ordinals. */
+.layout-bullets.variant-4 .bullets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px 44px;align-content:center;height:100%}
+.layout-bullets.variant-4 .bullets:has(>li:nth-child(4):last-child){grid-template-columns:repeat(2,minmax(0,1fr))}
+.layout-bullets.variant-4 .bullets>li{display:flex;flex-direction:column;gap:8px;border-top:2px solid var(--c-accent);padding-top:14px;font-size:max(20px,.96em);line-height:1.34}
+.layout-bullets.variant-4 .bullets>li::before{content:counter(b,decimal-leading-zero)}
+
+/* ---------- 5. Large bullet list ---------- */
+.slide .big-list{counter-reset:bb}
+.slide .big-list>li{counter-increment:bb;min-width:0;font:500 calc(var(--text) * 1.42)/1.18 var(--display);letter-spacing:-.012em;color:var(--c-ink);text-wrap:balance}
+/* Two statements set larger (not v4, where the first is already the lead). */
+.layout-big-bullets:not(.variant-4) .big-list:not(:has(>li:nth-child(3)))>li{font-size:calc(var(--text) * 1.68)}
+/* v1 Stacked rows */
+.layout-big-bullets.variant-1 .slide-content{display:flex;flex-direction:column;justify-content:center}
+.layout-big-bullets.variant-1 .big-list>li{display:grid;grid-template-columns:88px minmax(0,1fr);align-items:first baseline;padding:16px 0;border-top:2px solid var(--c-rule)}
+.layout-big-bullets.variant-1 .big-list>li:last-child{border-bottom:2px solid var(--c-rule)}
+.layout-big-bullets.variant-1 .big-list>li::before{content:counter(bb,decimal-leading-zero)}
+/* v2 Numerals grid */
+.layout-big-bullets.variant-2 .big-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:34px 56px;align-content:center;height:100%}
+.layout-big-bullets.variant-2 .big-list:has(>li:nth-child(3):last-child){grid-template-columns:repeat(3,minmax(0,1fr))}
+.layout-big-bullets.variant-2 .big-list>li::before{content:counter(bb,decimal-leading-zero);margin-bottom:12px;font-size:calc(var(--text) * 2.5)}
+/* v3 Bands */
+.layout-big-bullets.variant-3 .slide-content{display:flex;flex-direction:column;justify-content:center;gap:12px}
+.layout-big-bullets.variant-3 .big-list{display:flex;flex-direction:column;gap:12px}
+.layout-big-bullets.variant-3 .big-list>li{display:flex;justify-content:space-between;align-items:baseline;gap:32px;padding:18px 28px;border-radius:8px;font-size:calc(var(--text) * 1.3)}
+.layout-big-bullets.variant-3 .big-list>li:nth-child(even){padding:12px 28px}
+.layout-big-bullets.variant-3 .big-list>li::after{content:counter(bb,decimal-leading-zero);flex:none}
+/* v4 Lead: the first item filled and large, the rest in columns under it. */
+.layout-big-bullets.variant-4 .big-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto 1fr;gap:28px 40px;height:100%;align-content:center}
+.layout-big-bullets.variant-4 .big-list:has(>li:nth-child(3):last-child){grid-template-columns:repeat(2,minmax(0,1fr))}
+.layout-big-bullets.variant-4 .big-list:has(>li:nth-child(2):last-child){grid-template-columns:minmax(0,1fr)}
+.layout-big-bullets.variant-4 .big-list>li:first-child{grid-column:1/-1;font-size:calc(var(--text) * 1.72);line-height:1.12;padding:28px 36px 32px;border-radius:10px}
+.layout-big-bullets.variant-4 .big-list>li:not(:first-child){font-size:calc(var(--text) * 1.06);line-height:1.22;border-top:2px solid var(--c-accent);padding-top:14px}
+.layout-big-bullets.variant-4 .big-list>li::before{content:counter(bb,decimal-leading-zero);display:block;margin-bottom:8px}
+
+/* ---------- 6. Accent layouts ---------- */
+/* Text form: .accent holds .accent-label, then .accent-figure or .accent-statement, then .accent-caption.
+   Image form: .accent holds one <img> (or .placeholder) that covers it. */
+.slide .accent{position:relative;margin:0;min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:14px}
+.slide .accent>:is(img,.placeholder){position:absolute;inset:0;width:100%;height:100%}
+.slide .accent>img{display:block;object-fit:cover}
+.slide .placeholder{display:grid;place-items:center;background-color:var(--tint);color:var(--muted);
+  font:600 var(--label)/1.3 var(--mono);letter-spacing:.14em;text-transform:uppercase;
+  background-image:repeating-linear-gradient(135deg,transparent 0 22px,var(--line) 22px 24px)}
+.slide .placeholder span{background:var(--tint);padding:6px 12px;border-radius:4px}
+.slide .accent-figure{font:600 calc(var(--h1) * 2)/.86 var(--display);letter-spacing:-.045em;color:var(--c-ink);font-variant-numeric:lining-nums;white-space:nowrap}
+.slide .accent-statement{font:600 calc(var(--h2) * .84)/1.14 var(--display);letter-spacing:-.014em;color:var(--c-ink);text-wrap:balance}
+.slide .accent-label{font:600 var(--label)/1.3 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--c-accent)}
+.slide .accent-caption{font:400 max(20px,calc(var(--text) * .84))/1.36 var(--sans);color:var(--c-ink);text-wrap:pretty}
+.slide .body{min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:20px}
+.slide .body .lede{font-size:calc(var(--text) * 1.1)}
+/* Figures and statements on tinted or outlined panels take the accent colour. */
+:is(.layout-accent-left,.layout-accent-right,.layout-accent-top,.layout-accent-left-fit,.layout-accent-right-fit).variant-3 .accent :is(.accent-figure,.accent-statement),
+:is(.layout-accent-left-fit,.layout-accent-right-fit).variant-4 .accent :is(.accent-figure,.accent-statement){color:var(--c-accent)}
+
+/* Accent left / right: a full-bleed panel down one side; header, title and body share the other side. */
+:is(.layout-accent-left,.layout-accent-right){--acc:456px}
+.layout-accent-left{padding-left:calc(var(--acc) + 64px)}
+.layout-accent-right{padding-right:calc(var(--acc) + 64px)}
+:is(.layout-accent-left,.layout-accent-right) .slide-content{position:static;display:flex}
+:is(.layout-accent-left,.layout-accent-right) .accent{position:absolute;top:0;bottom:0;width:var(--acc);padding:44px 48px 40px;justify-content:space-between}
+.layout-accent-left .accent{left:0}
+.layout-accent-right .accent{right:0}
+:is(.layout-accent-left,.layout-accent-right) .body{flex:1;font-size:max(20px,.94em)}
+/* v2 narrow band */
+:is(.layout-accent-left,.layout-accent-right).variant-2{--acc:300px}
+:is(.layout-accent-left,.layout-accent-right).variant-2 .accent{padding:44px 34px 40px}
+:is(.layout-accent-left,.layout-accent-right).variant-2 .accent-figure{font-size:calc(var(--h1) * 1.3)}
+:is(.layout-accent-left,.layout-accent-right).variant-2 .accent-statement{font-size:calc(var(--h2) * .62)}
+/* v3 wide tinted half */
+:is(.layout-accent-left,.layout-accent-right).variant-3{--acc:560px}
+:is(.layout-accent-left,.layout-accent-right).variant-3 .accent{justify-content:center;gap:22px;padding:60px 64px}
+:is(.layout-accent-left,.layout-accent-right).variant-3 .accent-figure{font-size:calc(var(--h1) * 2.5)}
+:is(.layout-accent-left,.layout-accent-right).variant-3 .accent-statement{font-size:calc(var(--h2) * .96)}
+/* v4 framed: a hairline mat inside the panel; an image sits matted in it. */
+:is(.layout-accent-left,.layout-accent-right).variant-4 .accent{justify-content:center;align-items:center;text-align:center;padding:64px 60px}
+:is(.layout-accent-left,.layout-accent-right).variant-4 .accent::after{content:"";position:absolute;inset:26px;border:2px solid var(--c-rule);border-radius:4px;pointer-events:none}
+:is(.layout-accent-left,.layout-accent-right).variant-4 .accent:has(>:is(img,.placeholder))::after{content:none}
+:is(.layout-accent-left,.layout-accent-right).variant-4 .accent>:is(img,.placeholder){inset:26px;width:calc(100% - 52px);height:calc(100% - 52px);border-radius:4px}
+
+/* Body lists by variant: v1/v3 dashes, v2 hairline rows, v4 numbered rows (all accent layouts). */
+:is(.layout-accent-left,.layout-accent-right,.layout-accent-left-fit,.layout-accent-right-fit).variant-2 .body ul:not([class])>li{margin:0;padding:10px 0 10px 1.05em;border-top:2px solid var(--c-rule)}
+:is(.layout-accent-left,.layout-accent-right,.layout-accent-left-fit,.layout-accent-right-fit).variant-2 .body ul:not([class])>li::before{top:calc(10px + .68em)}
+:is(.layout-accent-left,.layout-accent-right,.layout-accent-left-fit,.layout-accent-right-fit).variant-4 .body ul:not([class]){counter-reset:acc}
+:is(.layout-accent-left,.layout-accent-right,.layout-accent-left-fit,.layout-accent-right-fit).variant-4 .body ul:not([class])>li{counter-increment:acc;display:grid;grid-template-columns:52px minmax(0,1fr);align-items:first baseline;padding:0}
+:is(.layout-accent-left,.layout-accent-right,.layout-accent-left-fit,.layout-accent-right-fit).variant-4 .body ul:not([class])>li::before{content:counter(acc,decimal-leading-zero);position:static;width:auto;height:auto;background:none;
+  font:600 var(--label)/1.3 var(--mono);letter-spacing:.14em;color:var(--c-accent)}
+
+/* Accent top: a full-bleed band across the top; the header sits on it. */
+.layout-accent-top{--band:236px}
+.layout-accent-top .slide-head{position:relative;z-index:1}
+.layout-accent-top h2{margin-top:calc(var(--band) - 56px)}
+.layout-accent-top .slide-content{position:static}
+.layout-accent-top .accent{position:absolute;left:0;right:0;top:0;height:var(--band);padding:84px 72px 26px;justify-content:flex-end;gap:8px}
+/* With a figure: the figure on the left, label and caption stacked beside it, all on the band's floor. */
+.layout-accent-top:is(.variant-1,.variant-3) .accent:has(>.accent-figure){display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:1fr auto auto;column-gap:36px;row-gap:6px}
+.layout-accent-top:is(.variant-1,.variant-3) .accent>.accent-figure{grid-column:1;grid-row:1/-1;align-self:end}
+.layout-accent-top:is(.variant-1,.variant-3) .accent>.accent-label{grid-column:2;grid-row:2}
+.layout-accent-top:is(.variant-1,.variant-3) .accent>.accent-caption{grid-column:2;grid-row:3;max-width:30em;padding-bottom:6px}
+.layout-accent-top .accent>:is(img,.placeholder){top:84px;height:calc(100% - 84px)}
+.layout-accent-top .accent-figure{font-size:calc(var(--h1) * 1.6)}
+.layout-accent-top .accent-statement{font-size:calc(var(--h2) * .8)}
+.layout-accent-top .body{height:100%;justify-content:flex-start;gap:18px;font-size:max(20px,.94em)}
+.layout-accent-top .body ul:not([class]){display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:40px}
+.layout-accent-top .body ul:not([class])>li{margin:0;padding:12px 0 0;border-top:2px solid var(--c-accent)}
+.layout-accent-top .body ul:not([class])>li::before{content:none}
+/* v2 title on the band, the accent content in its right third */
+.layout-accent-top.variant-2{--band:318px}
+.layout-accent-top.variant-2 h2{position:relative;z-index:1;margin-top:0;height:calc(var(--band) - 84px - 30px);max-width:62%;display:flex;align-items:flex-end}
+.layout-accent-top.variant-2 .slide-content{margin-top:38px}
+.layout-accent-top.variant-2 .accent{padding-left:calc(64% + 40px);align-items:flex-start;gap:10px}
+.layout-accent-top.variant-2 .accent>:is(img,.placeholder){left:auto;right:0;width:36%}
+.layout-accent-top.variant-2 .accent-label{margin-bottom:auto}
+.layout-accent-top.variant-2 .accent-figure{font-size:calc(var(--h1) * 1.5)}
+.layout-accent-top.variant-2 .accent-statement{font-size:calc(var(--h2) * .66)}
+/* v3 tinted strip */
+.layout-accent-top.variant-3{--band:212px}
+/* v4 centered */
+.layout-accent-top.variant-4{--band:272px;text-align:center}
+.layout-accent-top.variant-4 .accent{align-items:center;gap:6px}
+.layout-accent-top.variant-4 .accent-figure{font-size:calc(var(--h1) * 1.3)}
+.layout-accent-top.variant-4 .body{align-items:center}
+.layout-accent-top.variant-4 .body .lede{max-width:34em}
+.layout-accent-top.variant-4 .body ul:not([class]){width:100%}
+
+/* Accent left / right (fit): the panel is a card inside the margins. */
+:is(.layout-accent-left-fit,.layout-accent-right-fit){--acc:42%;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;column-gap:56px}
+.layout-accent-left-fit{grid-template-columns:var(--acc) minmax(0,1fr)}
+.layout-accent-right-fit{grid-template-columns:minmax(0,1fr) var(--acc)}
+:is(.layout-accent-left-fit,.layout-accent-right-fit) :is(.slide-head,.slide-foot){grid-column:1/-1}
+:is(.layout-accent-left-fit,.layout-accent-right-fit) .slide-content{display:contents}
+:is(.layout-accent-left-fit,.layout-accent-right-fit) h2{grid-row:2}
+:is(.layout-accent-left-fit,.layout-accent-right-fit) .body{grid-row:3;font-size:max(20px,.94em)}
+.layout-accent-left-fit :is(h2,.body){grid-column:2}
+.layout-accent-right-fit :is(h2,.body){grid-column:1}
+.layout-accent-left-fit .accent{grid-column:1;grid-row:2/4}
+.layout-accent-right-fit .accent{grid-column:2;grid-row:2/4}
+:is(.layout-accent-left-fit,.layout-accent-right-fit) .accent{border-width:2px;border-style:solid;border-radius:10px;padding:30px 34px;justify-content:space-between}
+:is(.layout-accent-left-fit,.layout-accent-right-fit) .accent-figure{font-size:calc(var(--h1) * 1.75)}
+:is(.layout-accent-left-fit,.layout-accent-right-fit) .accent>:is(img,.placeholder){border-radius:8px}
+/* v2 tall card from the top bar to the foot line */
+:is(.layout-accent-left-fit,.layout-accent-right-fit).variant-2{--acc:32%}
+:is(.layout-accent-left-fit,.layout-accent-right-fit).variant-2 .accent{grid-row:1/-1}
+.layout-accent-left-fit.variant-2 :is(.slide-head,.slide-foot){grid-column:2}
+.layout-accent-right-fit.variant-2 :is(.slide-head,.slide-foot){grid-column:1}
+:is(.layout-accent-left-fit,.layout-accent-right-fit).variant-2 .accent-figure{font-size:calc(var(--h1) * 1.4)}
+:is(.layout-accent-left-fit,.layout-accent-right-fit).variant-2 .accent-statement{font-size:calc(var(--h2) * .66)}
+/* v3 tinted, centred */
+:is(.layout-accent-left-fit,.layout-accent-right-fit).variant-3{--acc:46%}
+:is(.layout-accent-left-fit,.layout-accent-right-fit).variant-3 .accent{justify-content:center;gap:20px;padding:40px 48px}
+:is(.layout-accent-left-fit,.layout-accent-right-fit).variant-3 .accent-figure{font-size:calc(var(--h1) * 2.2)}
+/* v4 outlined */
+:is(.layout-accent-left-fit,.layout-accent-right-fit).variant-4{--acc:38%}
+:is(.layout-accent-left-fit,.layout-accent-right-fit).variant-4 .accent{justify-content:flex-end}
+:is(.layout-accent-left-fit,.layout-accent-right-fit).variant-4 .accent-label{margin-bottom:auto}
+
+/* ---------- 7. Text boxes ---------- */
+.slide .boxes{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:20px;height:100%;counter-reset:bx}
+.slide .boxes>li{counter-increment:bx;grid-column:span 2;min-width:0;min-height:0;display:flex;flex-direction:column;gap:8px;padding:20px 24px 22px;border-width:2px;border-style:solid;border-radius:8px}
+.slide:not(.variant-2) .boxes:has(>li:nth-child(4):last-child)>li{grid-column:span 3}
+.slide:not(.variant-2) .boxes:has(>li:nth-child(5):last-child)>li:nth-child(n+4){grid-column:span 3}
+.slide .boxes>li::before{content:counter(bx,decimal-leading-zero);margin-bottom:2px}
+.slide .boxes h3{font-size:var(--text)}
+.slide .boxes p{font-size:max(20px,.86em);line-height:1.34}
+/* v2 Bento: a large filled first box beside the rest. */
+.layout-text-boxes.variant-2 .boxes{grid-template-columns:minmax(0,1.3fr) repeat(2,minmax(0,1fr))}
+.layout-text-boxes.variant-2 .boxes>li{grid-column:auto}
+.layout-text-boxes.variant-2 .boxes>li:first-child{grid-column:1;grid-row:1/span 2;justify-content:flex-end;padding:26px 30px 30px}
+.layout-text-boxes.variant-2 .boxes>li:first-child::before{margin-bottom:auto}
+.layout-text-boxes.variant-2 .boxes>li:first-child h3{font-size:calc(var(--text) * 1.55);line-height:1.1}
+.layout-text-boxes.variant-2 .boxes>li:first-child p{font-size:max(20px,.94em)}
+.layout-text-boxes.variant-2 .boxes:has(>li:nth-child(3):last-child){grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
+.layout-text-boxes.variant-2 .boxes:has(>li:nth-child(4):last-child)>li:nth-child(4){grid-column:2/span 2}
+/* v3 Outlined, text anchored low */
+.layout-text-boxes.variant-3 .boxes>li{justify-content:flex-end}
+.layout-text-boxes.variant-3 .boxes>li::before{margin-bottom:auto}
+/* v4 Alternating fills, larger titles */
+.layout-text-boxes.variant-4 .boxes h3{font-size:calc(var(--text) * 1.12)}
+
+/* ---------- 8. Timeline (horizontal) ---------- */
+.slide .timeline{counter-reset:tl}
+.slide .timeline>li{counter-increment:tl;min-width:0;position:relative}
+.slide .timeline time{display:block;white-space:nowrap;font:600 var(--label)/1.3 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--c-accent)}
+.slide .timeline h3{font-size:var(--text)}
+.slide .timeline p{font-size:max(20px,.86em);line-height:1.34}
+.layout-timeline .slide-content{display:flex;flex-direction:column;justify-content:center}
+.layout-timeline .timeline{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);column-gap:28px}
+/* v1 Rail with dots */
+.layout-timeline.variant-1 .timeline::before{content:"";position:absolute;left:0;right:0;top:calc(var(--label) * 1.3 + 6px + 19px);height:2px;background:color-mix(in srgb,var(--c-accent) 45%,var(--c-rule))}
+.layout-timeline.variant-1 .timeline>li{display:grid;grid-template-rows:auto 40px auto auto;row-gap:6px;align-content:start}
+.layout-timeline.variant-1 .timeline>li>time{grid-row:1}
+.layout-timeline.variant-1 .timeline>li>h3{grid-row:3}
+.layout-timeline.variant-1 .timeline>li>p{grid-row:4}
+.layout-timeline.variant-1 .timeline>li::before{content:"";grid-row:2;align-self:center;position:relative;z-index:1;width:18px;height:18px;border-radius:50%;border:2px solid var(--c-accent);background:var(--c-bg)}
+.layout-timeline.variant-1 .timeline>li[aria-current]::before{width:24px;height:24px;margin-left:-3px;background:var(--c-accent)}
+/* v2 Zigzag above and below a centre rail */
+.layout-timeline.variant-2 .slide-content{display:block}
+.layout-timeline.variant-2 .timeline{height:100%;grid-auto-flow:row;column-gap:0;grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:minmax(0,1fr) 44px minmax(0,1fr)}
+.layout-timeline.variant-2 .timeline:has(>li:nth-child(4):last-child){grid-template-columns:repeat(5,minmax(0,1fr))}
+.layout-timeline.variant-2 .timeline:has(>li:nth-child(3):last-child){grid-template-columns:repeat(4,minmax(0,1fr))}
+.layout-timeline.variant-2 .timeline::before{content:"";grid-column:1/-1;grid-row:2;align-self:center;height:2px;background:color-mix(in srgb,var(--c-accent) 45%,var(--c-rule))}
+.layout-timeline.variant-2 .timeline>li{display:flex;flex-direction:column;gap:6px;padding:0 22px 0 20px;border-left:2px solid color-mix(in srgb,var(--c-accent) 45%,var(--c-rule))}
+.layout-timeline.variant-2 .timeline>li:nth-child(odd){grid-row:1;align-self:end;margin-bottom:-22px;padding-bottom:34px}
+.layout-timeline.variant-2 .timeline>li:nth-child(even){grid-row:3;align-self:start;margin-top:-22px;padding-top:34px}
+.layout-timeline.variant-2 .timeline>li:nth-child(1){grid-column:1/span 2}
+.layout-timeline.variant-2 .timeline>li:nth-child(2){grid-column:2/span 2}
+.layout-timeline.variant-2 .timeline>li:nth-child(3){grid-column:3/span 2}
+.layout-timeline.variant-2 .timeline>li:nth-child(4){grid-column:4/span 2}
+.layout-timeline.variant-2 .timeline>li:nth-child(5){grid-column:5/span 2}
+.layout-timeline.variant-2 .timeline>li::before{content:"";position:absolute;left:-10px;width:18px;height:18px;border-radius:50%;border:2px solid var(--c-accent);background:var(--c-bg)}
+.layout-timeline.variant-2 .timeline>li:nth-child(odd)::before{bottom:-9px}
+.layout-timeline.variant-2 .timeline>li:nth-child(even)::before{top:-9px}
+.layout-timeline.variant-2 .timeline>li[aria-current]::before{background:var(--c-accent)}
+/* v3 Tiles: the current period filled */
+.layout-timeline.variant-3 .timeline{column-gap:16px}
+.layout-timeline.variant-3 .timeline>li{display:flex;flex-direction:column;gap:8px;padding:22px 22px 26px;border-width:2px;border-style:solid;border-radius:8px;min-height:300px}
+.layout-timeline.variant-3 .timeline time{font:600 calc(var(--text) * 1.32)/1.05 var(--display);letter-spacing:-.02em;text-transform:none;margin-bottom:auto;padding-bottom:18px}
+/* v4 Big dates over a segmented progress bar */
+.layout-timeline.variant-4 .timeline{column-gap:12px;align-items:start}
+.layout-timeline.variant-4 .timeline>li{display:flex;flex-direction:column;gap:8px;padding:18px 16px 0 0;border-top:6px solid var(--c-accent)}
+.layout-timeline.variant-4 .timeline>li[aria-current]~li{border-top-color:var(--c-rule)}
+.layout-timeline.variant-4 .timeline>li[aria-current]~li time{color:var(--c-muted)}
+.layout-timeline.variant-4 .timeline time{font:600 calc(var(--text) * 1.45)/1 var(--display);letter-spacing:-.03em;text-transform:none;margin-bottom:6px}
+
+/* ---------- 9. Timeline (vertical) ---------- */
+.layout-timeline-v .slide-content{display:flex;flex-direction:column;justify-content:center}
+.layout-timeline-v .timeline{position:relative;display:grid}
+.layout-timeline-v .timeline h3{font-size:var(--text)}
+.layout-timeline-v .timeline p{font-size:max(20px,.84em);line-height:1.32}
+/* v1 Rail */
+.layout-timeline-v.variant-1 .timeline>li{display:grid;grid-template-columns:168px 48px minmax(0,1fr);row-gap:2px;padding-bottom:16px}
+.layout-timeline-v.variant-1 .timeline>li:last-child{padding-bottom:0}
+.layout-timeline-v.variant-1 .timeline>li>time{grid-column:1;grid-row:1/3;text-align:right;padding:5px 8px 0 0}
+.layout-timeline-v.variant-1 .timeline>li>h3{grid-column:3;grid-row:1}
+.layout-timeline-v.variant-1 .timeline>li>p{grid-column:3;grid-row:2}
+.layout-timeline-v.variant-1 .timeline>li::before{content:"";grid-column:2;grid-row:1;justify-self:center;margin-top:8px;position:relative;z-index:1;width:18px;height:18px;border-radius:50%;border:2px solid var(--c-accent);background:var(--c-bg)}
+.layout-timeline-v.variant-1 .timeline>li[aria-current]::before{background:var(--c-accent)}
+.layout-timeline-v.variant-1 .timeline>li:not(:last-child)::after{content:"";position:absolute;left:191px;top:24px;bottom:-10px;width:2px;background:color-mix(in srgb,var(--c-accent) 45%,var(--c-rule))}
+/* v2 Ledger: serif dates, hairline rows, the current row tinted */
+.layout-timeline-v.variant-2 .timeline>li{display:grid;grid-template-columns:240px minmax(0,1fr);column-gap:32px;row-gap:2px;align-items:baseline;padding:7px 18px;border-top:2px solid var(--c-rule)}
+.layout-timeline-v.variant-2 .timeline>li:last-child{border-bottom:2px solid var(--c-rule)}
+.layout-timeline-v.variant-2 .timeline>li>time{grid-row:1/3;font:600 calc(var(--text) * 1.18)/1.1 var(--display);letter-spacing:-.015em;text-transform:none}
+.layout-timeline-v.variant-2 .timeline>li>:is(h3,p){grid-column:2}
+.layout-timeline-v.variant-2 .timeline>li[aria-current]{border-radius:8px}
+.layout-timeline-v.variant-2 .timeline>li[aria-current]+li{border-top-color:transparent}
+/* v3 Centre spine, entries alternating */
+.layout-timeline-v.variant-3 .slide-content{display:block}
+.layout-timeline-v.variant-3 .timeline{height:100%;grid-template-columns:minmax(0,1fr) 56px minmax(0,1fr);grid-template-rows:repeat(6,minmax(0,1fr))}
+.layout-timeline-v.variant-3 .timeline:has(>li:nth-child(4):last-child){grid-template-rows:repeat(5,minmax(0,1fr))}
+.layout-timeline-v.variant-3 .timeline:has(>li:nth-child(3):last-child){grid-template-rows:repeat(4,minmax(0,1fr))}
+.layout-timeline-v.variant-3 .timeline::before{content:"";grid-column:2;grid-row:1/-1;justify-self:center;width:2px;background:color-mix(in srgb,var(--c-accent) 45%,var(--c-rule))}
+.layout-timeline-v.variant-3 .timeline>li{align-self:center;display:flex;flex-direction:column;gap:2px}
+.layout-timeline-v.variant-3 .timeline>li:nth-child(odd){grid-column:1;text-align:right;align-items:flex-end}
+.layout-timeline-v.variant-3 .timeline>li:nth-child(even){grid-column:3}
+.layout-timeline-v.variant-3 .timeline>li:nth-child(1){grid-row:1/span 2}
+.layout-timeline-v.variant-3 .timeline>li:nth-child(2){grid-row:2/span 2}
+.layout-timeline-v.variant-3 .timeline>li:nth-child(3){grid-row:3/span 2}
+.layout-timeline-v.variant-3 .timeline>li:nth-child(4){grid-row:4/span 2}
+.layout-timeline-v.variant-3 .timeline>li:nth-child(5){grid-row:5/span 2}
+.layout-timeline-v.variant-3 .timeline>li::before{content:"";position:absolute;top:2px;width:18px;height:18px;border-radius:50%;border:2px solid var(--c-accent);background:var(--c-bg)}
+.layout-timeline-v.variant-3 .timeline>li:nth-child(odd)::before{right:-37px}
+.layout-timeline-v.variant-3 .timeline>li:nth-child(even)::before{left:-37px}
+.layout-timeline-v.variant-3 .timeline>li[aria-current]::before{background:var(--c-accent)}
+/* v4 Date band: the dates stack in one filled column */
+.layout-timeline-v.variant-4 .timeline>li{display:grid;grid-template-columns:230px minmax(0,1fr);column-gap:32px;row-gap:2px;align-items:start}
+.layout-timeline-v.variant-4 .timeline>li>time{grid-row:1/3;align-self:stretch;padding:10px 22px 9px;font:600 calc(var(--text) * 1.08)/1.15 var(--display);letter-spacing:-.01em;text-transform:none}
+.layout-timeline-v.variant-4 .timeline>li:first-child>time{border-radius:8px 8px 0 0}
+.layout-timeline-v.variant-4 .timeline>li:last-child>time{border-radius:0 0 8px 8px}
+.layout-timeline-v.variant-4 .timeline>li>h3{grid-column:2;padding-top:10px}
+.layout-timeline-v.variant-4 .timeline>li>p{grid-column:2;padding-bottom:9px}
+.layout-timeline-v.variant-4 .timeline>li+li>:is(h3){border-top:2px solid var(--c-rule)}
+.layout-timeline-v.variant-4 .timeline>li[aria-current]>h3{color:var(--c-accent)}
+.layout-timeline-v.variant-4 .timeline>li[aria-current]>time::after{content:"";display:block;width:28px;height:4px;margin-top:8px;border-radius:2px;background:currentColor}
+
+/* ---------- 10. Arrows (chevron process) ---------- */
+.slide .arrows{counter-reset:ar}
+.slide .arrows>li{counter-increment:ar;min-width:0;position:relative}
+.layout-arrows .slide-content{display:flex;flex-direction:column;justify-content:center}
+.layout-arrows .arrows{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
+.layout-arrows .arrows h3{font-size:max(20px,calc(var(--text) * .98))}
+.layout-arrows .arrows p{font-size:max(20px,.86em);line-height:1.34}
+/* v1 Chevron band: titles inside interlocking chevrons, detail underneath */
+.layout-arrows.variant-1 .arrows{column-gap:0;align-items:start}
+.layout-arrows.variant-1 .arrows>li{display:flex;flex-direction:column;gap:18px}
+.layout-arrows.variant-1 .arrows h3{--d:30px;height:118px;margin-right:-22px;padding:0 calc(var(--d) + 10px) 0 calc(var(--d) + 18px);display:flex;flex-direction:column;justify-content:center;gap:4px;
+  clip-path:polygon(0 0,calc(100% - var(--d)) 0,100% 50%,calc(100% - var(--d)) 100%,0 100%,var(--d) 50%)}
+.layout-arrows.variant-1 .arrows>li:first-child h3{padding-left:24px;clip-path:polygon(0 0,calc(100% - var(--d)) 0,100% 50%,calc(100% - var(--d)) 100%,0 100%)}
+.layout-arrows.variant-1 .arrows>li:last-child h3{margin-right:0}
+.layout-arrows.variant-1 .arrows h3::before{content:counter(ar,decimal-leading-zero)}
+.layout-arrows.variant-1 .arrows p{padding:0 24px 0 4px}
+/* v2 Down arrows: a vertical run of chevron badges, text to the right */
+.layout-arrows.variant-2 .arrows{grid-auto-flow:row;grid-auto-columns:auto}
+.layout-arrows.variant-2 .arrows>li{display:grid;grid-template-columns:96px minmax(0,4fr) minmax(0,7fr);column-gap:30px;align-items:center;min-height:82px}
+.layout-arrows.variant-2 .arrows>li::before{content:counter(ar,decimal-leading-zero);align-self:stretch;margin-bottom:-12px;display:grid;place-items:center;padding-top:4px;
+  font:600 var(--label)/1 var(--mono);letter-spacing:.1em;background:var(--feature);color:var(--on-feature);
+  clip-path:polygon(0 0,50% 16px,100% 0,100% calc(100% - 16px),50% 100%,0 calc(100% - 16px))}
+.layout-arrows.variant-2 .arrows>li:first-child::before{clip-path:polygon(0 0,100% 0,100% calc(100% - 16px),50% 100%,0 calc(100% - 16px))}
+.layout-arrows.variant-2 .arrows>li:last-child::before{margin-bottom:0}
+.layout-arrows.variant-2 .arrows>li>p{color:var(--c-ink)}
+/* v3 Outlined chevrons with the text inside; the current step filled */
+.layout-arrows.variant-3 .slide-content{display:block}
+.layout-arrows.variant-3 .arrows{height:100%;column-gap:0}
+.layout-arrows.variant-3 .arrows>li{--d:26px;z-index:0;margin-right:-18px;padding:28px calc(var(--d) + 16px) 28px calc(var(--d) + 20px);display:flex;flex-direction:column;justify-content:center;gap:10px;
+  clip-path:polygon(0 0,calc(100% - var(--d)) 0,100% 50%,calc(100% - var(--d)) 100%,0 100%,var(--d) 50%)}
+/* The outline is two clipped layers behind the text: accent, then the surface inset by 2px. */
+.layout-arrows.variant-3 .arrows>li::before,.layout-arrows.variant-3 .arrows>li::after{content:"";position:absolute;clip-path:inherit}
+.layout-arrows.variant-3 .arrows>li::before{inset:0;z-index:-2;background:var(--accent)}
+.layout-arrows.variant-3 .arrows>li::after{inset:2px 3px;z-index:-1;background:var(--surface)}
+.layout-arrows.variant-3 .arrows>li:first-child{padding-left:28px;clip-path:polygon(0 0,calc(100% - var(--d)) 0,100% 50%,calc(100% - var(--d)) 100%,0 100%)}
+.layout-arrows.variant-3 .arrows>li:last-child{margin-right:0}
+.layout-arrows.variant-3 .arrows h3::before{content:counter(ar,decimal-leading-zero);display:block;margin-bottom:6px}
+.layout-arrows.variant-3 .arrows p{font-size:max(20px,calc(var(--text) * .8))}
+.layout-arrows.variant-3 .arrows>li[aria-current]::before,.layout-arrows.variant-3 .arrows>li[aria-current]::after{content:none}
+/* v4 Line arrows: serif numerals joined by drawn arrows */
+.layout-arrows.variant-4 .arrows{column-gap:64px;align-items:start}
+.layout-arrows.variant-4 .arrows>li{display:flex;flex-direction:column;gap:12px}
+.layout-arrows.variant-4 .arrows>li::before{content:counter(ar,decimal-leading-zero)}
+.layout-arrows.variant-4 .arrows>li>h3{padding-top:14px;border-top:2px solid var(--c-accent)}
+.layout-arrows.variant-4 .arrows>li:not(:last-child)::after{content:"";position:absolute;top:22px;right:-52px;width:40px;height:14px;background:var(--c-accent);
+  clip-path:polygon(0 6px,calc(100% - 11px) 6px,calc(100% - 11px) 0,100% 50%,calc(100% - 11px) 100%,calc(100% - 11px) 8px,0 8px)}
+
+/* ---------- 11. Icons with text, small icons with text ---------- */
+/* .glyph holds an inline SVG (stroke=currentColor) or 1-3 mono characters. */
+.slide .glyph{flex:none;display:inline-grid;place-items:center;width:72px;height:72px;border-radius:50%;border:2px solid var(--c-accent);color:var(--c-accent);
+  font:600 var(--label)/1 var(--mono);letter-spacing:.04em}
+.slide .glyph svg{width:50%;height:50%;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+.slide .icons{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);column-gap:36px}
+.slide .icons>li{min-width:0;display:flex;flex-direction:column;gap:12px}
+.slide .icons h3{font-size:calc(var(--text) * 1.02)}
+.slide .icons p{font-size:max(20px,.86em);line-height:1.34}
+.layout-icons .slide-content{display:flex;flex-direction:column;justify-content:center}
+/* v1 Columns: outlined circles, text left */
+.layout-icons.variant-1 .glyph{margin-bottom:8px}
+/* v2 Rows: filled square badges with text beside */
+.layout-icons.variant-2 .icons{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr));gap:40px 56px}
+.layout-icons.variant-2 .icons:has(>li:nth-child(3):last-child){grid-template-columns:minmax(0,1fr);row-gap:30px}
+.layout-icons.variant-2 .icons>li{display:grid;grid-template-columns:64px minmax(0,1fr);column-gap:24px;row-gap:6px;align-items:start}
+.layout-icons.variant-2 .glyph{grid-row:1/3;width:64px;height:64px;border-radius:10px}
+/* v3 Tinted tiles: glyph on a surface disc */
+.layout-icons.variant-3 .icons{column-gap:20px;align-items:stretch}
+.layout-icons.variant-3 .icons>li{padding:28px 26px 30px;border-radius:10px}
+.layout-icons.variant-3 .glyph{border:0;background:var(--surface);width:64px;height:64px;margin-bottom:10px}
+/* v4 Connected: filled discs on one hairline, text centred */
+.layout-icons.variant-4 .icons{position:relative;text-align:center}
+.layout-icons.variant-4 .icons::before{content:"";position:absolute;top:35px;height:2px;left:calc((100% - 3 * 36px) / 8);right:calc((100% - 3 * 36px) / 8);background:color-mix(in srgb,var(--c-accent) 45%,var(--c-rule))}
+.layout-icons.variant-4 .icons:has(>li:nth-child(3):last-child)::before{left:calc((100% - 2 * 36px) / 6);right:calc((100% - 2 * 36px) / 6)}
+.layout-icons.variant-4 .icons>li{align-items:center}
+.layout-icons.variant-4 .glyph{position:relative;margin-bottom:10px}
+
+.slide .small-icons{display:grid;column-gap:48px}
+.slide .small-icons>li{min-width:0;display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:18px;align-items:start}
+.slide .small-icons .glyph{width:40px;height:40px;font-size:15px}
+.slide .small-icons .glyph svg{width:58%;height:58%}
+.slide .small-icons p{font-size:max(20px,.92em);line-height:1.34;padding-top:2px}
+.layout-small-icons .slide-content{display:flex;flex-direction:column;justify-content:center}
+/* v1 Two-column list with hairlines, read down each column */
+.layout-small-icons.variant-1 .small-icons{grid-auto-flow:column;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(4,auto)}
+.layout-small-icons.variant-1 .small-icons:not(:has(>li:nth-child(7))){grid-template-rows:repeat(3,auto)}
+.layout-small-icons.variant-1 .small-icons:not(:has(>li:nth-child(5))){grid-template-rows:repeat(2,auto)}
+.layout-small-icons.variant-1 .small-icons>li{padding:14px 0;border-top:2px solid var(--c-rule)}
+/* v2 Cells: tinted cells, glyph above */
+.layout-small-icons.variant-2 .small-icons{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.layout-small-icons.variant-2 .small-icons:has(>li:nth-child(5)):not(:has(>li:nth-child(7))){grid-template-columns:repeat(3,minmax(0,1fr))}
+.layout-small-icons.variant-2 .small-icons>li{grid-template-columns:minmax(0,1fr);row-gap:12px;padding:20px 20px 22px;border-radius:8px}
+.layout-small-icons.variant-2 .small-icons p{font-size:max(20px,.84em)}
+.layout-small-icons.variant-2 .glyph{background:var(--surface);border:0}
+/* v3 Checklist: one column, filled square badges */
+.layout-small-icons.variant-3 .small-icons{row-gap:0}
+.layout-small-icons.variant-3 .small-icons>li{grid-template-columns:36px minmax(0,1fr);padding:7px 0;border-bottom:2px solid var(--c-rule);align-items:center}
+.layout-small-icons.variant-3 .small-icons>li:first-child{border-top:2px solid var(--c-rule)}
+.layout-small-icons.variant-3 .glyph{width:36px;height:36px;border-radius:7px}
+.layout-small-icons.variant-3 .small-icons p{padding-top:0}
+/* v4 Panel: everything on one filled panel, two columns */
+.layout-small-icons.variant-4 .small-icons{grid-auto-flow:column;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(4,auto);row-gap:16px;padding:32px 44px;border-radius:10px}
+.layout-small-icons.variant-4 .small-icons:not(:has(>li:nth-child(7))){grid-template-rows:repeat(3,auto)}
+.layout-small-icons.variant-4 .small-icons:not(:has(>li:nth-child(5))){grid-template-rows:repeat(2,auto)}
+
+/* ---------- 12. Title (cover) ---------- */
+.layout-title h1{font-size:calc(var(--h1) * 1.22)}
+.layout-title .lead{font:400 calc(var(--text) * 1.04)/1.38 var(--sans);color:var(--c-ink);max-width:32em;text-wrap:pretty}
+.layout-title .meta{display:flex;flex-wrap:wrap;gap:16px 56px;margin:0}
+.layout-title .meta>div{min-width:0}
+.layout-title .meta dt{font:600 var(--small)/1.3 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--c-accent)}
+.layout-title .meta dd{margin:4px 0 0;font:500 max(20px,calc(var(--text) * .92))/1.25 var(--display);color:var(--c-ink)}
+/* v1 Filled: title low on a filled canvas */
+.layout-title.variant-1 h1{margin-top:auto}
+.layout-title.variant-1 .slide-content{flex:none;display:flex;flex-direction:column;gap:26px}
+.layout-title.variant-1 .meta{padding-top:18px;border-top:2px solid var(--c-rule)}
+/* v2 Paper: a huge title under the bar, ruled off */
+.layout-title.variant-2{background:var(--paper);--c-bg:var(--paper)}
+.layout-title.variant-2 h1{margin-top:24px;padding-bottom:26px;border-bottom:2px solid var(--c-accent);font-size:calc(var(--h1) * 1.34);line-height:1.04}
+.layout-title.variant-2 .slide-content{display:flex;flex-direction:column;gap:24px}
+.layout-title.variant-2 .meta{margin-top:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px}
+/* v3 Split: the details fill a full-bleed panel on the left */
+.layout-title.variant-3:has(.meta){padding-left:calc(480px + 64px)}
+.layout-title.variant-3 h1{margin-top:auto;font-size:var(--h1)}
+.layout-title.variant-3 .slide-content{position:static;flex:none;margin-bottom:auto}
+.layout-title.variant-3 .meta{position:absolute;left:0;top:0;bottom:0;width:480px;padding:44px 52px 48px;flex-direction:column;flex-wrap:nowrap;justify-content:flex-end;gap:26px}
+.layout-title.variant-3 .meta dd{font-size:calc(var(--text) * 1.08)}
+/* v4 Centred on tint, ruled above and below */
+.layout-title.variant-4{text-align:center}
+.layout-title.variant-4 h1{margin-top:auto;padding:28px 0 30px;border-top:2px solid var(--c-accent);border-bottom:2px solid var(--c-accent)}
+.layout-title.variant-4 .slide-content{flex:none;margin-bottom:auto;display:flex;flex-direction:column;align-items:center;gap:26px}
+.layout-title.variant-4 .meta{justify-content:center;gap:16px 48px}
+
+/* ---------- 13. Section divider ---------- */
+.layout-section h2{font-size:var(--h1);line-height:1.06}
+.layout-section .part-num{font:600 calc(var(--h1) * 2.6)/.84 var(--display);letter-spacing:-.05em;color:var(--c-accent);font-variant-numeric:lining-nums;white-space:nowrap}
+.layout-section .lead{font:400 calc(var(--text) * 1.02)/1.38 var(--sans);color:var(--c-ink);max-width:36em;text-wrap:pretty}
+.layout-section .parts{counter-reset:pt}
+.layout-section .parts>li{counter-increment:pt;min-width:0}
+/* v1 Filled numeral: numeral, title and lead stacked low; parts as a mono index row */
+.layout-section.variant-1 .slide-content{display:contents}
+.layout-section.variant-1 .part-num{order:1;margin-top:auto}
+.layout-section.variant-1 h2{order:2}
+.layout-section.variant-1 .lead{order:3}
+.layout-section.variant-1 .parts{order:4;display:flex;flex-wrap:wrap;gap:6px 28px;padding-top:14px;border-top:2px solid var(--c-rule)}
+.layout-section.variant-1 .slide-foot{order:5}
+.layout-section.variant-1 .parts>li{font:600 var(--small)/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--c-muted)}
+.layout-section.variant-1 .parts>li::before{content:counter(pt,decimal-leading-zero) "\00a0\00a0";font:inherit;color:inherit}
+.layout-section.variant-1 .parts>li[aria-current]{color:var(--c-ink);text-decoration:underline 2px;text-underline-offset:6px}
+/* v2 Side numeral: a numeral column with a rule, title and parts beside it */
+.layout-section.variant-2{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,7fr);grid-template-rows:auto 1fr auto auto auto 1fr auto;column-gap:56px}
+.layout-section.variant-2 .slide-content{display:contents}
+.layout-section.variant-2 :is(.slide-head,.slide-foot){grid-column:1/-1}
+.layout-section.variant-2 .slide-foot{grid-row:7}
+.layout-section.variant-2 .part-num{grid-column:1;grid-row:2/7;align-self:center;font-size:calc(var(--h1) * 3.3);text-align:right;padding-right:48px;border-right:2px solid var(--c-rule)}
+.layout-section.variant-2 h2{grid-column:2;grid-row:3}
+.layout-section.variant-2 .lead{grid-column:2;grid-row:4}
+.layout-section.variant-2 .parts{grid-column:2;grid-row:5;display:flex;flex-direction:column;gap:2px;padding-top:6px}
+.layout-section.variant-2 .parts>li{font:600 var(--label)/1.5 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--c-muted)}
+.layout-section.variant-2 .parts>li::before{content:counter(pt,decimal-leading-zero) "\00a0\00a0";font:inherit;color:inherit}
+.layout-section.variant-2 .parts>li[aria-current]{color:var(--c-accent)}
+/* v3 Band: numeral band across the top, title on it, lead and parts below */
+.layout-section.variant-3{--band:384px}
+.layout-section.variant-3 .slide-head{position:relative;z-index:1}
+.layout-section.variant-3 h2{position:relative;z-index:1;height:calc(var(--band) - 84px - 30px);max-width:60%;display:flex;align-items:flex-end}
+.layout-section.variant-3 .slide-content{position:static;margin-top:38px;display:grid;grid-template-columns:minmax(0,6fr) minmax(0,5fr);column-gap:56px;align-items:start}
+.layout-section.variant-3 .part-num{position:absolute;left:0;right:0;top:0;height:var(--band);display:flex;align-items:flex-end;justify-content:flex-end;padding:0 64px 18px;font-size:calc(var(--h1) * 3.6);line-height:.8}
+.layout-section.variant-3 .parts{display:flex;flex-direction:column;gap:2px}
+.layout-section.variant-3 .parts>li{font:600 var(--label)/1.5 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--c-muted)}
+.layout-section.variant-3 .parts>li::before{content:counter(pt,decimal-leading-zero) "\00a0\00a0";font:inherit;color:inherit}
+.layout-section.variant-3 .parts>li[aria-current]{color:var(--c-accent)}
+.layout-section.variant-3 .lead{grid-column:1}
+.layout-section.variant-3 .parts{grid-column:2}
+/* v4 Agenda: every part listed, the current one filled */
+.layout-section.variant-4{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);grid-template-rows:auto 1fr auto auto auto 1fr auto;column-gap:64px}
+.layout-section.variant-4 .slide-content{display:contents}
+.layout-section.variant-4 :is(.slide-head,.slide-foot){grid-column:1/-1}
+.layout-section.variant-4 .slide-foot{grid-row:7}
+.layout-section.variant-4 .part-num{grid-column:1;grid-row:3;font-size:calc(var(--h1) * 1.3)}
+.layout-section.variant-4 h2{grid-column:1;grid-row:4;font-size:calc(var(--h1) * .86)}
+.layout-section.variant-4 .lead{grid-column:1;grid-row:5;font-size:max(20px,.9em)}
+.layout-section.variant-4 .parts{grid-column:2;grid-row:2/7;align-self:center;display:flex;flex-direction:column}
+.layout-section.variant-4 .parts>li{display:grid;grid-template-columns:58px minmax(0,1fr);align-items:first baseline;padding:12px 20px;border-top:2px solid var(--c-rule);
+  font:500 calc(var(--text) * 1.04)/1.22 var(--display);color:var(--c-muted)}
+.layout-section.variant-4 .parts>li:last-child{border-bottom:2px solid var(--c-rule)}
+.layout-section.variant-4 .parts>li::before{content:counter(pt,decimal-leading-zero)}
+.layout-section.variant-4 .parts>li[aria-current]{border-radius:8px;border-top-color:transparent}
+.layout-section.variant-4 .parts>li[aria-current]+li{border-top-color:transparent}
+
+/* ---------- 14. Quote / statement ---------- */
+.layout-quote h2{font-size:calc(var(--h2) * .6);color:var(--c-muted)}
+.layout-quote .quote{margin:0;min-width:0}
+.layout-quote blockquote{margin:0;font:500 calc(var(--text) * 1.6)/1.24 var(--display);letter-spacing:-.012em;color:var(--c-ink);text-wrap:balance}
+.layout-quote blockquote p+p{margin-top:.4em}
+.layout-quote figcaption{display:flex;flex-direction:column;gap:4px}
+.layout-quote .who{font:600 max(20px,calc(var(--text) * .95))/1.25 var(--display);color:var(--c-ink)}
+.layout-quote .role{font:600 var(--label)/1.35 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--c-muted)}
+.layout-quote mark{background:var(--tint);color:var(--ink);padding:0 .14em;border-radius:3px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+/* v1 Classic: a big accent quotation mark */
+.layout-quote.variant-1 .slide-content{display:flex;flex-direction:column;justify-content:center}
+.layout-quote.variant-1 .quote{position:relative;padding-left:104px}
+.layout-quote.variant-1 .quote::before{content:"\201C";position:absolute;left:-4px;top:-26px;font:600 210px/1 var(--display);color:var(--c-accent)}
+.layout-quote.variant-1 figcaption{margin-top:30px;padding-top:16px;border-top:2px solid var(--c-rule);flex-direction:row;align-items:baseline;flex-wrap:wrap;gap:6px 22px}
+/* v2 Filled and centred */
+.layout-quote.variant-2{text-align:center}
+.layout-quote.variant-2 .slide-content{display:flex;flex-direction:column;justify-content:center;align-items:center}
+.layout-quote.variant-2 blockquote{font-size:calc(var(--text) * 1.7);max-width:24em}
+.layout-quote.variant-2 figcaption{align-items:center;margin-top:30px}
+.layout-quote.variant-2 figcaption::before{content:"";width:56px;height:2px;margin-bottom:16px;background:var(--c-accent)}
+/* v3 Side attribution: who spoke, large, beside the passage */
+.layout-quote.variant-3 .slide-content{display:flex;flex-direction:column;justify-content:center}
+.layout-quote.variant-3 .quote{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);column-gap:56px;align-items:end}
+.layout-quote.variant-3 .quote:not(:has(figcaption)){grid-template-columns:minmax(0,1fr)}
+.layout-quote.variant-3 figcaption{grid-column:1;grid-row:1;align-self:end;gap:10px;padding-bottom:6px}
+.layout-quote.variant-3 .who{font-size:calc(var(--text) * 1.45);line-height:1.12}
+.layout-quote.variant-3 blockquote{grid-column:2;grid-row:1;border-left:6px solid var(--c-accent);padding-left:36px}
+.layout-quote.variant-3 .quote:not(:has(figcaption)) blockquote{grid-column:1}
+/* v4 Statement: the passage at poster size, one phrase marked */
+.layout-quote.variant-4 .slide-content{display:flex;flex-direction:column;justify-content:center}
+.layout-quote.variant-4 blockquote{font-size:calc(var(--text) * 2.05);line-height:1.14;letter-spacing:-.02em}
+.layout-quote.variant-4 figcaption{margin-top:30px;flex-direction:row;align-items:center;flex-wrap:wrap;gap:6px 18px}
+.layout-quote.variant-4 figcaption::before{content:"";width:48px;height:2px;background:var(--c-accent)}
+
+/* ---------- 15. Toggles (answers revealed one by one) ---------- */
+.slide .toggles{counter-reset:tg}
+.slide .toggles>li{counter-increment:tg;min-width:0;position:relative}
+.slide .toggles h3{font-size:calc(var(--text) * 1.06)}
+.slide .toggles p{font-size:max(20px,.88em);line-height:1.36}
+/* The mark reads minus once the answer is shown, plus while it waits. */
+.layout-toggles:is(.variant-1,.variant-2) .toggles>li::after{content:"\2212";display:grid;place-items:center;width:38px;height:38px;border-radius:50%;border:2px solid var(--c-accent);color:var(--c-accent);font:600 22px/1 var(--mono)}
+.layout-toggles:is(.variant-1,.variant-2) .toggles>li:has(>.build-pending)::after{content:"+"}
+/* v1 Accordion rows */
+.layout-toggles.variant-1 .slide-content{display:flex;flex-direction:column;justify-content:center}
+.layout-toggles.variant-1 .toggles>li{display:grid;grid-template-columns:minmax(0,1fr) 38px;column-gap:28px;row-gap:6px;align-items:start;padding:12px 0;border-top:2px solid var(--c-rule)}
+.layout-toggles.variant-1 .toggles>li:last-child{border-bottom:2px solid var(--c-rule)}
+.layout-toggles.variant-1 .toggles>li>h3{grid-column:1;grid-row:1}
+.layout-toggles.variant-1 .toggles>li>p{grid-column:1;grid-row:2}
+.layout-toggles.variant-1 .toggles>li::after{grid-column:2;grid-row:1}
+/* v2 Cards: outlined while waiting, tinted once revealed */
+.layout-toggles.variant-2 .toggles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:20px;height:100%}
+.layout-toggles.variant-2 .toggles:has(>li:nth-child(3):last-child){grid-template-columns:repeat(3,minmax(0,1fr))}
+.layout-toggles.variant-2 .toggles>li{display:grid;grid-template-columns:minmax(0,1fr) 38px;grid-template-rows:auto 1fr;column-gap:16px;row-gap:14px;align-content:start;padding:22px 24px;border-width:2px;border-style:solid;border-radius:10px}
+.layout-toggles.variant-2 .toggles>li>h3{grid-column:1;grid-row:1}
+.layout-toggles.variant-2 .toggles>li::after{grid-column:2;grid-row:1}
+.layout-toggles.variant-2 .toggles>li>p{grid-column:1/-1;grid-row:2;padding-top:14px;border-top:2px solid var(--c-rule)}
+/* v3 Question and answer table */
+.layout-toggles.variant-3 .slide-content{display:flex;flex-direction:column;justify-content:center}
+.layout-toggles.variant-3 .toggles>li{display:grid;grid-template-columns:56px minmax(0,5fr) minmax(0,7fr);column-gap:24px;align-items:first baseline;padding:14px 0;border-top:2px solid var(--c-rule)}
+.layout-toggles.variant-3 .toggles>li:last-child{border-bottom:2px solid var(--c-rule)}
+.layout-toggles.variant-3 .toggles>li::before{content:"Q" counter(tg)}
+.layout-toggles.variant-3 .toggles>li>p{color:var(--c-ink)}
+/* v4 Columns: numbered, the answer under a rule */
+.layout-toggles.variant-4 .slide-content{display:flex;flex-direction:column;justify-content:center}
+.layout-toggles.variant-4 .toggles{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);column-gap:36px}
+.layout-toggles.variant-4 .toggles>li{display:flex;flex-direction:column;gap:12px}
+.layout-toggles.variant-4 .toggles>li::before{content:counter(tg,decimal-leading-zero)}
+.layout-toggles.variant-4 .toggles>li>p{padding-top:12px;border-top:2px solid var(--c-accent)}
+
+/* ---------- 16. Nested steps ---------- */
+.slide .nested{counter-reset:ns}
+.slide .nested>li{counter-increment:ns;min-width:0;position:relative}
+.slide .nested>li>ol{counter-reset:sub;display:flex;flex-direction:column;gap:6px}
+.slide .nested>li>ol>li{counter-increment:sub;display:grid;grid-template-columns:2.7em minmax(0,1fr);align-items:first baseline;font-size:max(20px,.86em);line-height:1.32}
+.slide .nested>li>ol>li::before{content:counter(ns) "." counter(sub);font:600 calc(var(--label) * .94)/1.3 var(--mono);letter-spacing:.06em;color:var(--c-accent)}
+.slide .nested h3{font-size:calc(var(--text) * 1.02)}
+.layout-nested .slide-content{display:flex;flex-direction:column;justify-content:center}
+/* v1 Columns */
+.layout-nested.variant-1 .nested{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);column-gap:36px}
+.layout-nested.variant-1 .nested>li{display:flex;flex-direction:column;gap:12px;border-top:2px solid var(--c-accent);padding-top:16px}
+.layout-nested.variant-1 .nested>li::before{content:counter(ns,decimal-leading-zero)}
+.layout-nested.variant-1 .nested>li>ol{padding-left:16px;border-left:2px solid color-mix(in srgb,var(--c-accent) 45%,var(--c-rule))}
+/* v2 Rows: numeral, title, then the sub-steps */
+.layout-nested.variant-2 .nested>li{display:grid;grid-template-columns:84px minmax(0,4fr) minmax(0,6fr);column-gap:28px;align-items:start;padding:14px 0;border-top:2px solid var(--c-rule)}
+.layout-nested.variant-2 .nested>li:last-child{border-bottom:2px solid var(--c-rule)}
+.layout-nested.variant-2 .nested>li::before{content:counter(ns,decimal-leading-zero);font-size:calc(var(--text) * 1.7)}
+.layout-nested.variant-2 .nested>li>h3{padding-top:4px}
+.layout-nested.variant-2 .nested>li>ol{padding-top:6px}
+/* v3 Tree: numbered nodes, sub-steps branching off a trunk, in two columns */
+.layout-nested.variant-3 .nested{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:30px 56px}
+.layout-nested.variant-3 .nested>li{display:grid;grid-template-columns:52px minmax(0,1fr);column-gap:18px;row-gap:12px;align-content:start}
+.layout-nested.variant-3 .nested>li::before{content:counter(ns);grid-row:1/3;align-self:start;display:grid;place-items:center;width:52px;height:52px;border-radius:50%;
+  background:var(--feature);color:var(--on-feature);font:600 max(20px,calc(var(--text) * .95))/1 var(--display)}
+.layout-nested.variant-3 .nested>li>h3{grid-column:2;align-self:center;min-height:52px;display:flex;align-items:center}
+.layout-nested.variant-3 .nested>li>ol{grid-column:2;position:relative}
+.layout-nested.variant-3 .nested>li>ol::before{content:"";position:absolute;left:-45px;top:-12px;bottom:.66em;width:2px;background:color-mix(in srgb,var(--c-accent) 45%,var(--c-rule))}
+.layout-nested.variant-3 .nested>li>ol>li{position:relative}
+.layout-nested.variant-3 .nested>li>ol>li::after{content:"";position:absolute;left:-45px;top:.66em;width:36px;height:2px;background:color-mix(in srgb,var(--c-accent) 45%,var(--c-rule))}
+/* v4 Focus first: step one filled and open, the rest listed with sub-steps inline */
+.layout-nested.variant-4 .nested{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);column-gap:40px;align-content:center}
+.layout-nested.variant-4 .nested>li:first-child{grid-column:1;grid-row:1/span 3;align-self:stretch;display:flex;flex-direction:column;gap:14px;padding:28px 30px;border-radius:10px}
+.layout-nested.variant-4 .nested>li:first-child>h3{font-size:calc(var(--text) * 1.3)}
+.layout-nested.variant-4 .nested>li:first-child::before{content:counter(ns,decimal-leading-zero);font:600 var(--label)/1.3 var(--mono);letter-spacing:.14em;color:var(--c-accent)}
+.layout-nested.variant-4 .nested>li:not(:first-child){grid-column:2;display:flex;flex-direction:column;gap:8px;padding:14px 0;border-top:2px solid var(--c-rule)}
+.layout-nested.variant-4 .nested>li:last-child:not(:first-child){border-bottom:2px solid var(--c-rule)}
+.layout-nested.variant-4 .nested>li:not(:first-child)>h3::before{content:counter(ns,decimal-leading-zero) "\00a0\00a0";font:600 var(--label)/1.3 var(--mono);letter-spacing:.14em;color:var(--c-accent);vertical-align:.12em}
+.layout-nested.variant-4 .nested>li:not(:first-child)>ol{flex-direction:row;flex-wrap:wrap;gap:4px 24px}
+.layout-nested.variant-4 .nested>li:not(:first-child)>ol>li{display:block}
+.layout-nested.variant-4 .nested>li:not(:first-child)>ol>li::before{content:counter(ns) "." counter(sub) "\00a0\00a0"}
+
+/* ---------- 17. Content with buttons ---------- */
+.slide .btn{display:inline-flex;align-items:center;justify-content:center;gap:.6em;padding:14px 26px;border-radius:8px;border:2px solid var(--c-accent);background:transparent;color:var(--c-accent);
+  font:600 max(20px,calc(var(--text) * .88))/1.2 var(--sans);text-decoration:none;text-align:left}
+.slide .btn::after{content:"\2192";flex:none}
+.slide .btn.primary{background:var(--c-accent);color:var(--c-on-accent)}
+.slide .actions{display:flex;flex-wrap:wrap;gap:22px 28px}
+.slide .actions>li{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+.slide .hint{font:600 var(--label)/1.35 var(--mono);letter-spacing:.06em;color:var(--c-muted)}
+.layout-buttons .lede{font-size:calc(var(--text) * 1.4);max-width:26em}
+/* v1 Inline */
+.layout-buttons.variant-1 .slide-content{display:flex;flex-direction:column;justify-content:center;gap:44px}
+/* v2 Filled and centred */
+.layout-buttons.variant-2{text-align:center}
+.layout-buttons.variant-2 .slide-content{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:44px}
+.layout-buttons.variant-2 .actions{justify-content:center}
+.layout-buttons.variant-2 .actions>li{align-items:center}
+/* v3 Split: the pitch left, a menu of actions right */
+.layout-buttons.variant-3 .slide-content{display:grid;grid-template-columns:minmax(0,6fr) minmax(0,5fr);column-gap:64px;align-items:center}
+.layout-buttons.variant-3 .lede{font-size:calc(var(--text) * 1.3)}
+.layout-buttons.variant-3 .actions{flex-direction:column;flex-wrap:nowrap;gap:0;border-top:2px solid var(--c-rule)}
+.layout-buttons.variant-3 .actions>li{align-items:stretch;gap:8px;padding:18px 0;border-bottom:2px solid var(--c-rule)}
+.layout-buttons.variant-3 .btn{justify-content:space-between}
+/* v4 Option cards */
+.layout-buttons.variant-4 .slide-content{display:flex;flex-direction:column;justify-content:center;gap:30px}
+.layout-buttons.variant-4 .lede{font-size:calc(var(--text) * 1.18)}
+.layout-buttons.variant-4 .actions{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:20px}
+.layout-buttons.variant-4 .actions>li{justify-content:space-between;align-items:stretch;gap:20px;padding:24px 24px 26px;border-radius:10px;min-height:190px}
+.layout-buttons.variant-4 .hint{order:-1;font:400 max(20px,calc(var(--text) * .86))/1.36 var(--sans);letter-spacing:0;color:var(--c-ink)}
+.layout-buttons.variant-4 .btn{justify-content:space-between;padding:12px 18px;font-size:max(20px,calc(var(--text) * .82))}
+
+/* ---------- 18. Treatments ----------
+   One table decides which regions are outlined, tinted or filled. The lists sit in :where() so
+   they share one specificity and the order below decides: outlined, then tinted, then filled.
+   A slide carries at most two surface colours: its own and one fill (tint or feature). */
+.slide :where(
+  .is-outlined,
+  .layout-two-col.variant-2 .col:nth-child(2),
+  .layout-two-col-head.variant-2 .col,
+  .layout-two-col-head.variant-3 .col:nth-child(2),
+  .layout-three-col.variant-2 .col:not(:first-child),
+  .layout-three-col-head.variant-3 .col:not(:nth-child(2)),
+  .layout-four-col.variant-2 .col:nth-child(even),
+  :is(.layout-accent-left-fit,.layout-accent-right-fit).variant-4 .accent,
+  .layout-text-boxes.variant-2 .boxes>li:not(:first-child),
+  .layout-text-boxes.variant-3 .boxes>li,
+  .layout-text-boxes.variant-4 .boxes>li:nth-child(even),
+  .layout-timeline.variant-3 .timeline>li,
+  .layout-toggles.variant-2 .toggles>li
+){--c-bg:var(--surface);background-color:var(--surface);border-color:var(--accent)}
+
+.slide:where(.layout-title.variant-4),
+.slide :where(
+  .is-tinted,
+  .layout-three-col.variant-4 .col:first-child,
+  .layout-three-col-head.variant-2 .col,
+  .layout-bullets.variant-3 .slide-content,
+  .layout-big-bullets.variant-3 .big-list>li:nth-child(odd),
+  :is(.layout-accent-left,.layout-accent-right,.layout-accent-top,.layout-accent-left-fit,.layout-accent-right-fit).variant-3 .accent,
+  .layout-text-boxes.variant-1 .boxes>li,
+  .layout-timeline-v.variant-2 .timeline>li[aria-current],
+  .layout-icons.variant-3 .icons>li,
+  .layout-small-icons.variant-2 .small-icons>li,
+  .layout-toggles.variant-2 .toggles>li:not(:has(>.build-pending)),
+  .layout-buttons.variant-4 .actions>li
+){--c-ink:var(--ink);--c-accent:var(--accent);--c-muted:var(--muted);--c-on-accent:var(--on-accent);--c-bg:var(--tint);
+  --c-rule:color-mix(in srgb,var(--accent) 24%,var(--tint));background-color:var(--tint);border-color:var(--tint);color:var(--ink)}
+
+.slide:where(.layout-title.variant-1,.layout-section.variant-1,.layout-quote.variant-2,.layout-buttons.variant-2),
+.slide :where(
+  .is-filled,
+  .layout-two-col.variant-2 .col:first-child,
+  .layout-two-col-head.variant-2 .col>h3,
+  .layout-two-col-head.variant-3 .col:first-child,
+  .layout-three-col.variant-2 .col:first-child,
+  .layout-three-col-head.variant-3 .col:nth-child(2),
+  .layout-four-col.variant-2 .col:nth-child(odd),
+  .layout-four-col.variant-4 .cols,
+  .layout-big-bullets.variant-4 .big-list>li:first-child,
+  :is(.layout-accent-left,.layout-accent-right,.layout-accent-top):is(.variant-1,.variant-2,.variant-4) .accent,
+  :is(.layout-accent-left-fit,.layout-accent-right-fit):is(.variant-1,.variant-2) .accent,
+  .layout-text-boxes.variant-2 .boxes>li:first-child,
+  .layout-text-boxes.variant-4 .boxes>li:nth-child(odd),
+  .layout-timeline.variant-3 .timeline>li[aria-current],
+  .layout-timeline-v.variant-4 .timeline>li>time,
+  .layout-arrows.variant-1 .arrows h3,
+  .layout-arrows.variant-3 .arrows>li[aria-current],
+  :is(.layout-icons:is(.variant-2,.variant-4),.layout-small-icons.variant-3) .glyph,
+  .layout-small-icons.variant-4 .small-icons,
+  .layout-title.variant-3 .meta,
+  .layout-section.variant-3 .part-num,
+  .layout-section.variant-4 .parts>li[aria-current],
+  .layout-nested.variant-4 .nested>li:first-child
+){--c-ink:var(--on-feature);--c-accent:var(--on-feature);--c-on-accent:var(--feature);--c-bg:var(--feature);
+  --c-muted:color-mix(in srgb,var(--on-feature) 80%,var(--feature));--c-rule:color-mix(in srgb,var(--on-feature) 34%,var(--feature));
+  background-color:var(--feature);border-color:var(--feature);color:var(--on-feature)}
+
+/* Text that sits on a filled band without being inside it: the bar and title on accent-top and section bands. */
+.slide :where(
+  :is(.layout-accent-top):is(.variant-1,.variant-2,.variant-4) .slide-head,
+  .layout-accent-top.variant-2 h2,
+  .layout-section.variant-3 :is(.slide-head,h2)
+){--c-ink:var(--on-feature);--c-accent:var(--on-feature);--c-muted:color-mix(in srgb,var(--on-feature) 80%,var(--feature))}
+/* A marked phrase inside a filled slide inverts instead of tinting. */
+.layout-quote.variant-2 mark{background:var(--on-feature);color:var(--feature)}
+
+/* ---------- 19. Print ---------- */
+@page{size:1280px 720px;margin:0}
+@media print{
+  .slide{break-after:page;break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .slide .build-pending{opacity:1}
+}

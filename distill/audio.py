@@ -1,4 +1,8 @@
-"""Approved audio download, timestamp-preserving preparation, and Groq STT."""
+"""Approved audio download, timestamp-preserving preparation, and cloud STT.
+
+Soniox (default) transcribes one upload per source with speaker labels. Groq
+Whisper transcribes ten-minute sections and returns no speakers.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
@@ -25,11 +29,43 @@ MAX_UPLOAD_BYTES = 24_000_000
 MAX_AUDIO_DURATION_SECONDS = 6 * 3600
 # Imported content must not make FFmpeg fetch a playlist or external URLs.
 MEDIA_INPUT_LIMITS = ["-protocol_whitelist", "file,pipe", "-format_whitelist", "wav,mp3,mov,ogg,matroska,webm,flac,aac"]
+PROVIDER_LABELS = {"soniox": "Soniox", "groq": "Groq"}
+WORKFLOWS = ("video", "meeting", "lecture")
+SONIOX_API = "https://api.soniox.com/v1"
+SONIOX_MODEL = re.compile(r"stt-async-[a-z0-9.-]{1,40}")
+# Soniox fixes this per file. Splitting would restart speaker numbering per section.
+SONIOX_MAX_DURATION_SECONDS = 300 * 60
+SONIOX_MAX_UPLOAD_BYTES = 500_000_000
+SONIOX_POLL_SECONDS = 5
+SONIOX_WAIT_SECONDS = 3 * 3600
+
+
+def transcription_provider(preferences: dict, workflow: str) -> str:
+    """The speech service chosen for this kind of source; Soniox unless Settings say otherwise."""
+    chosen = (preferences.get("transcription_providers") or {}).get(workflow)
+    return chosen if chosen in PROVIDER_LABELS else "soniox"
+
+
+def approval_request(preferences: dict, job_id: str, source: str, reason: str, *, workflow: str = "video", **extra) -> dict:
+    """An unapproved audio request for the speech provider chosen for this workflow."""
+    provider = transcription_provider(preferences, workflow)
+    request = {"approved": False, "job_id": job_id, "source": source, "provider": provider, "workflow": workflow, "free_account_confirmed": False, "retain_audio": bool(preferences.get("retain_audio")), "source_language": preferences.get("source_language") or None, "reason": reason, "duration": None}
+    if provider == "soniox":
+        request |= {"model": preferences.get("soniox_model", "stt-async-v5"), "free_only": False, "speaker_labels": True, "quota": "Soniox bills transcribed audio by duration. The account balance is unknown."}
+    else:
+        request |= {"model": preferences.get("groq_model", "whisper-large-v3-turbo"), "free_only": bool(preferences.get("groq_free_only", True)), "quota": "Remaining Groq account quota is unknown."}
+    return request | extra
 
 
 def validate_approval(approval: dict, source: str, model: str) -> None:
-    if approval.get("approved") is not True or not approval.get("job_id") or approval.get("source") != source or approval.get("provider") != "groq" or approval.get("model") != model:
-        raise ProviderError("audio_approval", "Approve this source, Groq model, and audio upload before audio processing.")
+    if approval.get("approved") is not True or not approval.get("job_id") or approval.get("source") != source or approval.get("provider") not in PROVIDER_LABELS or approval.get("model") != model:
+        raise ProviderError("audio_approval", "Approve this source, transcription model, and audio upload before audio processing.")
+    if approval["provider"] == "soniox":
+        if not SONIOX_MODEL.fullmatch(model):
+            raise ProviderError("configuration", "Choose a Soniox async transcription model.")
+        if not any(approval.get(key) is True for key in ("paid_approved", "paid_usage_approved")):
+            raise ProviderError("paid_approval", "Approve paid Soniox transcription explicitly before processing audio.")
+        return
     if model not in SUPPORTED_MODELS:
         raise ProviderError("configuration", "Choose a supported Groq Whisper transcription model.")
     if approval.get("free_only", True) and approval.get("free_account_confirmed") is not True:
@@ -66,7 +102,7 @@ def _run(command: list[str], cancelled=None, timeout: float = 900) -> bytes:
     if cancelled and cancelled():
         raise ProviderError("cancelled", "Audio processing was cancelled.")
     try:
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
     except OSError as exc:
         raise ProviderError("missing_dependency", "The audio preparation command could not start. Check yt-dlp and FFmpeg installation.") from exc
     deadline = time.monotonic() + timeout
@@ -77,12 +113,17 @@ def _run(command: list[str], cancelled=None, timeout: float = 900) -> bytes:
             if time.monotonic() > deadline:
                 raise ProviderError("timeout", "Audio preparation took too long. Retry or import a transcript.")
             try:
-                output, _ = process.communicate(timeout=0.2)
+                output, error_output = process.communicate(timeout=0.2)
                 break
             except subprocess.TimeoutExpired:
                 continue
         if process.returncode:
-            raise ProviderError("audio_failed", "Audio could not be downloaded or prepared. Import an audio file or transcript instead.")
+            # Keep the tool's own last lines: they name the cause (a bot check, HTTP 403, an outdated yt-dlp).
+            from .downloader import classify, error_lines
+            text = (error_output or b"").decode("utf-8", "replace")
+            code, message = classify(text) or ("audio_failed", "Audio could not be downloaded or prepared. Import an audio file or transcript instead.")
+            tool = "yt-dlp" if "yt_dlp" in command else Path(command[0]).stem
+            raise ProviderError(code, message, diagnostics={"tool": tool, "exit_code": process.returncode, "error_lines": error_lines(text)})
         return output
     finally:
         stop_process(process)
@@ -109,7 +150,7 @@ def _audio_hash(path: Path) -> str:
     return digest.hexdigest()
 
 
-def prepare_chunks(audio_path: Path, work_dir: Path, cancelled=None) -> list[AudioChunk]:
+def _probe_duration(audio_path: Path, cancelled=None) -> float:
     output = _run([_binary("ffprobe"), "-v", "error", *MEDIA_INPUT_LIMITS, "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(audio_path)], cancelled, 30)
     try: duration = float(output.decode("utf-8").strip())
     except ValueError as exc: raise ProviderError("audio_failed", "This file has no readable audio duration.") from exc
@@ -117,6 +158,11 @@ def prepare_chunks(audio_path: Path, work_dir: Path, cancelled=None) -> list[Aud
         raise ProviderError("audio_failed", "This file has no valid audio duration.")
     if duration > MAX_AUDIO_DURATION_SECONDS:
         raise ProviderError("audio_duration_limit", "Audio is limited to six hours per source. Import shorter sections or a transcript.")
+    return duration
+
+
+def prepare_chunks(audio_path: Path, work_dir: Path, cancelled=None) -> list[AudioChunk]:
+    duration = _probe_duration(audio_path, cancelled)
     chunk_dir = work_dir / "chunks"
     chunk_dir.mkdir(parents=True, exist_ok=True)
     chunks = []
@@ -205,9 +251,198 @@ def _validate_response(response: dict, chunk: AudioChunk) -> None:
             raise ProviderError("invalid_output", "Groq returned invalid audio segment text or timing.") from exc
 
 
+def prepare_upload(audio_path: Path, work_dir: Path, cancelled=None) -> tuple[Path, float]:
+    """One lossless 16 kHz mono FLAC for the whole source, kept beside managed chunks."""
+    duration = _probe_duration(audio_path, cancelled)
+    if duration > SONIOX_MAX_DURATION_SECONDS:
+        raise ProviderError("audio_duration_limit", "Soniox accepts up to five hours per file. Import a shorter section, or choose Groq in Settings.")
+    path = work_dir / "chunks" / "upload.flac"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.is_file():
+        temporary = path.with_suffix(".partial.flac")
+        _run([_binary("ffmpeg"), "-nostdin", "-v", "error", "-y", *MEDIA_INPUT_LIMITS, "-i", str(audio_path), "-map", "0:a:0", "-ac", "1", "-ar", "16000", "-c:a", "flac", str(temporary)], cancelled)
+        temporary.replace(path)
+    if path.stat().st_size > SONIOX_MAX_UPLOAD_BYTES:
+        raise ProviderError("upload_limit", "The prepared audio exceeds the safe Soniox upload size. Import a shorter section.")
+    return path, duration
+
+
+def _soniox(method: str, path: str, key: str, *, billable: bool = False, **kwargs) -> dict:
+    """Only creating a transcription is billed; other calls are safe to retry automatically."""
+    try:
+        response = requests.request(method, SONIOX_API + path, headers={"Authorization": f"Bearer {key}"}, timeout=kwargs.pop("timeout", (15, 120)), **kwargs)
+    except requests.ConnectTimeout as exc:
+        raise ProviderError("temporary", "Soniox could not establish a connection. Saved progress is kept.", 30) from exc
+    except requests.RequestException as exc:
+        if billable and isinstance(exc, requests.Timeout):
+            raise ProviderError("uncertain_timeout", "Soniox did not confirm the transcription request. It may still be billed. Retry manually.") from exc
+        if billable:
+            raise ProviderError("uncertain_request", "The Soniox connection was interrupted. A submitted transcription may still be billed. Retry manually.") from exc
+        raise ProviderError("temporary", "The Soniox connection was interrupted. Saved progress is kept.", 30) from exc
+    if response.status_code == 404 and method == "DELETE":
+        return {}  # Already removed, for example by an earlier attempt.
+    if response.status_code == 404 and method == "GET":
+        raise ProviderError("remote_missing", "Soniox no longer has the submitted audio. Retry to upload it again.")
+    if not response.ok:
+        raise http_error(response, "Soniox")
+    if method == "DELETE":
+        return {}
+    try:
+        body = response.json()
+    except ValueError as exc:
+        raise ProviderError("invalid_output", "Soniox did not return a readable response.") from exc
+    if not isinstance(body, dict):
+        raise ProviderError("invalid_output", "Soniox did not return a readable response.")
+    return body
+
+
+def _soniox_wait(key: str, transcription_id: str, progress=None, cancelled=None) -> dict:
+    deadline = time.monotonic() + SONIOX_WAIT_SECONDS
+    reported = None
+    while True:
+        if cancelled and cancelled():
+            raise ProviderError("cancelled", "Audio processing was cancelled. Soniox may still finish and bill the submitted audio.")
+        status = _soniox("GET", f"/transcriptions/{transcription_id}", key)
+        state = status.get("status")
+        if state == "completed":
+            return _soniox("GET", f"/transcriptions/{transcription_id}/transcript", key)
+        if state == "error":
+            detail = " ".join(str(status.get("error_message") or status.get("error_type") or "").split())[:200]
+            raise ProviderError("provider_failed", "Soniox could not transcribe this audio" + (f": {detail}" if detail else "."))
+        if state not in {"queued", "processing"}:
+            raise ProviderError("invalid_output", "Soniox returned an unknown transcription status.")
+        if time.monotonic() > deadline:
+            raise ProviderError("temporary", "Soniox is still transcribing. The submitted request resumes on retry.", 120)
+        if progress and state != reported:
+            progress("Soniox is transcribing the full recording" if state == "processing" else "Waiting in the Soniox queue")
+            reported = state
+        pause = time.monotonic() + SONIOX_POLL_SECONDS
+        while time.monotonic() < pause and not (cancelled and cancelled()):
+            time.sleep(0.2)
+
+
+def soniox_snippets(tokens: list) -> tuple[list[dict], list[str], int]:
+    """Group timed tokens into speaker turns; split long turns at sentence ends or pauses."""
+    rows, warnings = [], []
+    for token in tokens:
+        if not isinstance(token, dict) or not isinstance(token.get("text"), str):
+            raise ProviderError("invalid_output", "Soniox returned an invalid transcript token.")
+        if token.get("translation_status") == "translation":
+            continue
+        try:
+            start, end = float(token["start_ms"]) / 1000, float(token["end_ms"]) / 1000
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ProviderError("invalid_output", "Soniox returned a token without valid timestamps.") from exc
+        if not (math.isfinite(start) and math.isfinite(end)) or start < 0 or end < start:
+            raise ProviderError("invalid_output", "Soniox returned invalid token timing.")
+        speaker = str(token["speaker"]) if token.get("speaker") not in (None, "") else None
+        last = rows[-1] if rows else None
+        span = last["end"] - last["start"] if last else 0
+        if not last or speaker != last["speaker"] or start - last["end"] > 2 or span >= 30 or (span >= 8 and last["text"].rstrip().endswith((".", "?", "!", "…"))):
+            if not token["text"].strip():
+                continue
+            last = {"text": token["text"].lstrip(), "start": start, "end": end, "speaker": speaker, "confidence": []}
+            rows.append(last)
+        else:
+            last["text"] += token["text"]
+            last["end"] = max(last["end"], end)
+        if isinstance(token.get("confidence"), (int, float)) and math.isfinite(token["confidence"]):
+            last["confidence"].append(float(token["confidence"]))
+    speakers = list(dict.fromkeys(row["speaker"] for row in rows if row["speaker"]))
+    labelled = len(speakers) > 1  # A single voice, such as a lecture, needs no label.
+    snippets = []
+    for row in rows:
+        scores = row["confidence"]
+        if scores and sum(scores) / len(scores) < 0.6:
+            warnings.append(f"Uncertain transcription near {row['start']:.1f}s; compare with original audio.")
+        speaker = f"Speaker {speakers.index(row['speaker']) + 1}" if labelled and row["speaker"] else None
+        snippets.append({"id": f"s{len(snippets)+1:06d}", "text": " ".join(row["text"].split()), "start": row["start"], "end": row["end"], "duration": row["end"] - row["start"], "timing_basis": "speech", "speaker": speaker})
+    if not snippets:
+        raise ProviderError("audio_failed", "No speech could be transcribed. Import a transcript or try a different source.")
+    return snippets, list(dict.fromkeys(warnings)), len(speakers)
+
+
+def _transcribe_soniox(audio_path: Path, work_dir: Path, approval: dict, source: str, progress=None, cancelled=None, language: str | None = None, secret_store: SecretStore | None = None) -> Transcript:
+    """Upload the whole source once so each speaker keeps one label for the recording."""
+    model = approval["model"]
+    key = (secret_store or SecretStore()).get("soniox")
+    if not key:
+        raise ProviderError("authentication", "Configure a Soniox API key before audio transcription.")
+    audio_path, work_dir = Path(audio_path).resolve(), Path(work_dir).resolve()
+    work_dir.mkdir(parents=True, exist_ok=True)
+    audio_hash = _audio_hash(audio_path)
+    signature = {"audio_hash": audio_hash, "provider": "soniox", "model": model, "language": language or "", "source": source}
+    state_path = work_dir / "soniox-state.json"
+    state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {"signature": signature}
+    if state.get("signature") != signature:
+        raise ProviderError("checkpoint_mismatch", "Saved audio belongs to another source or model. Start a new generation to change transcription settings.")
+    completed = work_dir / "transcript.json"
+    if state.get("completed") and completed.exists():
+        return Transcript.model_validate_json(completed.read_text(encoding="utf-8"))
+    response_path = work_dir / "responses" / "soniox-transcript.json"
+    if response_path.exists():
+        body = json.loads(response_path.read_text(encoding="utf-8"))
+    else:
+        if not state.get("file_id"):
+            if progress: progress("Preparing audio for one Soniox upload")
+            upload, duration = prepare_upload(audio_path, work_dir, cancelled)
+            if cancelled and cancelled(): raise ProviderError("cancelled", "Audio processing was cancelled.")
+            if progress: progress("Uploading audio to Soniox")
+            with upload.open("rb") as file:
+                uploaded = _soniox("POST", "/files", key, files={"file": (upload.name, file, "audio/flac")}, timeout=(15, 600))
+            if not isinstance(uploaded.get("id"), str):
+                raise ProviderError("invalid_output", "Soniox did not return an uploaded file ID.")
+            state |= {"file_id": uploaded["id"], "duration": duration}
+            _atomic_json(state_path, state)
+        if not state.get("transcription_id"):
+            if cancelled and cancelled(): raise ProviderError("cancelled", "Audio processing was cancelled.")
+            config = {"model": model, "file_id": state["file_id"], "enable_speaker_diarization": True, "enable_language_identification": True, "client_reference_id": approval["job_id"]}
+            hint = (language or "").split("-")[0].lower()
+            if re.fullmatch(r"[a-z]{2,3}", hint): config["language_hints"] = [hint]
+            created = _soniox("POST", "/transcriptions", key, billable=True, json=config)
+            if not isinstance(created.get("id"), str):
+                raise ProviderError("invalid_output", "Soniox did not return a transcription ID.")
+            state["transcription_id"] = created["id"]
+            _atomic_json(state_path, state)
+        try:
+            body = _soniox_wait(key, state["transcription_id"], progress, cancelled)
+        except ProviderError as error:
+            if error.code in {"provider_failed", "remote_missing"}:
+                # A retry submits a new request instead of polling a dead one.
+                state.pop("transcription_id", None)
+                if error.code == "remote_missing": state.pop("file_id", None)
+                _atomic_json(state_path, state)
+            raise
+        if not isinstance(body.get("tokens"), list):
+            raise ProviderError("invalid_output", "Soniox did not return transcript tokens.")
+        soniox_snippets(body["tokens"])  # Do not cache malformed output.
+        response_path.parent.mkdir(exist_ok=True)
+        _atomic_json(response_path, body)
+    snippets, warnings, speaker_count = soniox_snippets(body["tokens"])
+    for kind, remote_id in (("transcriptions", state.get("transcription_id")), ("files", state.get("file_id"))):
+        if not remote_id:
+            continue
+        try:
+            _soniox("DELETE", f"/{kind}/{remote_id}", key)
+        except ProviderError:
+            warnings.append("Soniox kept a copy of this audio; it deletes stored files automatically after 30 days.")
+    languages = [t["language"] for t in body["tokens"] if isinstance(t, dict) and isinstance(t.get("language"), str)]
+    video_id = source if re.fullmatch(r"[A-Za-z0-9_-]{11}", source) else None
+    transcript = Transcript(source_id=source, video_id=video_id, url=f"https://www.youtube.com/watch?v={source}" if video_id else None, title=f"Audio transcript · {source}", language=max(set(languages), key=languages.count) if languages else language or "unknown", origin="audio", snippets=snippets, metadata={"provider": "soniox", "model": model, "audio_hash": audio_hash, "requested_source_language": language or "", "warnings": list(dict.fromkeys(warnings)), "speaker_count": speaker_count, "speaker_labels": "automatic" if speaker_count > 1 else "none", "billing_note": "Soniox bills transcribed audio by duration; the account balance is not visible to this app.", "audio_duration": state.get("duration") or snippets[-1]["end"], "temporary_audio_retention": "Successful managed audio is deleted by default, locally and at Soniox; failed audio is eligible for local cleanup after 24 hours on worker activity. User originals are preserved."})
+    _atomic_json(completed, transcript.model_dump(mode="json"))
+    _atomic_json(state_path, state | {"completed": True})
+    if not approval.get("retain_audio", False):
+        (work_dir / "chunks" / "upload.flac").unlink(missing_ok=True)
+        if audio_path.parent == work_dir and audio_path.name.startswith("source-audio."):
+            audio_path.unlink(missing_ok=True)
+    return transcript
+
+
 def transcribe_audio(audio_path: Path, work_dir: Path, approval: dict, source: str, progress=None, cancelled=None, checkpoint=None, load_checkpoint=None, language: str | None = None, secret_store: SecretStore | None = None) -> Transcript:
     model = approval.get("model", "whisper-large-v3-turbo")
     validate_approval(approval, source, model)
+    if approval["provider"] == "soniox":
+        return _transcribe_soniox(audio_path, work_dir, approval, source, progress, cancelled, language, secret_store)
     if cancelled and cancelled():
         raise ProviderError("cancelled", "Audio processing was cancelled.")
     key = (secret_store or SecretStore()).get("groq")
@@ -276,7 +511,7 @@ def cleanup_temporary_audio(work_dir: Path, older_than_seconds: float = 86400):
     """Bounded retention; only managed audio files inside this job folder."""
     root = Path(work_dir).resolve()
     cutoff = time.time() - older_than_seconds
-    for pattern in ["source-audio.*", "chunks/*.wav", "chunks/*.partial.wav"]:
+    for pattern in ["source-audio.*", "chunks/*.wav", "chunks/*.flac"]:
         for path in root.glob(pattern):
             resolved = path.resolve()
             if resolved.is_relative_to(root) and path.is_file() and path.stat().st_mtime < cutoff:
@@ -297,8 +532,8 @@ def transcribe_youtube(video_id: str, work_dir: Path, approval: dict, progress=N
     if cancelled and cancelled():
         raise ProviderError("cancelled", "Audio processing was cancelled.")
     # Check key before any media download.
-    if not SecretStore().get("groq"):
-        raise ProviderError("authentication", "Configure a Groq API key before downloading audio.")
+    if not SecretStore().get(approval["provider"]):
+        raise ProviderError("authentication", f"Configure a {PROVIDER_LABELS[approval['provider']]} API key before downloading audio.")
     work_dir = Path(work_dir).resolve()
     work_dir.mkdir(parents=True, exist_ok=True)
     cleanup_temporary_audio(work_dir)
@@ -310,8 +545,10 @@ def transcribe_youtube(video_id: str, work_dir: Path, approval: dict, progress=N
     audio_files = [p for p in work_dir.glob("source-audio.*") if p.suffix.lower() in {".webm", ".m4a", ".mp3", ".ogg", ".opus", ".wav"}]
     if not audio_files:
         if progress: progress("Downloading approved audio")
-        command = [sys.executable, "-m", "yt_dlp", "--no-playlist", "--no-progress", "--no-warnings", "--socket-timeout", "30", "--retries", "2", "-f", "bestaudio[language=original]/bestaudio", "--paths", str(work_dir), "-o", "source-audio.%(ext)s", "--", f"https://www.youtube.com/watch?v={video_id}"]
-        _run(command, cancelled)
+        from .downloader import command as ytdlp_command
+        # yt-dlp ranks the original audio track first, so a dubbed track is never the best audio.
+        _run(ytdlp_command("--no-progress", "--no-warnings", "--socket-timeout", "30", "--retries", "2", "-f", "bestaudio",
+                           "--paths", str(work_dir), "-o", "source-audio.%(ext)s", "--", f"https://www.youtube.com/watch?v={video_id}"), cancelled)
         audio_files = [p for p in work_dir.glob("source-audio.*") if p.suffix.lower() in {".webm", ".m4a", ".mp3", ".ogg", ".opus", ".wav"}]
     if not audio_files: raise ProviderError("audio_failed", "No usable audio was downloaded. Import an audio file or transcript instead.")
     return transcribe_audio(audio_files[0], work_dir, approval, video_id, progress, cancelled, checkpoint, load_checkpoint, language=approval.get("source_language") or None)

@@ -5,8 +5,8 @@ import sys
 import pytest
 
 from tests_app.test_provider_hub import hub  # noqa: F401  (fixture)
-from visual_learning import providers
-from visual_learning.providers import ClaudeCodeProvider, ProviderError, SecretStore, make_provider
+from distill import providers
+from distill.providers import ClaudeCodeProvider, ProviderError, SecretStore, make_provider
 
 
 def claude_stub(tmp_path, monkeypatch, body):
@@ -65,6 +65,14 @@ def test_failures_are_classified_for_the_worker(tmp_path, monkeypatch, changes, 
     assert problem.value.code == code
     if code == "invalid_output":
         assert problem.value.diagnostics["failure"] == "invalid_json"  # the pipeline then repairs the request
+
+
+def test_an_expired_cli_sign_in_says_so(tmp_path, monkeypatch):
+    # Measured on 2026-10-27: the result is "success" with is_error set and exit code 1.
+    claude_stub(tmp_path, monkeypatch, f"print({result(is_error=True, result='Failed to authenticate: OAuth session expired and could not be refreshed')!r})\nsys.exit(1)\n")
+    with pytest.raises(ProviderError) as problem:
+        ClaudeCodeProvider(timeout_seconds=20).generate("x", {}, tmp_path)
+    assert problem.value.code == "authentication" and "sign-in has expired" in str(problem.value)
 
 
 def test_missing_object_and_cancellation(tmp_path, monkeypatch):

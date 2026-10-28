@@ -1,8 +1,8 @@
 """Small authored fixture for offline browser and contract verification."""
 from pathlib import Path
 
-from visual_learning.models import Evidence, KnowledgeModel, KnowledgeUnit, PresentationPlan, Relationship, Snippet, SourceSection, Transcript, Visual
-from visual_learning.renderer import render_page
+from distill.models import Evidence, KnowledgeModel, KnowledgeUnit, PresentationPlan, Relationship, Snippet, SourceSection, Transcript, Visual
+from distill.renderer import render_page
 
 
 def fixture(language="vi"):

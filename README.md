@@ -1,6 +1,6 @@
-# Visual Learning app
+# Distill
 
-Paste a YouTube link to create a saved, source-grounded interactive learning page. Double-click **Start Visual Learning.cmd** on Windows.
+Paste a YouTube link to create a saved, source-grounded interactive learning page. Double-click **Start Distill.cmd** on Windows.
 
 Read the [app guide](APP_GUIDE.md), [build status and verification](BUILD_STATUS.md), and [master plan](MASTER_PLAN.md). The transcript library documentation follows.
 

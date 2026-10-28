@@ -3,9 +3,9 @@ from pathlib import Path
 
 from tests_app.learning_fixture import fixture
 from tests_app.test_learning import SemanticFixtureProvider
-from visual_learning.metrics import display_metrics, evenly_spaced, source_positions, spread_by_source_position
-from visual_learning.models import Evidence, KnowledgeModel, KnowledgeUnit, PresentationPlan, Transcript
-from visual_learning.pipeline import Pipeline
+from distill.metrics import display_metrics, evenly_spaced, source_positions, spread_by_source_position
+from distill.models import Evidence, KnowledgeModel, KnowledgeUnit, PresentationPlan, Transcript
+from distill.pipeline import Pipeline
 
 
 def cited(uid, sid, kind="mechanism", children=None):

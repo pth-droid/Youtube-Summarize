@@ -1,4 +1,5 @@
-/* Shared by the workspace and portable learning pages. */
+/* Shared by the workspace and portable learning pages. Saved pages embed a copy,
+   so the pre-rename storage key and message types must stay unchanged. */
 (() => {
   'use strict';
   const key = 'visual-learning-theme';

@@ -234,6 +234,13 @@ class Store:
             row = con.execute("SELECT value FROM checkpoints WHERE job_id=? AND name=?", (job_id, name)).fetchone()
         return json.loads(row["value"]) if row else None
 
+    def copy_checkpoints(self, from_job: str, to_job: str):
+        """Copy saved stages to another job. The pipeline reuses only stages whose fingerprint still matches."""
+        with self.connection() as con:
+            con.execute("BEGIN IMMEDIATE")
+            con.execute("INSERT INTO checkpoints SELECT ?,name,value,updated_at FROM checkpoints WHERE job_id=? ON CONFLICT(job_id,name) DO NOTHING", (to_job, from_job))
+            con.commit()
+
     def clear_checkpoints(self, job_id: str, preserve: tuple[str, ...] = ("source",)):
         with self.connection() as con:
             if preserve:
@@ -298,7 +305,7 @@ class Store:
                 con.rollback()
                 return self.get_generation(current["generation_id"])
             con.execute("INSERT INTO generations VALUES(?,?,?,?,?,?,?,?,?,?,?)", (generation_id, job_id, result.get("source_id", job["input"].get("video_id", job_id)), str(result.get("title", "Learning page")), str(result.get("summary", "")), preferences.get("language", "vi"), preferences.get("provider", "codex"), preferences.get("model", ""), str(page.relative_to(self.root)), json_text(metadata), utcnow()))
-            con.execute("UPDATE jobs SET state='complete',generation_id=?,progress=?,error=NULL,lease_owner=NULL,lease_until=NULL,updated_at=? WHERE id=?", (generation_id, json_text({"stage": "complete", "message": "Your learning page is ready."}), utcnow(), job_id))
+            con.execute("UPDATE jobs SET state='complete',generation_id=?,progress=?,error=NULL,lease_owner=NULL,lease_until=NULL,updated_at=? WHERE id=?", (generation_id, json_text({"stage": "complete", "message": "Your lecture slides are ready." if metadata.get("output_format") == "lecture" else "Your learning page is ready."}), utcnow(), job_id))
             con.commit()
         return self.get_generation(generation_id)
 
@@ -344,7 +351,7 @@ class Store:
         """Create a consistent SQLite snapshot plus every artifact referenced by it."""
         backups = self.root / "backups"
         backups.mkdir(exist_ok=True)
-        target = backups / ("visual-learning-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:6] + ".zip")
+        target = backups / ("distill-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:6] + ".zip")
         with tempfile.TemporaryDirectory(prefix="vl-backup-") as temporary:
             snapshot = Path(temporary) / "library.sqlite3"
             with self.connection() as gate:
@@ -364,7 +371,7 @@ class Store:
                 job_ids = [row[0] for row in gate.execute("SELECT id FROM jobs")]
                 with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as archive:
                     archive.write(snapshot, "library.sqlite3")
-                    archive.writestr("BACKUP_README.txt", "Visual Learning backup. Stop the app and worker before restoring library.sqlite3 and jobs/ into an empty data folder. API keys are not included.\n")
+                    archive.writestr("BACKUP_README.txt", "Distill backup. Stop the app and worker before restoring library.sqlite3 and jobs/ into an empty data folder. API keys are not included.\n")
                     for job_id in job_ids:
                         folder = self.artifact_dir(job_id)
                         for artifact in folder.rglob("*"):
@@ -406,7 +413,7 @@ class Store:
             raise ValueError("Choose a new or empty folder. Existing files will not be replaced.")
         parent = target.parent
         parent.mkdir(parents=True, exist_ok=True)
-        temporary = Path(tempfile.mkdtemp(prefix=".visual-learning-copy-", dir=parent))
+        temporary = Path(tempfile.mkdtemp(prefix=".distill-copy-", dir=parent))
         published = False
         selection_changed = False
         committed = False

@@ -4,8 +4,8 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from visual_learning.app import create_app
-from visual_learning.providers import ProviderError, SecretStore, make_provider
+from distill.app import create_app
+from distill.providers import ProviderError, SecretStore, make_provider
 
 
 @pytest.fixture
@@ -16,7 +16,7 @@ def hub(tmp_path, monkeypatch):
     monkeypatch.setattr('keyring.delete_password', lambda service, name: keys.pop((service, name), None))
     app = create_app(tmp_path)
     with TestClient(app, base_url='http://127.0.0.1') as client:
-        client.headers['x-visual-learning'] = app.state.csrf_token
+        client.headers['x-distill'] = app.state.csrf_token
         client.store = app.state.store
         client.keys = keys
         yield client
@@ -136,7 +136,7 @@ def test_custom_connector_sends_configured_endpoint_model_and_key(hub, monkeypat
                 return {'choices': [{'message': {'content': '{"answer": true}'}, 'finish_reason': 'stop'}], 'usage': {'completion_tokens': 12}}
         return Response()
 
-    monkeypatch.setattr('visual_learning.providers.requests.post', post)
+    monkeypatch.setattr('distill.providers.requests.post', post)
     result = make_provider(settings).generate('Source text', {'type': 'object'}, tmp_path)
     assert result.data == {'answer': True}
     assert result.provider == name
@@ -149,7 +149,7 @@ def test_custom_connector_sends_configured_endpoint_model_and_key(hub, monkeypat
 def test_no_key_endpoint_is_explicit_and_legacy_selfhost_is_preserved(hub, monkeypatch, tmp_path):
     name = add(hub, endpoint='http://127.0.0.1:1234/v1', requires_key=False)
     settings = hub.store.settings() | {'provider': name, 'paid_usage_approved': True}
-    monkeypatch.setattr('visual_learning.providers.requests.post', lambda *_a, **_k: (_ for _ in ()).throw(ProviderError('sent', 'Reached the request')))
+    monkeypatch.setattr('distill.providers.requests.post', lambda *_a, **_k: (_ for _ in ()).throw(ProviderError('sent', 'Reached the request')))
     with pytest.raises(ProviderError, match='Reached the request'):
         make_provider(settings).generate('Source', {}, tmp_path)
     hub.store.save_settings({'api_connections': {'selfhost': {'endpoint': 'http://localhost:1234/v1', 'model': 'old-model'}}})
