@@ -60,7 +60,7 @@ def test_lecture_output_reuses_analysis_and_resumes_without_model_calls(tmp_path
     assert json.loads((tmp_path / "generation.json").read_text(encoding="utf-8"))["slide_theme"] == "maroon"
 
     deck = (tmp_path / "lecture.html").read_text(encoding="utf-8")
-    assert 'data-deck-theme="maroon"' in deck
+    assert 'data-look="maroon"' in deck
     assert deck.count('class="slide-frame"') >= 6
     assert "Explain the source model." in deck and "What does the source explain?" in deck
     # The deck is presented to a group: it has no quiz.
@@ -81,9 +81,9 @@ def test_lecture_deck_escapes_text_shows_verbatim_quotes_and_source_times(tmp_pa
     layouts = dict(re.findall(r'class="slide kind-(\w+) layout-([\w-]+) variant-\d"', deck))
     assert layouts["compare"] == "two-col-head" and layouts["steps"] in {"arrows", "timeline", "timeline-v", "bullets", "big-bullets"}
     assert "Suy luận" in deck and "Coffee origin also matters." in deck  # status and caveats stay visible
-    assert 'data-deck-theme="forest"' in deck  # the look that matches the app, unless another is chosen
+    assert 'data-look="forest"' in deck  # the look that matches the app, unless another is chosen
     unknown = render_lecture(source, knowledge, lecture, tmp_path / "other.html", theme='maroon" onload="alert(1)').read_text(encoding="utf-8")
-    assert 'data-deck-theme="forest"' in unknown and "alert(1)\"" not in unknown
+    assert 'data-look="forest"' in unknown and "alert(1)\"" not in unknown
     assert deck.count('class="slide-frame"') == 2 + 1 + 4 + 1 + 1  # title, objectives, question, slides, recap, limits
     assert "BÀI GIẢNG" in deck and 'lang="vi"' in deck
 
@@ -159,7 +159,7 @@ def test_first_slides_for_a_video_reuse_its_page_analysis_but_new_versions_do_no
         assert provider.calls[calls:] == []
         recoloured = store.get_generation(store.get_job(maroon.json()["job"]["id"])["generation_id"])
         assert recoloured["metadata"]["slide_theme"] == "maroon"
-        assert 'data-deck-theme="maroon"' in client.get(f"/api/generations/{recoloured['id']}/export").text
+        assert 'data-look="maroon"' in client.get(f"/api/generations/{recoloured['id']}/export").text
 
         second = len(provider.calls)
         again = client.post("/api/jobs", json={"url": url, "preferences": {"output_format": "lecture"}, "regenerate": True}, headers=headers)
@@ -180,6 +180,27 @@ def test_settings_default_output_and_new_page_override(tmp_path):
         assert DEFAULT_SETTINGS["slide_theme"] == job["input"]["preferences"]["slide_theme"] == "forest"
         assert client.put("/api/settings", json={"slide_theme": "maroon"}, headers=headers).json()["preferences"]["slide_theme"] == "maroon"
         assert client.put("/api/settings", json={"slide_theme": "neon"}, headers=headers).status_code == 422
+
+
+def test_every_look_the_presets_define_is_offered_with_its_swatch_and_drawn(tmp_path):
+    from distill.looks import LOOKS_CSS, SLIDE_LOOKS, SLIDE_THEMES, SWATCH_TOKENS, look_tokens
+    css = LOOKS_CSS.read_text(encoding="utf-8")
+    # The app names exactly the looks the copied skill presets define, and each has a dark version for the screen.
+    assert set(look_tokens(css)) == set(SLIDE_THEMES) == set(SLIDE_LOOKS) and len(SLIDE_THEMES) == 7
+    assert all(f":root[data-look={look}][data-theme=dark]" in css for look in SLIDE_THEMES)
+    app = create_app(tmp_path)
+    with TestClient(app, base_url="http://127.0.0.1") as client:
+        headers = {"x-distill": app.state.csrf_token}
+        looks = client.get("/api/settings", headers=headers).json()["looks"]
+        assert [look["id"] for look in looks] == list(SLIDE_THEMES) and looks[0]["name"] == "Forest green"
+        assert all(set(look["tokens"]) == set(SWATCH_TOKENS) and look["tokens"]["surface"].startswith("#") for look in looks)
+        for look in SLIDE_THEMES:
+            assert client.put("/api/settings", json={"slide_theme": look}, headers=headers).json()["preferences"]["slide_theme"] == look
+    source, knowledge, _ = fixture()
+    deck = render_lecture(source, knowledge, plan(slide()), tmp_path / "slate.html", theme="slate").read_text(encoding="utf-8")
+    assert 'data-look="slate"' in deck and ":root[data-look=slate]{" in deck
+    # Figures take the deck's look: the flow steps are its data series, the neutrals mix from its surfaces.
+    assert "--fig-1:var(--data-1)" in deck and "--fig-metal:color-mix(" in deck
 
 
 def test_layout_rotation_never_repeats_a_frame_and_fits_each_content_shape(tmp_path):

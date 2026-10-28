@@ -10,32 +10,32 @@ test.beforeAll(() => {
   execFileSync(path.resolve('.venv/Scripts/python.exe'), ['-m', 'tests_app.variant_fixture'], {stdio: 'pipe'});
 });
 
-for (const first of [0, 1, 2, 3]) {
-  test(`layouts: every slide of gallery deck ${first} fits its canvas, fully built, in both looks`, async ({page}) => {
+// Each look brings its own type (Bahnschrift, Palatino, Candara...), so every look is measured, not only its colours.
+const LOOKS = ['forest', 'maroon', 'navy', 'contrast', 'editorial', 'slate', 'workshop'];
+for (const look of LOOKS) for (const first of [0, 1, 2, 3]) {
+  test(`layouts: every slide of gallery deck ${first} fits its canvas, fully built, in the ${look} look`, async ({page}) => {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.setViewportSize({width: 1366, height: 800});
-    for (const look of ['forest', 'maroon']) {
-      await page.goto(deck(`gallery-${first}-${look}`));
-      const total = await page.locator('.slide-frame').count();
-      const problems = [];
-      for (let n = 1; n <= total; n++) {
-        await page.evaluate(k => { location.hash = `#slide-${k}`; }, n);
-        const issue = await page.evaluate(() => {
-          const slide = document.querySelector('.slide-frame.is-current .slide');
-          slide.querySelectorAll('.build-pending').forEach(item => item.classList.remove('build-pending'));
-          for (const animation of document.getAnimations()) animation.finish();  // measure parts where they land
-          const box = slide.getBoundingClientRect(), out = [];
-          for (const node of slide.querySelectorAll('h1, h2, .slide-content *')) {
-            const r = node.getBoundingClientRect();
-            if (r.width && (r.left < box.left - 2 || r.right > box.right + 2 || r.bottom > box.bottom + 2)) out.push(node.tagName.toLowerCase());
-          }
-          return slide.scrollHeight > slide.clientHeight + 1 || out.length ? `${slide.className}: ${out.slice(0, 3).join(',') || 'scrolls'}` : '';
-        });
-        if (issue) problems.push(`#${n} ${issue}`);
-      }
-      expect(problems, look).toEqual([]);
+    await page.goto(deck(`gallery-${first}-${look}`));
+    const total = await page.locator('.slide-frame').count();
+    const problems = [];
+    for (let n = 1; n <= total; n++) {
+      await page.evaluate(k => { location.hash = `#slide-${k}`; }, n);
+      const issue = await page.evaluate(() => {
+        const slide = document.querySelector('.slide-frame.is-current .slide');
+        slide.querySelectorAll('.build-pending').forEach(item => item.classList.remove('build-pending'));
+        for (const animation of document.getAnimations()) animation.finish();  // measure parts where they land
+        const box = slide.getBoundingClientRect(), out = [];
+        for (const node of slide.querySelectorAll('h1, h2, .slide-content *')) {
+          const r = node.getBoundingClientRect();
+          if (r.width && (r.left < box.left - 2 || r.right > box.right + 2 || r.bottom > box.bottom + 2)) out.push(node.tagName.toLowerCase());
+        }
+        return slide.scrollHeight > slide.clientHeight + 1 || out.length ? `${slide.className}: ${out.slice(0, 3).join(',') || 'scrolls'}` : '';
+      });
+      if (issue) problems.push(`#${n} ${issue}`);
     }
+    expect(problems).toEqual([]);
     expect(errors).toEqual([]);
   });
 }

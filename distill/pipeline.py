@@ -18,7 +18,8 @@ from .models import (
 )
 from .apparatus import catalogue
 from .chapters import assign_units, chapter_profile, detail_level, split_sections
-from .renderer import SLIDE_THEMES, render_lecture, render_page
+from .looks import SLIDE_THEMES
+from .renderer import render_lecture, render_page
 from .providers import ProviderError
 from .model_profiles import resolve_profile
 from .metrics import display_metrics, evenly_spaced, source_positions, spread_by_source_position

@@ -1,29 +1,24 @@
 /* Lecture deck. Without script, on narrow screens and as a fallback it reads as stacked cards;
    .js-deck on a wide screen presents one 1280x720 slide at a time, scaled to fit.
-   Design language: an editorial system on the app's own tokens, distilled from the frontend-slides
-   principles (MIT): a serif display voice, uppercase mono chrome, 2px hairlines instead of shadows,
-   tiles that rotate fills, one atmospheric device per slide, and one staggered entrance per slide. */
-:root{--paper:#f6f5f1;--surface:#fff;--ink:#222b30;--muted:#59666d;--line:#d9ddd9;--accent:#205e5b;--on-accent:#fff;--tint:#e8f1ed;--warning:#76501c;--warning-bg:#f6ecd9;--inference:#5b3fa8;
-  --feature:var(--accent);--on-feature:var(--on-accent);--focus:#237f85;
-  --display:"Sitka Heading","Sitka Display",Cambria,"Iowan Old Style","Palatino Linotype",Georgia,serif;
-  --mono:"Cascadia Mono","SF Mono",Consolas,"Liberation Mono",monospace;
-  --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
-  --ease-out:cubic-bezier(.23,1,.32,1);--ease:var(--ease-out);
+   Design language: an editorial system distilled from the frontend-slides principles (MIT): a display voice,
+   uppercase mono chrome, 2px hairlines instead of shadows, tiles that rotate fills, and one staggered entrance per slide.
+   Colours and type come from the deck's look (slide-looks.css, <html data-look>); light or dark is the viewer's choice. */
+:root{--ease-out:cubic-bezier(.23,1,.32,1);--ease:var(--ease-out);
   --h1:2.1rem;--h2:1.45rem;--text:1.05rem;--small:.8rem;--eyebrow:.7rem}
-[data-theme=dark]{color-scheme:dark;--paper:#111a18;--surface:#1b2925;--ink:#e5eee9;--muted:#a9bdb4;--line:#3b4d45;--accent:#94d8c9;--on-accent:#10201c;--tint:#293f35;--warning:#e9c48a;--warning-bg:#372f23;--inference:#c7b1ff}
-/* Maroon and beige look, chosen per deck: beige paper and deep maroon in light mode, deep maroon paper and beige in dark.
-   Statement slides fill with --feature. Text pairs meet WCAG AA; the five figure steps were checked for colour-vision
-   separation on #fbf6ee and #2a1217. Dark stays on screen, so print always uses the beige version. */
-:root[data-deck-theme=maroon]{--paper:#ece2d3;--surface:#fbf6ee;--ink:#2f1418;--muted:#6e5650;--line:#e3d5c2;--accent:#7a1c2a;--on-accent:#fbf6ee;
-  --tint:#f3e7d6;--warning:#8a5410;--warning-bg:#f6e5c8;--inference:#5b3fa8;--focus:#b0283f;--feature:#7a1c2a;--on-feature:#f7eedf;
-  --fig-1:#9b2335;--fig-2:#0f9d8a;--fig-3:#2a5fa8;--fig-4:#a07400;--fig-5:#6a55c2;--fig-gas:#857671;
-  --fig-metal:#ece4d8;--fig-outline:#6e5650;--fig-inner:#f6efe4;--fig-paper:#fbf6ee;--fig-grid:#e8dccb;--fig-axis:#cdbba6}
-@media screen{
-  :root[data-deck-theme=maroon][data-theme=dark]{--paper:#190b0e;--surface:#2a1217;--ink:#f2e7d7;--muted:#cfb9a8;--line:#4e2a31;--accent:#e6c99a;--on-accent:#2a1217;
-    --tint:#3b1b22;--warning:#f3a96b;--warning-bg:#43231a;--inference:#c9b3ff;--focus:#f0c98a;--feature:#7a1f2d;--on-feature:#f4e9d9;
-    --fig-1:#d4475a;--fig-2:#14a892;--fig-3:#4a84d6;--fig-4:#b88a17;--fig-5:#8c7be0;--fig-gas:#b9a79c;
-    --fig-metal:#3d2227;--fig-outline:#cfb9a8;--fig-inner:#1d0d10;--fig-paper:#34181d;--fig-grid:#40242a;--fig-axis:#5a3239}
-}
+/* Figures take the look's colours. The five flow steps are its data series, which check_look.mjs checks for
+   colour-vision separation; the neutrals are mixed from its surfaces, within dE 3 of the hand-tuned forest and maroon
+   values. The second selector only lifts specificity above figures.css's dark rule, which loads later. */
+:root[data-look],:root[data-look][data-theme=dark]{
+  --fig-1:var(--data-1);--fig-2:var(--data-2);--fig-3:var(--data-3);--fig-4:var(--data-4);--fig-5:var(--data-5);
+  --fig-outline:var(--muted);--fig-inference:var(--inference);
+  --fig-gas:color-mix(in oklab,var(--muted) var(--fig-gas-share,75%),var(--surface));
+  --fig-metal:color-mix(in oklab,var(--line) 55%,var(--surface));
+  --fig-inner:color-mix(in oklab,var(--paper) 60%,var(--surface));
+  --fig-paper:color-mix(in oklab,var(--surface) 80%,var(--line));
+  --fig-grid:color-mix(in oklab,var(--line) 65%,var(--surface));
+  --fig-axis:color-mix(in oklab,var(--line) var(--fig-axis-share,80%),var(--muted))}
+/* Dark keeps gas nearer the muted text and the axis nearer the hairline. Print always uses the light look. */
+@media screen{:root[data-look][data-theme=dark]{--fig-gas-share:90%;--fig-axis-share:92%}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 var(--sans)}
 button{font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
@@ -141,7 +136,7 @@ dialog h2{margin:0 0 8px;font-size:1.1rem}
 @keyframes deck-fade{from{opacity:0}}
 @page{size:1280px 720px;margin:0}
 @media print{
-  :root,[data-theme=dark]{color-scheme:light;--paper:#fff;--surface:#fff;--ink:#222b30;--muted:#59666d;--line:#d9ddd9;--accent:#205e5b;--on-accent:#fff;--tint:#e8f1ed;--warning:#76501c;--warning-bg:#f6ecd9;--inference:#5b3fa8}
+  :root[data-look]{--paper:var(--surface)}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body{display:block!important;height:auto!important;overflow:visible!important}
   .deck-bar,.deck-nav,.notes,dialog,.sr-only{display:none!important}

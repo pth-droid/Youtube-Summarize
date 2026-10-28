@@ -13,6 +13,7 @@ from .deck_layouts import (ROOM, VARIANTS, Choice, arrange, column_choices, fits
                            step_choices, table_choices, timeline, timeline_choices)
 from .deck_layouts import items as layout_items
 from .figures import figure_ideas, figure_sections, figure_slides
+from .looks import LOOKS_CSS, SLIDE_THEMES
 from .models import (FigurePlan, KnowledgeModel, LecturePlan, PresentationPlan, Transcript, figure_unit_ids, validate_bundle,
                      validate_figures, validate_lecture)
 
@@ -113,7 +114,6 @@ def excerpt(text: str, limit: int = 420) -> str:
     return text[:limit].rsplit(" ", 1)[0].rstrip(",;:") + " …"
 
 
-SLIDE_THEMES = ("forest", "maroon")
 # Slides that frame the talk arrive whole; the others reveal their items one advance at a time.
 STILL = {"title", "objectives", "question", "agenda", "divider", "limits"}
 
@@ -325,9 +325,10 @@ def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: Lectu
                       f'<aside class="notes" aria-label="{t("Presenter notes", "Ghi chú người trình bày")}">{slide["notes"] or no_notes}</aside></article>')
     outline = "".join(f'<li><button type="button" data-go="{index}">{e(slide["title"])}</button></li>' for index, slide in enumerate(slides, 1))
     css, scripts = assets("lecture", figures, {slide["layout"] for slide in slides if slide.get("layout")})
+    css = LOOKS_CSS.read_text(encoding="utf-8") + "\n" + css
     theme_script = (ASSET_DIR.parent / "web" / "theme.js").read_text(encoding="utf-8")
     page = f'''<!doctype html>
-<html lang="{knowledge.language}" data-deck-theme="{theme if theme in SLIDE_THEMES else "forest"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="{knowledge.language}" data-look="{theme if theme in SLIDE_THEMES else "forest"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark light"><meta name="referrer" content="no-referrer"><script>{theme_script}</script>
 <script>document.documentElement.classList.add('js-deck')</script>
 <title>{e(lecture.title)} · Distill</title><style>{css}</style><noscript><style>.deck-bar button{{display:none}}</style></noscript></head>

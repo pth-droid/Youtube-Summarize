@@ -81,12 +81,27 @@
 .source-tabs{display:flex;flex-wrap:wrap;gap:3px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
 .source-tabs .mode{border:0;border-radius:7px;background:transparent;color:var(--muted);font-size:.8rem;font-weight:600;padding:7px 13px;min-height:36px}
 .source-tabs .mode:hover{color:var(--ink)}
-.look-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:-4px 0 16px}
-.look-option{display:inline-flex;align-items:center;gap:8px}
-/* A small two-tone chip of the deck look: its fill colour beside its tint. The look keeps these colours in both app themes. */
-.look-swatch{display:inline-grid;grid-template-columns:1fr 1fr;width:26px;height:16px;border-radius:4px;overflow:hidden;box-shadow:inset 0 0 0 1px #0000001f}
-.look-swatch i:first-child{background:#205e5b}.look-swatch i:last-child{background:#e8f1ed}
-.look-swatch.maroon i:first-child{background:#7a1c2a}.look-swatch.maroon i:last-child{background:#f3e7d6}
+.look-row{display:grid;gap:8px;margin:-4px 0 16px}
+.look-options{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
+.look-option{display:grid;gap:1px;align-content:start;text-align:left;padding:6px 6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--white);color:var(--ink);transition:border-color .15s,box-shadow .15s}
+.look-option:hover{border-color:var(--green)}
+.look-option[aria-pressed=true]{border-color:var(--green);box-shadow:inset 0 0 0 1px var(--green)}
+.look-name{font-size:.8rem;font-weight:650;padding:0 2px}
+.look-hint{font-size:.7rem;line-height:1.3;color:var(--muted);padding:0 2px}
+/* A small slide in the look: an accent eyebrow, a title in its display type, its five data colours and a filled statement
+   panel. It always shows the look's light colours, whatever the app theme. */
+.look-preview{position:relative;display:block;aspect-ratio:16/9;margin-bottom:5px;border-radius:6px;overflow:hidden;background:var(--look-surface);box-shadow:inset 0 0 0 1px #0000001f}
+.look-preview b{position:absolute;left:9%;top:25%;font:600 20px/1 var(--look-display);color:var(--look-ink)}
+.look-preview i{position:absolute;display:block}
+.look-preview .eyebrow{left:9%;top:13%;width:24%;height:3px;border-radius:2px;background:var(--look-accent)}
+.look-preview .feature{top:0;right:0;bottom:0;width:32%;background:var(--look-feature)}
+.look-preview .feature i{left:18%;top:20%;width:52%;height:3px;border-radius:2px;background:var(--look-on-feature)}
+.look-preview .bars{position:absolute;left:9%;bottom:14%;display:flex;align-items:flex-end;gap:3px;height:28%}
+.look-preview .bars i{position:static;width:7px;border-radius:2px 2px 0 0}
+/* Phones: three small swatches a row; the hint stays as each button's description. */
+@media(max-width:650px){.look-options{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.look-hint{display:none}.look-preview b{font-size:17px}.look-preview .bars i{width:5px}}
+/* The page's CSP blocks inline style attributes, so each bar picks its series here. */
+.look-preview .bars i:nth-child(1){height:55%;background:var(--look-data-1)}.look-preview .bars i:nth-child(2){height:85%;background:var(--look-data-2)}.look-preview .bars i:nth-child(3){height:40%;background:var(--look-data-3)}.look-preview .bars i:nth-child(4){height:100%;background:var(--look-data-4)}.look-preview .bars i:nth-child(5){height:65%;background:var(--look-data-5)}
 .source-tabs .mode[aria-pressed=true]{background:var(--white);color:var(--ink);box-shadow:0 1px 3px #18322b1f,inset 0 0 0 1px var(--line)}
 .start-panel{padding:30px}
 .quick-start{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start}

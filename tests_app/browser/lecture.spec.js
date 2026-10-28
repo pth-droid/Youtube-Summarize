@@ -109,6 +109,11 @@ test('slide look: choose maroon and beige on the start view, and keep a default 
     const forest = page.getByRole('button', {name: 'Forest green', exact: true});
     const maroon = page.getByRole('button', {name: 'Maroon and beige', exact: true});
     await expect(forest).toHaveAttribute('aria-pressed', 'true');
+    // Seven looks, each a small slide in its own light colours, named with what it suits.
+    await expect(page.locator('#look-options .look-option')).toHaveCount(7);
+    await expect(page.getByRole('button', {name: 'High contrast', exact: true})).toHaveAccessibleDescription('Bright rooms, weak projectors');
+    await expect(page.locator('[data-look="navy"] .look-preview')).toHaveCSS('background-color', 'rgb(252, 250, 245)');
+    await expect(page.locator('[data-look="navy"] .look-preview .feature')).toHaveCSS('background-color', 'rgb(23, 42, 79)');
     await maroon.click();
     await expect(maroon).toHaveAttribute('aria-pressed', 'true');
     await expect(forest).toHaveAttribute('aria-pressed', 'false');
@@ -124,7 +129,7 @@ test('slide look: choose maroon and beige on the start view, and keep a default 
     await page.getByRole('button', {name: 'Present lecture slides'}).click();
 
     const deck = page.frameLocator('#reader-frame');
-    await expect(deck.locator('html')).toHaveAttribute('data-deck-theme', 'maroon');
+    await expect(deck.locator('html')).toHaveAttribute('data-look', 'maroon');
     await expect(deck.locator('.slide-frame.is-current .slide')).toHaveClass(/kind-title/);
     // The title's composition rotates with the deck, so the look is checked through its tokens and the deck bar.
     const token = name => deck.locator('html').evaluate((root, name) => getComputedStyle(root).getPropertyValue(name).trim(), name);
@@ -142,6 +147,7 @@ test('slide look: choose maroon and beige on the start view, and keep a default 
     await page.goto('/#settings');
     await expect(page.locator('#storage-details')).not.toBeEmpty();
     await expect(page.locator('#settings-slide-theme')).toHaveValue('forest');
+    await expect(page.locator('#settings-slide-theme option')).toHaveCount(7);
     await page.locator('#settings-slide-theme').selectOption('maroon');
     await page.getByRole('button', {name: 'Save preferences'}).click();
     await expect(page.locator('#notice')).toContainText('Preferences saved');
