@@ -172,6 +172,68 @@ test('figure slides present, keep their own arrow keys and print one slide per p
   expect(problems).toEqual([]);
 });
 
+test('deck builds: a click, a wheel notch or a key reveals the next point before the next slide', async ({page, context}) => {
+  const problems = await watch(page, context);
+  await page.setViewportSize({width: 1366, height: 800});
+  await page.goto(fixture('roast-deck'));
+  const titles = await page.locator('.slide-frame').evaluateAll(frames => frames.map(frame => frame.getAttribute('aria-label')));
+  const total = titles.length, at = titles.findIndex(title => title.includes('Nhiệt đến hạt theo ba đường')) + 1;
+  await page.goto(fixture('roast-deck') + `#slide-${at}`);
+  const counter = page.locator('#counter');
+  // Whatever layout the slide draws, its content parts carry data-part in reading order.
+  const rows = page.locator('.slide-frame.is-current .slide-content [data-part]');
+  await expect(rows).toHaveCount(3);
+  // The first point arrives with the slide; the others wait in place, invisible.
+  await expect(rows.nth(0)).not.toHaveClass(/build-pending/);
+  await expect(rows.nth(1)).toHaveClass(/build-pending/);
+  await expect(rows.nth(1)).toHaveCSS('opacity', '0');
+  await page.locator('.slide-frame.is-current .slide h2').click();
+  // A click during the arrival finishes it first: the first point is whole before the second rises.
+  expect(await rows.nth(0).evaluate(row => getComputedStyle(row).opacity)).toBe('1');
+  await expect(rows.nth(1)).toHaveClass(/build-shown/);
+  // One wheel gesture is one step: the second notch of the same burst is ignored.
+  await page.mouse.move(683, 380);
+  await page.mouse.wheel(0, 100);
+  await page.mouse.wheel(0, 100);
+  await expect(rows.nth(2)).toHaveClass(/build-shown/);
+  await expect(counter).toHaveText(`${at} / ${total}`);
+  await page.waitForTimeout(400);
+  await page.mouse.wheel(0, 100);
+  await expect(counter).toHaveText(`${at + 1} / ${total}`);
+  // Clicks inside a figure keep their own meaning.
+  await page.locator('.slide-frame.is-current .fig-chart svg').click();
+  await expect(counter).toHaveText(`${at + 1} / ${total}`);
+  // Back arrives fully built, then each step back hides one point, then the slide before.
+  await page.keyboard.press('ArrowLeft');
+  await expect(counter).toHaveText(`${at} / ${total}`);
+  await expect(page.locator('.slide-frame.is-current .build-pending')).toHaveCount(0);
+  await page.keyboard.press('PageUp');
+  await expect(rows.nth(2)).toHaveClass(/build-pending/);
+  await page.keyboard.press('PageUp');
+  await expect(rows.nth(1)).toHaveClass(/build-pending/);
+  await page.keyboard.press('PageUp');
+  await expect(counter).toHaveText(`${at - 1} / ${total}`);
+  await page.keyboard.press('PageDown');
+  await expect(counter).toHaveText(`${at} / ${total}`);
+  // A printed deck shows every point.
+  await page.emulateMedia({media: 'print'});
+  await expect(rows.nth(2)).toHaveCSS('opacity', '1');
+  await page.emulateMedia({media: 'screen'});
+  // B blanks the room's screen, as a remote's pause button does; the next key only brings the slide back.
+  await page.keyboard.press('b');
+  await expect(page.locator('body')).toHaveClass(/blanked/);
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('body')).not.toHaveClass(/blanked/);
+  await expect(counter).toHaveText(`${at} / ${total}`);
+  // Shift skips the remaining build steps; End arrives fully built.
+  await page.keyboard.press('Shift+ArrowRight');
+  await expect(counter).toHaveText(`${at + 1} / ${total}`);
+  await page.keyboard.press('End');
+  await expect(counter).toHaveText(`${total} / ${total}`);
+  await expect(page.locator('.slide-frame.is-current .build-pending')).toHaveCount(0);
+  expect(problems).toEqual([]);
+});
+
 test('figures work inside the app reader under its sandbox policy', async ({page}) => {
   const problems = [];
   page.on('pageerror', error => problems.push(error.message));

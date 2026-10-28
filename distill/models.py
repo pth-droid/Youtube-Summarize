@@ -275,22 +275,66 @@ class LectureColumn(Contract):
     points: list[SlideText] = Field(min_length=1, max_length=5)
 
 
+class LectureEntry(Contract):
+    label: str = Field(min_length=1, max_length=40, description="A short label: a time, temperature, stage or level name. On stats slides, the figure exactly as the ideas state it, such as 9 bar or 18–22%.")
+    text: SlideText
+
+
+LAYOUT_HELP = ("points: key ideas as short bullets. steps: an ordered procedure. compare: exactly two columns contrasting two options. "
+               "columns: two to four parallel categories, each a heading with short points. table: two to four columns with the same "
+               "number of rows, read across like a table. timeline: two to six ordered moments, each a short label (time, temperature, "
+               "stage) and its text. pyramid: three to five levels from the narrow top to the broad foundation. funnel: three to five "
+               "stages that narrow from first to last. stats: two to four figures the ideas state, each with what it means. quote: the "
+               "app shows an original passage cited by the slide's ideas verbatim; points explain it.")
+# Layouts that use entries, with how many each holds.
+ENTRY_LAYOUTS = {"timeline": (2, 6), "pyramid": (3, 5), "funnel": (3, 5), "stats": (2, 4)}
+
+
 class LectureSlide(Contract):
-    layout: Literal["points", "steps", "compare", "quote"] = Field(description="points: key ideas as short bullets. steps: an ordered procedure or sequence. compare: exactly two columns contrasting two options. quote: the app shows an original passage cited by the slide's ideas verbatim; points explain it.")
+    layout: Literal["points", "steps", "compare", "columns", "table", "timeline", "pyramid", "funnel", "stats", "quote"] = Field(description=LAYOUT_HELP)
     title: str = Field(min_length=1, max_length=140)
-    points: list[SlideText] = Field(default_factory=list, max_length=6, description="Short slide bullets, not full paragraphs. Empty only for compare slides.")
-    columns: list[LectureColumn] = Field(default_factory=list, max_length=2, description="Exactly two columns for compare slides; empty otherwise.")
+    points: list[SlideText] = Field(default_factory=list, max_length=6, description="Short slide bullets, not full paragraphs. points, steps and quote slides only; empty otherwise.")
+    columns: list[LectureColumn] = Field(default_factory=list, max_length=4, description="compare: exactly two columns. columns and table: two to four. Empty otherwise.")
+    entries: list[LectureEntry] = Field(default_factory=list, max_length=6, description="timeline, pyramid, funnel and stats slides only; empty otherwise.")
     unit_ids: list[str] = Field(min_length=1, max_length=6, description="Supplied idea IDs this slide teaches. The slide text stays within these ideas.")
     notes: str = Field(default="", max_length=1600, description="What the presenter says for this slide, in full sentences.")
 
     @model_validator(mode="after")
     def layout_content(self):
-        if self.layout == "compare":
-            if len(self.columns) != 2 or self.points:
-                raise ValueError("A compare slide needs exactly two columns and no separate points")
-        elif self.columns or not self.points:
-            raise ValueError("Only compare slides use columns; every other slide needs points")
+        if self.layout in ("compare", "columns", "table"):
+            low, high = (2, 2) if self.layout == "compare" else (2, 4)
+            if not low <= len(self.columns) <= high or self.points or self.entries:
+                raise ValueError(f"A {self.layout} slide needs {'exactly two' if low == high else 'two to four'} columns and no points or entries")
+            if self.layout == "table" and len({len(column.points) for column in self.columns}) != 1:
+                raise ValueError("A table slide needs the same number of rows in every column")
+            if self.layout == "columns" and sum(len(column.points) for column in self.columns) > 12:
+                raise ValueError("A columns slide holds at most twelve points in all; split it over two slides")
+        elif self.layout in ENTRY_LAYOUTS:
+            low, high = ENTRY_LAYOUTS[self.layout]
+            if not low <= len(self.entries) <= high or self.points or self.columns:
+                raise ValueError(f"A {self.layout} slide needs {low} to {high} entries and no points or columns")
+        elif self.columns or self.entries or not self.points:
+            raise ValueError("points, steps and quote slides need points and no columns or entries")
         return self
+
+
+def stated_numbers(text: str) -> set[str]:
+    """Numbers as written, with a decimal comma read as a point, so 1,15 and 1.15 match."""
+    return {match.replace(",", ".") for match in re.findall(r"\d+(?:[.,]\d+)?", text)}
+
+
+def check_stats(slide: LectureSlide, units: dict) -> None:
+    """Every figure on a stats slide must be a number its cited ideas state."""
+    if slide.layout != "stats":
+        return
+    stated = set()
+    for uid in slide.unit_ids:
+        unit = units[uid]
+        stated |= stated_numbers(" ".join([unit.title, unit.summary, unit.explanation, *(ev.quote for ev in unit.evidence)]))
+    for entry in slide.entries:
+        missing = stated_numbers(entry.label) - stated
+        if missing or not stated_numbers(entry.label):
+            raise ValueError(f"A stats figure must be a number its cited ideas state: {entry.label}")
 
 
 class LecturePart(Contract):
@@ -302,27 +346,10 @@ class LectureParts(Contract):
     parts: list[LecturePart] = Field(min_length=1, max_length=12)
 
 
-class LectureQuestion(Contract):
-    question: str = Field(min_length=1, max_length=400)
-    options: list[Annotated[str, Field(min_length=1, max_length=220)]] = Field(min_length=2, max_length=4)
-    answer: int = Field(ge=0, le=3, description="Zero-based index of the correct option.")
-    explanation: str = Field(min_length=1, max_length=700)
-    unit_ids: list[str] = Field(min_length=1, max_length=4, description="Supplied idea IDs that establish the answer.")
-
-    @model_validator(mode="after")
-    def answerable(self):
-        if self.answer >= len(self.options):
-            raise ValueError("The answer index must point to one of the options")
-        if len({normalize_quote(option) for option in self.options}) != len(self.options):
-            raise ValueError("Quiz options must be different")
-        return self
-
-
 class LectureFrame(Contract):
     title: str = Field(min_length=1, max_length=160, description="Lecture title in the output language.")
-    objectives: list[Annotated[str, Field(min_length=1, max_length=240)]] = Field(min_length=2, max_length=5, description="What the learner can explain or do after the lecture.")
+    objectives: list[Annotated[str, Field(min_length=1, max_length=240)]] = Field(min_length=2, max_length=5, description="What the audience can explain or do after the talk.")
     takeaways: list[Annotated[str, Field(min_length=1, max_length=260)]] = Field(min_length=2, max_length=6)
-    questions: list[LectureQuestion] = Field(default_factory=list, max_length=5)
 
 
 class LecturePlan(LectureFrame):
@@ -342,9 +369,7 @@ def validate_lecture(knowledge: KnowledgeModel, lecture: LecturePlan) -> None:
                 raise ValueError("A lecture slide references unknown ideas")
             if slide.layout == "quote" and not any(units[uid].evidence for uid in slide.unit_ids):
                 raise ValueError("A quote slide needs an idea with original evidence")
-    for question in lecture.questions:
-        if not set(question.unit_ids) <= set(units):
-            raise ValueError("A quiz question references unknown ideas")
+            check_stats(slide, units)
 
 
 FigureLabel = Annotated[str, Field(min_length=1, max_length=80)]

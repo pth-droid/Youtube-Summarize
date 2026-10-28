@@ -1,12 +1,17 @@
 """Controlled, offline renderer for the validated Distill contracts."""
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import os
+import re
 from pathlib import Path
 
 from .chapters import NOTE_LEAF_LIMITS
+from .deck_layouts import (ROOM, VARIANTS, Choice, arrange, column_choices, fits, level_choices, point_choices, small_icons, stat_choices,
+                           step_choices, table_choices, timeline, timeline_choices)
+from .deck_layouts import items as layout_items
 from .figures import figure_ideas, figure_sections, figure_slides
 from .models import (FigurePlan, KnowledgeModel, LecturePlan, PresentationPlan, Transcript, figure_unit_ids, validate_bundle,
                      validate_figures, validate_lecture)
@@ -14,9 +19,24 @@ from .models import (FigurePlan, KnowledgeModel, LecturePlan, PresentationPlan, 
 ASSET_DIR = Path(__file__).parent / "reader_assets"
 
 
-def assets(name: str, figures: FigurePlan | None) -> tuple[str, str]:
-    """Inline stylesheet and script tags; figure assets only travel with figures."""
+DATA_LAYOUTS = {"pyramid", "pyramid-outline", "pyramid-left", "funnel", "big-numbers", "circle-stats", "bar-stats", "table", "table-3row"}
+
+
+def library_css(name: str) -> str:
+    """A slide-design library file, applied to the fixed 1280x720 canvas only (presenting and every printed page).
+    Phones read the slides as a plain stacked list instead. @page cannot sit inside @media; the deck sets it."""
+    css = re.sub(r"@page\s*\{[^}]*\}", "", (ASSET_DIR / name).read_text(encoding="utf-8"))
+    return "@media (min-width:761px){\n" + css + "\n}"
+
+
+def assets(name: str, figures: FigurePlan | None, layouts: set[str] = frozenset()) -> tuple[str, str]:
+    """Inline stylesheet and script tags; figure assets only travel with figures, data layouts only with data slides."""
     css = (ASSET_DIR / f"{name}.css").read_text(encoding="utf-8")
+    if layouts:
+        css += "\n" + library_css("slide-layouts.css")
+        if layouts & DATA_LAYOUTS:
+            css += "\n" + library_css("slide-data.css")
+        css += "\n" + (ASSET_DIR / f"{name}-layouts.css").read_text(encoding="utf-8")
     scripts = [(ASSET_DIR / f"{name}.js").read_text(encoding="utf-8")]
     if figures and figures.figures:
         css += "\n" + (ASSET_DIR / "figures.css").read_text(encoding="utf-8")
@@ -93,9 +113,16 @@ def excerpt(text: str, limit: int = 420) -> str:
     return text[:limit].rsplit(" ", 1)[0].rstrip(",;:") + " …"
 
 
+SLIDE_THEMES = ("forest", "maroon")
+# Slides that frame the talk arrive whole; the others reveal their items one advance at a time.
+STILL = {"title", "objectives", "question", "agenda", "divider", "limits"}
+
+
 def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: LecturePlan, output: Path,
-                   figures: FigurePlan | None = None) -> Path:
-    """Write one portable slide deck. Slides teach validated knowledge; quotes and times come from the source."""
+                   figures: FigurePlan | None = None, theme: str = "forest") -> Path:
+    """Write one portable slide deck. Slides teach validated knowledge; quotes and times come from the source.
+
+    The theme names the deck's look; light and dark mode stay the viewer's choice."""
     validate_lecture(knowledge, lecture)
     if figures:
         validate_figures(knowledge, figures)
@@ -149,6 +176,11 @@ def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: Lectu
             body += f'<p class="notes-label">{t("From the source", "Trích nguồn")}</p>' + quotes(cited(ids)[:3])
         return body
 
+    def chapter_start(chapter):
+        timed = [snippets[sid].start for section_id in chapter.section_ids for sid in sections[section_id].snippet_ids
+                 if snippets[sid].start is not None]
+        return clock(min(timed)) if timed else ""
+
     def chapter_times(chapter):
         timed = [snippets[sid] for section_id in chapter.section_ids for sid in sections[section_id].snippet_ids
                  if snippets[sid].start is not None]
@@ -158,9 +190,11 @@ def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: Lectu
 
     slides = []
 
-    def add(kind, title, content, *, eyebrow="", heading=True, notes="", footer="", marks=""):
+    def add(kind, title, content="", *, eyebrow="", heading=None, notes="", footer="", marks="", choices=None):
+        """A slide; `choices` lists the library layouts its content fits, and `arrange` picks one."""
         slides.append({"kind": kind, "title": title, "eyebrow": eyebrow, "marks": marks, "content": content,
-                       "heading": f"<h2>{e(title)}</h2>" if heading else "", "notes": notes, "footer": footer})
+                       "heading": f'<h2 data-part="0">{e(title)}</h2>' if heading is None else heading, "notes": notes,
+                       "footer": footer, "choices": choices})
 
     def chapter_ideas(chapter_id):
         chapter = chapters.get(chapter_id)
@@ -190,83 +224,110 @@ def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: Lectu
 
     timed = [s for s in source.snippets if s.start is not None]
     speakers = {s.speaker for s in source.snippets if s.speaker}
-    meta = [e(source.title)]
+    meta = []
     if timed:
         minutes = max(1, round(max(s.end or s.start for s in timed) / 60))
-        meta.append(t(f"{minutes} min", f"{minutes} phút"))
+        meta.append((t("Length", "Thời lượng"), t(f"{minutes} min", f"{minutes} phút")))
     if len(speakers) > 1:
-        meta.append(t(f"{len(speakers)} speakers", f"{len(speakers)} người nói"))
-    add("title", lecture.title, f'<h1>{e(lecture.title)}</h1><p class="lead">{" · ".join(meta)}</p>',
-        eyebrow=t("LECTURE", "BÀI GIẢNG"), heading=False)
-    add("objectives", t("After this lecture you can", "Sau bài này, bạn có thể"), items(lecture.objectives, "ol", "objectives"),
-        eyebrow=t("LEARNING OBJECTIVES", "MỤC TIÊU BÀI HỌC"))
-    add("question", knowledge.main_question, f'<p class="big-question">{e(knowledge.main_question)}</p>',
-        eyebrow=t("THE CENTRAL QUESTION", "CÂU HỎI TRUNG TÂM"), heading=False)
+        meta.append((t("Speakers", "Người nói"), str(len(speakers))))
+    meta.append((t("Parts", "Số phần"), str(len(lecture.parts))))
+    cover = (f'<p class="lead" data-part="1">{e(excerpt(source.title, 120))}</p><dl class="meta" data-part="2">'
+             + "".join(f"<div><dt>{e(name)}</dt><dd>{e(value)}</dd></div>" for name, value in meta) + "</dl>")
+    add("title", lecture.title, eyebrow=t("LECTURE", "BÀI GIẢNG"), heading=f'<h1 data-part="0">{e(lecture.title)}</h1>',
+        choices=[Choice("title", VARIANTS if len(lecture.title) <= 48 * ROOM else (1, 2, 4), lambda: cover)])
+    add("objectives", t("After this lecture you can", "Sau bài này, bạn có thể"), eyebrow=t("LEARNING OBJECTIVES", "MỤC TIÊU BÀI HỌC"),
+        choices=[c for c in point_choices("", lecture.objectives, t) if c.layout != "accent"])
+    # The central question reads as a statement; the heading gives it context.
+    question = f'<figure class="quote" data-part="1"><blockquote><p>{e(knowledge.main_question)}</p></blockquote></figure>'
+    add("question", knowledge.main_question, eyebrow=t("THE CENTRAL QUESTION", "CÂU HỎI TRUNG TÂM"),
+        heading=f'<h2 data-part="0">{t("This talk answers", "Bài giảng trả lời")}</h2>', choices=[Choice("quote", (2, 4), lambda: question)])
     titles = [chapters[part.chapter_id].title if part.chapter_id in chapters else knowledge.main_question for part in lecture.parts]
+    starts = [chapter_start(chapters[part.chapter_id]) if part.chapter_id in chapters else "" for part in lecture.parts]
     if len(lecture.parts) > 1:
-        add("agenda", t("Agenda", "Nội dung"), items(titles, "ol", "agenda" + (" two-columns" if len(titles) > 6 else "")),
-            eyebrow=t("ROADMAP", "LỘ TRÌNH"))
+        agenda = [c for c in point_choices("", titles, t) if c.layout in ("bullets", "big-bullets")]
+        if 4 <= len(titles) <= 8 and fits(titles, 60):
+            agenda.append(Choice("small-icons", VARIANTS, lambda: small_icons(titles)))
+        if 3 <= len(titles) <= 5 and all(starts) and fits(titles, 32):
+            agenda.append(Choice("timeline-v", (1, 2, 3), lambda: timeline([(when, title, None) for when, title in zip(starts, titles)])))
+        add("agenda", t("Agenda", "Nội dung"), eyebrow=t("ROADMAP", "LỘ TRÌNH"), choices=agenda)
+    # Section slides list every part, the current one marked, when the titles are short enough to index.
+    indexed = 3 <= len(titles) <= 6 and fits(titles, 28)
     for number, (part, title) in enumerate(zip(lecture.parts, titles), 1):
         if len(lecture.parts) > 1:
             span = chapter_times(chapters[part.chapter_id]) if part.chapter_id in chapters else ""
-            add("divider", title, f'<p class="part-number">{number:02d}</p><h2 class="part-title">{e(title)}</h2>'
-                + (f'<p class="part-time">{span}</p>' if span else ""), eyebrow=t(f"PART {number}", f"PHẦN {number}"), heading=False)
+            section = (f'<p class="part-num" data-part="1">{number:02d}</p>' + (f'<p class="lead" data-part="2">{span}</p>' if span else "")
+                       + ('<ol class="parts" data-part="3">' + "".join(f'<li{" aria-current=\"true\"" if k == number else ""}>{e(name)}</li>'
+                                                                        for k, name in enumerate(titles, 1)) + "</ol>" if indexed else ""))
+            add("divider", title, eyebrow=t(f"PART {number}", f"PHẦN {number}"),
+                choices=[Choice("section", VARIANTS if indexed else (1, 2, 3), lambda section=section: section)])
         for slide in part.slides:
-            if slide.layout == "compare":
-                versus = '<span class="versus" aria-hidden="true">vs</span>'
-                content = '<div class="compare">' + versus.join(
-                    f'<div class="column"><h3>{e(column.heading)}</h3>{items(column.points)}</div>' for column in slide.columns) + "</div>"
+            if slide.layout == "points":
+                choices = point_choices(slide.title, slide.points, t)
             elif slide.layout == "steps":
-                across = len(slide.points) <= 4 and all(len(point) <= 120 for point in slide.points)
-                content = items(slide.points, "ol", "steps across" if across else "steps")
-            elif slide.layout == "quote":
+                choices = step_choices(slide.points, t)
+            elif slide.layout == "timeline":
+                choices = timeline_choices(slide.entries, t)
+            elif slide.layout in ("compare", "columns"):
+                choices = column_choices(slide.layout, slide.columns)
+            elif slide.layout == "table":
+                choices = table_choices(slide.columns)
+            elif slide.layout in ("pyramid", "funnel"):
+                choices = level_choices(slide.layout, slide.entries)
+            elif slide.layout == "stats":
+                choices = stat_choices(slide.entries)
+            else:  # quote: the original passage, its speaker and time, then why it matters
                 evidence = min(cited(slide.unit_ids)[:3], key=lambda ev: len(ev.quote))
-                content = (f'<figure class="quote"><blockquote>{e(excerpt(evidence.quote))}</blockquote>'
-                           f"<figcaption>{attribution(evidence)}</figcaption></figure>" + items(slide.points, cls="points small"))
-            else:
-                content = items(slide.points)
-            add(slide.layout, slide.title, content, eyebrow=e(title), marks=badges({units[uid].status for uid in slide.unit_ids}),
-                notes=notes_for(slide.notes, slide.unit_ids), footer=source_times(slide.unit_ids))
+                passage = (f'<figure class="quote" data-part="1"><blockquote><p>{e(excerpt(evidence.quote, 200))}</p></blockquote>'
+                           f'<figcaption><span class="who">{attribution(evidence) or e(source.title)}</span>'
+                           f'<span class="role">{e(excerpt(source.title, 50))}</span></figcaption></figure>'
+                           + layout_items(slide.points, "quote-points"))
+                choices = [Choice("quote", VARIANTS, lambda passage=passage: passage)]
+            add(slide.layout, slide.title, eyebrow=e(title), marks=badges({units[uid].status for uid in slide.unit_ids}),
+                notes=notes_for(slide.notes, slide.unit_ids), footer=source_times(slide.unit_ids), choices=choices)
         add_figures(number - 1, e(title))
     add_figures(None, t("FIGURE", "HÌNH"))
-    recap = f'<p class="conclusion">{e(knowledge.main_conclusion)}</p>' + items(lecture.takeaways, cls="points takeaways")
-    if knowledge.main_conclusion_caveats:
-        recap += items(knowledge.main_conclusion_caveats, cls="caveats")
+    conclusion = f'<p class="lede conclusion" data-part="1">{e(knowledge.main_conclusion)}</p>'
+    caveats = items(knowledge.main_conclusion_caveats, cls="caveats") if knowledge.main_conclusion_caveats else ""
+    # A short summary sits in the tinted panel; a long one needs the full width of plain rows.
+    summary_length = len(knowledge.main_conclusion) + sum(map(len, lecture.takeaways)) + sum(map(len, knowledge.main_conclusion_caveats))
+    recap = [Choice("bullets", (3,) if summary_length <= 600 else (1,), lambda: conclusion + layout_items(lecture.takeaways, "bullets") + caveats)]
+    if 2 <= len(lecture.takeaways) <= 4 and fits(lecture.takeaways, 56):
+        # The first takeaway restates the main conclusion, so the lead variant's emphasis is true here.
+        recap.append(Choice("big-bullets", VARIANTS, lambda: conclusion + layout_items(lecture.takeaways, "big-list", "ol") + caveats))
     recap_notes = (f'<p class="notes-label">{t("From the source", "Trích nguồn")}</p>' + quotes(knowledge.main_conclusion_evidence[:3])
                    if knowledge.main_conclusion_evidence else "")
-    add("recap", t("What to remember", "Điều cần nhớ"), recap, eyebrow=t("SUMMARY", "TÓM TẮT"),
-        marks=badges({knowledge.main_conclusion_status}), notes=recap_notes)
-    letters = "ABCD"
-    for number, question in enumerate(lecture.questions, 1):
-        options = "".join(f'<li><button type="button" class="option" data-correct="{str(index == question.answer).lower()}">'
-                          f"<b>{letters[index]}</b> {e(option)}</button></li>" for index, option in enumerate(question.options))
-        answer = f'{t("Answer", "Đáp án")}: {letters[question.answer]}. {question.explanation}'
-        add("quiz", question.question, f'<ol class="options">{options}</ol><p class="answer">{e(answer)}</p>'
-            f'<button type="button" class="reveal">{t("Show answer", "Hiện đáp án")}</button>',
-            eyebrow=t(f"CHECK YOUR UNDERSTANDING · {number}/{len(lecture.questions)}", f"KIỂM TRA HIỂU BÀI · {number}/{len(lecture.questions)}"),
-            notes=notes_for(answer, question.unit_ids))
-    limits = (items(knowledge.limitations[:5], cls="points small") if knowledge.limitations
+    add("recap", t("What to remember", "Điều cần nhớ"), eyebrow=t("SUMMARY", "TÓM TẮT"),
+        marks=badges({knowledge.main_conclusion_status}), notes=recap_notes, choices=recap)
+    limits = (small_icons(knowledge.limitations[:5]) if knowledge.limitations
               else f'<p>{t("No limitations were recorded for this source.", "Không có giới hạn nào được ghi nhận cho nguồn này.")}</p>')
     link = (f'<a href="https://www.youtube.com/watch?v={source.video_id}" target="_blank" rel="noopener noreferrer">{e(source.title)}</a>'
             if source.video_id else e(source.title))
-    add("limits", t("Limits and source", "Giới hạn và nguồn"), limits + f'<p class="source-line">{t("Source", "Nguồn")}: {link}</p>'
-        f'<p class="source-line">{t("Slides teach a knowledge model checked against original quotations. AI explanations can still be wrong.", "Slide được viết từ mô hình kiến thức đã đối chiếu với trích dẫn gốc. Phần giải thích của AI vẫn có thể sai.")}</p>',
-        eyebrow=t("BEFORE YOU REUSE THIS", "TRƯỚC KHI DÙNG LẠI"))
+    limits += (f'<p class="source-line">{t("Source", "Nguồn")}: {link}</p>'
+               f'<p class="source-line">{t("Slides teach a knowledge model checked against original quotations. AI explanations can still be wrong.", "Slide được viết từ mô hình kiến thức đã đối chiếu với trích dẫn gốc. Phần giải thích của AI vẫn có thể sai.")}</p>')
+    add("limits", t("Limits and source", "Giới hạn và nguồn"), eyebrow=t("BEFORE YOU REUSE THIS", "TRƯỚC KHI DÙNG LẠI"),
+        choices=[Choice("small-icons", (3,), lambda: limits)])  # a full-width checklist, unlike the summary before it
 
     total = len(slides)
     no_notes = f'<p class="muted">{t("No presenter notes for this slide.", "Slide này không có ghi chú.")}</p>'
     frames = []
+    # The deck title sets where each rotation starts, so one-off slides such as the title also vary from deck
+    # to deck, and a re-render of the same deck is stable.
+    arrange(slides, int(hashlib.sha256(lecture.title.encode("utf-8")).hexdigest()[:8], 16))
     for index, slide in enumerate(slides, 1):
-        head = f'<header class="slide-head"><p class="eyebrow">{slide["eyebrow"]}</p>{slide["marks"]}</header>'
+        layout = f' layout-{slide["layout"]} variant-{slide["variant"]}' if slide.get("layout") else ""
+        # Only content slides build step by step; the frame slides arrive whole.
+        content = slide["content"] if slide["kind"] not in STILL else slide["content"].replace(" data-build", "")
+        # Top bar: label, status marks and the slide number. Foot line: source times and the deck title.
+        head = f'<header class="slide-head"><p class="eyebrow">{slide["eyebrow"]}</p>{slide["marks"]}<span class="count">{index:02d} / {total:02d}</span></header>'
         frames.append(f'<article class="slide-frame" id="slide-{index}" role="group" aria-roledescription="slide" aria-label="{index} / {total}: {e(slide["title"])}">'
-                      f'<div class="slide-box"><section class="slide kind-{slide["kind"]}">{head}{slide["heading"]}<div class="slide-content">{slide["content"]}</div>'
-                      f'<footer class="slide-foot"><span class="sources">{slide["footer"]}</span><span class="count">{index} / {total}</span></footer></section></div>'
+                      f'<div class="slide-box"><section class="slide kind-{slide["kind"]}{layout}">{head}{slide["heading"]}<div class="slide-content">{content}</div>'
+                      f'<footer class="slide-foot"><span class="sources">{slide["footer"]}</span><span class="deck-name">{e(lecture.title)}</span></footer></section></div>'
                       f'<aside class="notes" aria-label="{t("Presenter notes", "Ghi chú người trình bày")}">{slide["notes"] or no_notes}</aside></article>')
     outline = "".join(f'<li><button type="button" data-go="{index}">{e(slide["title"])}</button></li>' for index, slide in enumerate(slides, 1))
-    css, scripts = assets("lecture", figures)
+    css, scripts = assets("lecture", figures, {slide["layout"] for slide in slides if slide.get("layout")})
     theme_script = (ASSET_DIR.parent / "web" / "theme.js").read_text(encoding="utf-8")
     page = f'''<!doctype html>
-<html lang="{knowledge.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="{knowledge.language}" data-deck-theme="{theme if theme in SLIDE_THEMES else "forest"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark light"><meta name="referrer" content="no-referrer"><script>{theme_script}</script>
 <script>document.documentElement.classList.add('js-deck')</script>
 <title>{e(lecture.title)} · Distill</title><style>{css}</style><noscript><style>.deck-bar button{{display:none}}</style></noscript></head>
@@ -281,7 +342,7 @@ def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: Lectu
 <nav class="deck-nav" aria-label="{t("Slide navigation", "Chuyển slide")}"><button id="prev" type="button" aria-label="{t("Previous slide", "Slide trước")}">‹</button>
 <span id="counter">1 / {total}</span><button id="next" type="button" aria-label="{t("Next slide", "Slide sau")}">›</button>
 <span class="progress" aria-hidden="true"><span id="progress-bar"></span></span>
-<span class="keys">{t("← → move · N notes · F full screen", "← → chuyển slide · N ghi chú · F toàn màn hình")}</span></nav>
+<span class="keys">{t("Click, scroll or ← → to go on · N notes · F full screen", "Bấm, cuộn hoặc ← → để tiếp · N ghi chú · F toàn màn hình")}</span></nav>
 <dialog id="outline" aria-labelledby="outline-title"><form method="dialog"><h2 id="outline-title">{t("Slides", "Danh sách slide")}</h2><ol class="outline">{outline}</ol><button value="close">{t("Close", "Đóng")}</button></form></dialog>
 <p id="deck-status" class="sr-only" role="status" aria-live="polite"></p>
 {scripts}</body></html>'''

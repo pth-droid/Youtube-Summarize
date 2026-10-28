@@ -2,7 +2,7 @@ const {test, expect} = require('@playwright/test');
 
 const srt = '1\n00:00:10,000 --> 00:00:15,000\nHeating affects reaction speed.\n\n2\n00:01:20,000 --> 00:01:25,000\nDevelopment time changes aroma.\n';
 
-test('lecture slides: choose the output, present, take notes and answer the quiz', async ({page, request}) => {
+test('lecture slides: choose the output, present and take notes', async ({page, request}) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   const title = `Roasting lecture ${Date.now()}`;
@@ -29,28 +29,37 @@ test('lecture slides: choose the output, present, take notes and answer the quiz
   const total = await deck.locator('.slide-frame').count();
   expect(total).toBeGreaterThanOrEqual(7);
   await expect(deck.locator('#counter')).toHaveText(`1 / ${total}`);
+  // The deck takes focus when it opens; F asks the workspace to put the reader frame in full screen, F again leaves it.
+  await expect(deck.locator('#fullscreen-button')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe('reader-frame');
+  await page.keyboard.press('f');
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement?.id || null)).toBe('reader-frame');
+  await page.keyboard.press('f');
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement?.id || null)).toBe(null);
   await deck.locator('#next').click();
   await expect(deck.locator('.slide-frame.is-current')).toContainText('Explain the source model.');
-  await deck.locator('.slide-frame.is-current').click();
+  // A click on the slide moves on, like a presenter remote; the arrow keys go both ways.
+  await deck.locator('.slide-frame.is-current .slide h2').click();
+  await expect(deck.locator('#counter')).toHaveText(`3 / ${total}`);
+  await page.keyboard.press('ArrowLeft');
+  await expect(deck.locator('#counter')).toHaveText(`2 / ${total}`);
   await page.keyboard.press('ArrowRight');
   await expect(deck.locator('#counter')).toHaveText(`3 / ${total}`);
   await page.keyboard.press('End');
   await expect(deck.locator('#counter')).toHaveText(`${total} / ${total}`);
+  // The deck is presented to a group: it ends with limits and the source, never a quiz.
+  await expect(deck.locator('.slide-frame.is-current .slide')).toHaveClass(/kind-limits/);
+  await expect(deck.locator('.kind-quiz, .option')).toHaveCount(0);
   // Hidden slides cannot take keyboard focus while one slide is presented.
   expect(await deck.locator('.slide-frame:not(.is-current)').evaluateAll(frames => frames.every(frame => frame.inert))).toBeTruthy();
 
   await deck.locator('#notes-toggle').click();
   await expect(deck.locator('#notes-toggle')).toHaveAttribute('aria-pressed', 'true');
   await deck.locator('#outline-button').click();
-  // The fixture's central question and quiz question share wording; the quiz comes last.
-  await deck.locator('#outline').getByRole('button', {name: 'What does the source explain?'}).last().click();
-  const quiz = deck.locator('.slide-frame.is-current');
-  await expect(quiz.locator('.notes')).toBeVisible();
-  await expect(quiz.locator('.answer')).toBeHidden();
-  await quiz.getByRole('button', {name: /An unrelated topic/}).click();
-  await expect(quiz.locator('.option.wrong')).toContainText('An unrelated topic');
-  await expect(quiz.locator('.option.right')).toContainText('How its ideas connect');
-  await expect(quiz.locator('.answer')).toBeVisible();
+  await deck.locator('#outline').getByRole('button', {name: 'What does the source explain?'}).click();
+  const question = deck.locator('.slide-frame.is-current');
+  await expect(question.locator('.slide')).toHaveClass(/kind-question/);
+  await expect(question.locator('.notes')).toBeVisible();
 
   // The slide canvas keeps its 16:9 shape inside the workspace frame.
   const box = await deck.locator('.slide-frame.is-current .slide-box').boundingBox();
@@ -86,6 +95,67 @@ test('lecture slides read as stacked cards on a phone and print one slide per pa
   // One printed page per slide, with no trailing blank page.
   const pdf = (await page.pdf({preferCSSPageSize: true, printBackground: true})).toString('latin1');
   expect(pdf.match(/\/Type\s*\/Page[^s]/g).length).toBe(sizes.length);
+});
+
+test('slide look: choose maroon and beige on the start view, and keep a default in settings', async ({page}) => {
+  const title = `Maroon lecture ${Date.now()}`;
+  await page.goto('/#new');
+  await expect(page.locator('#create-button')).toBeEnabled();
+  try {
+    // Only slides have a look; it sits under the format cards and starts from the saved default.
+    await expect(page.locator('#look-row')).toBeHidden();
+    await page.getByRole('button', {name: 'Lecture slides', exact: true}).click();
+    await expect(page.locator('#look-row')).toBeVisible();
+    const forest = page.getByRole('button', {name: 'Forest green', exact: true});
+    const maroon = page.getByRole('button', {name: 'Maroon and beige', exact: true});
+    await expect(forest).toHaveAttribute('aria-pressed', 'true');
+    await maroon.click();
+    await expect(maroon).toHaveAttribute('aria-pressed', 'true');
+    await expect(forest).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('#defaults-summary')).toContainText('Maroon and beige slides');
+    await page.getByRole('button', {name: 'Transcript file', exact: true}).click();
+    // Its own words, so the library does not offer the deck made by the first test.
+    const words = srt.replace('Heating affects reaction speed.', `Heat moves into the beans (${title}).`);
+    await page.locator('#source-file').setInputFiles({name: 'maroon.srt', mimeType: 'text/plain', buffer: Buffer.from(words)});
+    await page.locator('#import-title').fill(title);
+    await page.getByRole('button', {name: 'Create lecture slides'}).click();
+    await expect(page.locator('#job-detail')).toContainText('Your lecture slides are ready.', {timeout: 20000});
+    await expect(page.locator('#job-detail .job-source')).toContainText('Lecture slides · Maroon and beige');
+    await page.getByRole('button', {name: 'Present lecture slides'}).click();
+
+    const deck = page.frameLocator('#reader-frame');
+    await expect(deck.locator('html')).toHaveAttribute('data-deck-theme', 'maroon');
+    await expect(deck.locator('.slide-frame.is-current .slide')).toHaveClass(/kind-title/);
+    // The title's composition rotates with the deck, so the look is checked through its tokens and the deck bar.
+    const token = name => deck.locator('html').evaluate((root, name) => getComputedStyle(root).getPropertyValue(name).trim(), name);
+    // Dark mode: deep maroon paper and beige text; filled slides use a brighter maroon.
+    await expect(deck.locator('.deck-bar')).toHaveCSS('background-color', 'rgb(42, 18, 23)');
+    expect(await token('--feature')).toBe('#7a1f2d');
+    expect(await token('--ink')).toBe('#f2e7d7');
+    // Light mode: beige paper and deep maroon.
+    await deck.locator('#theme-toggle').click();
+    await expect(deck.locator('.deck-bar')).toHaveCSS('background-color', 'rgb(251, 246, 238)');
+    expect(await token('--feature')).toBe('#7a1c2a');
+    await expect(deck.locator('.deck-title')).toHaveCSS('color', 'rgb(110, 86, 80)');
+
+    // A saved default look starts the choice on the next visit.
+    await page.goto('/#settings');
+    await expect(page.locator('#storage-details')).not.toBeEmpty();
+    await expect(page.locator('#settings-slide-theme')).toHaveValue('forest');
+    await page.locator('#settings-slide-theme').selectOption('maroon');
+    await page.getByRole('button', {name: 'Save preferences'}).click();
+    await expect(page.locator('#notice')).toContainText('Preferences saved');
+    await page.reload();
+    await expect(page.locator('#storage-details')).not.toBeEmpty();
+    await expect(page.locator('#settings-slide-theme')).toHaveValue('maroon');
+    await page.locator('.nav-item[data-view="new"]').click();
+    await page.getByRole('button', {name: 'Lecture slides', exact: true}).click();
+    await expect(maroon).toHaveAttribute('aria-pressed', 'true');
+  } finally {
+    // Restore the look that other browser checks expect, even after a failure.
+    await page.evaluate(() => fetch('/api/settings', {method: 'PUT', headers: {'x-distill': document.querySelector('meta[name="distill-token"]').content, 'Content-Type': 'application/json'},
+      body: JSON.stringify({slide_theme: 'forest'})}));
+  }
 });
 
 test('settings choose a transcription service for each kind of recording', async ({page}) => {

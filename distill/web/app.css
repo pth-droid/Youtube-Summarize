@@ -81,6 +81,12 @@
 .source-tabs{display:flex;flex-wrap:wrap;gap:3px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
 .source-tabs .mode{border:0;border-radius:7px;background:transparent;color:var(--muted);font-size:.8rem;font-weight:600;padding:7px 13px;min-height:36px}
 .source-tabs .mode:hover{color:var(--ink)}
+.look-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:-4px 0 16px}
+.look-option{display:inline-flex;align-items:center;gap:8px}
+/* A small two-tone chip of the deck look: its fill colour beside its tint. The look keeps these colours in both app themes. */
+.look-swatch{display:inline-grid;grid-template-columns:1fr 1fr;width:26px;height:16px;border-radius:4px;overflow:hidden;box-shadow:inset 0 0 0 1px #0000001f}
+.look-swatch i:first-child{background:#205e5b}.look-swatch i:last-child{background:#e8f1ed}
+.look-swatch.maroon i:first-child{background:#7a1c2a}.look-swatch.maroon i:last-child{background:#f3e7d6}
 .source-tabs .mode[aria-pressed=true]{background:var(--white);color:var(--ink);box-shadow:0 1px 3px #18322b1f,inset 0 0 0 1px var(--line)}
 .start-panel{padding:30px}
 .quick-start{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start}
