@@ -19,15 +19,17 @@ import uuid
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .config import DEFAULT_SETTINGS, MAX_AUDIO_BYTES, MAX_IMPORT_BYTES, default_data_dir
-from .looks import SLIDE_THEMES, look_swatches
+from .looks import BODY_FONTS, COLOR_TOKENS, DISPLAY_FONTS, SLIDE_THEMES, look_changes, look_details, look_preview, look_swatches, with_custom_look
 from .storage import ACTIVE_STATES, Store
 
 WEB = Path(__file__).with_name("web")
+# Saved pages and decks run sandboxed: their own inline code only, no network, no access to this app.
+READER_POLICY = "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; font-src data:; object-src 'none'; base-uri 'none'"
 ProviderName = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_-]{0,63}$")]
 KeyProvider = ProviderName
 
@@ -94,6 +96,17 @@ class Preferences(StrictModel):
         return value
 
 
+Colour = Annotated[str, Field(pattern=r"^#[0-9a-fA-F]{6}$")]
+
+
+class LookChange(StrictModel):
+    """A look's colours, light and dark, and its type, as the look editor sends them. Unchanged values may be included."""
+    light: dict[Literal[COLOR_TOKENS], Colour] = Field(default_factory=dict)
+    dark: dict[Literal[COLOR_TOKENS], Colour] = Field(default_factory=dict)
+    display: Literal[tuple(DISPLAY_FONTS)] | None = None
+    sans: Literal[tuple(BODY_FONTS)] | None = None
+
+
 class NewJob(StrictModel):
     url: str = Field(min_length=1, max_length=2000)
     preferences: Preferences = Field(default_factory=Preferences)
@@ -157,7 +170,10 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
     @app.middleware("http")
     async def local_boundary(request: Request, call_next):
         hostname = request.url.hostname
-        if hostname not in {"127.0.0.1", "localhost", "::1"}:
+        # A shared phone copy is the one thing another address may read: Tailscale serve proxies the owner's tailnet
+        # name to /share. It needs the deck's 128-bit id and the owner's share; the API stays local.
+        shared = request.url.path.startswith("/share/") and request.method in {"GET", "HEAD"}
+        if hostname not in {"127.0.0.1", "localhost", "::1"} and not shared:
             return JSONResponse({"detail": "This app accepts local requests only."}, status_code=403)
         origin = request.headers.get("origin")
         expected = f"{request.url.scheme}://{request.url.netloc}"
@@ -183,7 +199,8 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Cache-Control"] = "no-store"
-        if not request.url.path.endswith("/page"):
+        # Saved pages, decks and look previews set the reader's sandbox policy themselves; everything else gets the app's.
+        if "content-security-policy" not in response.headers:
             response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
         return response
 
@@ -250,7 +267,40 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
         tools = {name: bool(shutil.which(name)) for name in ("codex", "claude", "ffmpeg", "deno")}
         tools["yt-dlp"] = installed_version() is not None  # the app runs yt-dlp from its own environment, not PATH
         return {"preferences": settings, "credentials": credentials, "tools": tools, "storage": store.storage_info(),
-                "looks": look_swatches()}
+                "looks": look_swatches(store.custom_looks())}
+
+    # Slide looks: each look as designed, with the changes a person saved to it. Saved changes restyle every deck
+    # in that look when it is shown, exported or shared, because they are added to a deck as it is served.
+    def look_or_404(look):
+        if look not in SLIDE_THEMES:
+            raise HTTPException(404, "This slide look was not found.")
+        return look
+
+    @app.get("/api/looks")
+    def read_looks():
+        return look_details(store.custom_looks())
+
+    @app.put("/api/looks/{look}")
+    def save_look(look: str, value: LookChange):
+        store.save_look(look_or_404(look), look_changes(look, value.model_dump(exclude_none=True)))
+        return read_looks() | {"swatches": look_swatches(store.custom_looks())}
+
+    @app.delete("/api/looks/{look}")
+    def reset_look(look: str):
+        store.save_look(look_or_404(look), {})
+        return read_looks() | {"swatches": look_swatches(store.custom_looks())}
+
+    @app.get("/api/looks/{look}/preview/{generation_id}")
+    def preview_look(look: str, generation_id: str, display: Literal[("", *DISPLAY_FONTS)] | None = None,
+                     sans: Literal[("", *BODY_FONTS)] | None = None):
+        """A saved deck shown in a look, with the type being tried, for the look editor's preview."""
+        look_or_404(look)
+        result = generation_or_404(generation_id)
+        if result.get("metadata", {}).get("output_format") != "lecture":
+            raise HTTPException(409, "Only lecture slides can preview a look.")
+        fonts = {kind: font for kind, font in (("display", display), ("sans", sans)) if font is not None}
+        page = look_preview(saved_page_text(result), store.custom_looks(), look, fonts)
+        return HTMLResponse(page, headers={"Content-Security-Policy": READER_POLICY})
 
     @app.get("/api/tools/yt-dlp")
     def ytdlp_status(check: bool = False):
@@ -588,13 +638,16 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
                 store.managed_path(path).unlink(missing_ok=True)
         return {"deleted": True}
 
-    @app.get("/api/generations/{generation_id}/page")
-    def learning_page(generation_id: str):
-        result = generation_or_404(generation_id)
+    def saved_page_text(result, missing="The saved page file is missing. Restore a backup or generate a new page."):
         path = store.managed_path(result["page_path"])
         if not path.is_file():
-            raise HTTPException(410, "The saved page file is missing. Restore a backup or generate a new page.")
-        return FileResponse(path, media_type="text/html; charset=utf-8", headers={"Content-Security-Policy": "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; font-src data:; object-src 'none'; base-uri 'none'"})
+            raise HTTPException(410, missing)
+        return path.read_bytes().decode("utf-8")  # as saved, line endings included, so an export matches the file
+
+    @app.get("/api/generations/{generation_id}/page")
+    def learning_page(generation_id: str):
+        page = with_custom_look(saved_page_text(generation_or_404(generation_id)), store.custom_looks())
+        return HTMLResponse(page, headers={"Content-Security-Policy": READER_POLICY})
 
     @app.get("/api/generations/{generation_id}/details")
     def generation_details(generation_id: str):
@@ -616,11 +669,47 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
     @app.get("/api/generations/{generation_id}/export")
     def export_page(generation_id: str):
         result = generation_or_404(generation_id)
-        path = store.managed_path(result["page_path"])
-        if not path.is_file():
-            raise HTTPException(410, "The saved page file is missing.")
+        page = with_custom_look(saved_page_text(result, "The saved page file is missing."), store.custom_looks())
         name = "lecture-slides-" if result.get("metadata", {}).get("output_format") == "lecture" else "learning-page-"
-        return FileResponse(path, media_type="text/html", filename=name + generation_id[:8] + ".html")
+        return Response(page, media_type="text/html", headers={"Content-Disposition": f'attachment; filename="{name}{generation_id[:8]}.html"'})
+
+    # Share to a phone: the phone copy is rendered when shared, read at /share over the tailnet, or downloaded.
+    def shared_deck(generation_id):
+        result = generation_or_404(generation_id)
+        if result.get("metadata", {}).get("output_format") != "lecture":
+            raise HTTPException(409, "Only lecture slides can be shared to a phone.")
+        return result
+
+    @app.post("/api/generations/{generation_id}/share")
+    def share_to_phone(generation_id: str, request: Request):
+        from .share import qr_image, render_phone, tailscale_link
+        result = shared_deck(generation_id)
+        try:
+            render_phone(store, result)
+        except (OSError, ValueError) as error:
+            raise HTTPException(410, "The saved slides cannot be read again. Make these slides again to share them.") from error
+        tailnet = tailscale_link(request.url.port or 80)
+        url = f"{tailnet['url']}/{generation_id}" if tailnet["url"] else None
+        return {"url": url, "qr": qr_image(url) if url else None, "download": f"/api/generations/{generation_id}/share/download",
+                "tailscale": tailnet}
+
+    @app.get("/api/generations/{generation_id}/share/download")
+    def download_phone_copy(generation_id: str):
+        from .share import render_phone
+        try:
+            path = render_phone(store, shared_deck(generation_id))
+        except (OSError, ValueError) as error:
+            raise HTTPException(410, "The saved slides cannot be read again. Make these slides again to share them.") from error
+        return FileResponse(path, media_type="text/html", filename=f"lecture-slides-phone-{generation_id[:8]}.html")
+
+    @app.get("/share/{generation_id}")
+    def shared_phone_copy(generation_id: str):
+        from .share import SHARE_ID, phone_page
+        result = store.get_generation(generation_id) if SHARE_ID.fullmatch(generation_id) else None
+        path = phone_page(store, result) if result else None
+        if not path or not path.is_file():
+            raise HTTPException(404, "These slides are not shared. Share them again from Distill.")
+        return FileResponse(path, media_type="text/html; charset=utf-8", headers={"Content-Security-Policy": READER_POLICY})
 
     @app.delete("/api/generations/{generation_id}")
     def delete_page(generation_id: str):

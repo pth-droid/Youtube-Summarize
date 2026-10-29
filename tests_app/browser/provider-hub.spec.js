@@ -19,7 +19,7 @@ const test = base.extend({
 async function openHub(page) {
   await page.goto('/#settings');
   await expect(page.locator('#create-button')).toBeEnabled();
-  await expect(page.getByRole('heading',{name:'Provider access',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'AI providers',exact:true})).toBeVisible();
 }
 
 async function addConnection(page,name='My Study Lab',model='anything-v2',endpoint='http://127.0.0.1:1234/v1') {

@@ -21,13 +21,21 @@ ASSET_DIR = Path(__file__).parent / "reader_assets"
 
 
 DATA_LAYOUTS = {"pyramid", "pyramid-outline", "pyramid-left", "funnel", "big-numbers", "circle-stats", "bar-stats", "table", "table-3row"}
+# Where the deck switches from the stacked phone list to the fixed canvas. Every asset spells the media query this way.
+CANVAS = "(min-width:761px)"
 
 
 def library_css(name: str) -> str:
     """A slide-design library file, applied to the fixed 1280x720 canvas only (presenting and every printed page).
     Phones read the slides as a plain stacked list instead. @page cannot sit inside @media; the deck sets it."""
     css = re.sub(r"@page\s*\{[^}]*\}", "", (ASSET_DIR / name).read_text(encoding="utf-8"))
-    return "@media (min-width:761px){\n" + css + "\n}"
+    return f"@media {CANVAS}{{\n" + css + "\n}"
+
+
+def canvas_everywhere(css: str) -> str:
+    """A phone copy presents at any width: an iPhone held sideways is only 734px wide, so the canvas rules always apply.
+    No narrow-screen rule does (the stacked list, figures that restack below 850px): the slide is always 1280px inside."""
+    return re.sub(r"\(max-width:\s*\d+px\)", "(max-width:0px)", css.replace(CANVAS, "(min-width:0px)"))
 
 
 def assets(name: str, figures: FigurePlan | None, layouts: set[str] = frozenset()) -> tuple[str, str]:
@@ -119,10 +127,11 @@ STILL = {"title", "objectives", "question", "agenda", "divider", "limits"}
 
 
 def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: LecturePlan, output: Path,
-                   figures: FigurePlan | None = None, theme: str = "forest") -> Path:
+                   figures: FigurePlan | None = None, theme: str = "forest", phone: bool = False) -> Path:
     """Write one portable slide deck. Slides teach validated knowledge; quotes and times come from the source.
 
-    The theme names the deck's look; light and dark mode stay the viewer's choice."""
+    The theme names the deck's look; light and dark mode stay the viewer's choice. A phone copy is for presenting from
+    a phone whose screen is mirrored to a TV: it always presents, and only the slide shows until ⋯ brings the controls."""
     validate_lecture(knowledge, lecture)
     if figures:
         validate_figures(knowledge, figures)
@@ -327,9 +336,19 @@ def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: Lectu
     css, scripts = assets("lecture", figures, {slide["layout"] for slide in slides if slide.get("layout")})
     css = LOOKS_CSS.read_text(encoding="utf-8") + "\n" + css
     theme_script = (ASSET_DIR.parent / "web" / "theme.js").read_text(encoding="utf-8")
+    mode, viewport, phone_head, phone_controls = "", "width=device-width,initial-scale=1", "", ""
+    if phone:
+        css = canvas_everywhere(css)
+        # Added to the home screen, the deck opens without the browser's bars; the slide sits clear of the notch.
+        mode, viewport = ' data-mode="phone"', viewport + ",viewport-fit=cover"
+        phone_head = ('<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">'
+                      '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">')
+        phone_controls = (f'<button id="controls-toggle" class="controls-toggle" type="button" aria-expanded="false" '
+                          f'aria-label="{t("Show controls", "Hiện điều khiển")}">⋯</button>'
+                          f'<p class="rotate-hint">{t("Turn the phone sideways to present.", "Xoay ngang điện thoại để trình chiếu.")}</p>')
     page = f'''<!doctype html>
-<html lang="{knowledge.language}" data-look="{theme if theme in SLIDE_THEMES else "forest"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="dark light"><meta name="referrer" content="no-referrer"><script>{theme_script}</script>
+<html lang="{knowledge.language}" data-look="{theme if theme in SLIDE_THEMES else "forest"}"{mode}><head><meta charset="utf-8"><meta name="viewport" content="{viewport}">
+<meta name="color-scheme" content="dark light"><meta name="referrer" content="no-referrer">{phone_head}<script>{theme_script}</script>
 <script>document.documentElement.classList.add('js-deck')</script>
 <title>{e(lecture.title)} · Distill</title><style>{css}</style><noscript><style>.deck-bar button{{display:none}}</style></noscript></head>
 <body><header class="deck-bar"><span class="wordmark"><span aria-hidden="true">◈</span> Distill</span>
@@ -345,6 +364,6 @@ def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: Lectu
 <span class="progress" aria-hidden="true"><span id="progress-bar"></span></span>
 <span class="keys">{t("Click, scroll or ← → to go on · N notes · F full screen", "Bấm, cuộn hoặc ← → để tiếp · N ghi chú · F toàn màn hình")}</span></nav>
 <dialog id="outline" aria-labelledby="outline-title"><form method="dialog"><h2 id="outline-title">{t("Slides", "Danh sách slide")}</h2><ol class="outline">{outline}</ol><button value="close">{t("Close", "Đóng")}</button></form></dialog>
-<p id="deck-status" class="sr-only" role="status" aria-live="polite"></p>
+{phone_controls}<p id="deck-status" class="sr-only" role="status" aria-live="polite"></p>
 {scripts}</body></html>'''
     return write_page(output, page)

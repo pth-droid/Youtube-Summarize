@@ -7,7 +7,9 @@
   const bar = document.getElementById('progress-bar'), status = document.getElementById('deck-status');
   const outline = document.getElementById('outline'), notesToggle = document.getElementById('notes-toggle');
   const wide = matchMedia('screen and (min-width: 761px)');
-  const presenting = () => root.classList.contains('js-deck') && wide.matches;
+  // A phone copy always presents and never shows notes: a mirrored phone puts everything on the room's TV.
+  const phone = root.dataset.mode === 'phone';
+  const presenting = () => root.classList.contains('js-deck') && (phone || wide.matches);
   const saved = {get(key) {try {return localStorage.getItem(key);} catch {return null;}}, set(key, value) {try {localStorage.setItem(key, value);} catch {}}};
   // Build steps: the renderer marks them with data-build. The first item of a list arrives with the slide;
   // each advance reveals the next marked item.
@@ -16,8 +18,8 @@
 
   function fit() {
     if (!presenting()) return;
-    const notes = document.body.classList.contains('show-notes') ? innerHeight * .28 + 12 : 0;
-    const scale = Math.min((deck.clientWidth - 32) / 1280, (deck.clientHeight - 32 - notes) / 720);
+    const notes = document.body.classList.contains('show-notes') ? innerHeight * .28 + 12 : 0, margin = phone ? 0 : 32;
+    const scale = Math.min((deck.clientWidth - margin) / 1280, (deck.clientHeight - margin - notes) / 720);
     deck.style.setProperty('--scale', Math.max(.1, scale).toFixed(4));
   }
   // Shrink text that would overflow the fixed canvas instead of cutting it off. Measured with motion off:
@@ -84,6 +86,7 @@
   }
   const advance = () => move(true), back = () => move(false);
   function setNotes(visible) {
+    if (phone) return;
     document.body.classList.toggle('show-notes', visible);
     notesToggle.setAttribute('aria-pressed', String(visible));
     saved.set('distill-lecture-notes', visible ? '1' : '0');
@@ -162,7 +165,14 @@
     if (event.target.closest('a, button, input, select, textarea, summary, label, [tabindex], .figure, .notes')) return;
     if (pressAt && Math.hypot(event.clientX - pressAt[0], event.clientY - pressAt[1]) > 6) return;
     if (String(getSelection?.() || '')) return;
-    if (!blank(false)) advance();
+    // On a phone a tap on the left edge goes back, as in a photo viewer.
+    if (!blank(false)) (phone && event.clientX < innerWidth * .3 ? back : advance)();
+  });
+  const controls = document.getElementById('controls-toggle');
+  controls?.addEventListener('click', () => {
+    const on = document.body.classList.toggle('show-controls');
+    controls.setAttribute('aria-expanded', String(on));
+    controls.setAttribute('aria-label', root.lang === 'vi' ? (on ? 'Ẩn điều khiển' : 'Hiện điều khiển') : (on ? 'Hide controls' : 'Show controls'));
   });
   // One wheel notch or trackpad gesture is one step. After a step the wheel must rest before the next
   // (Marp waits 250 ms too), so trackpad inertia never skips ahead; a scrollable area under the pointer,

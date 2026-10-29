@@ -130,6 +130,29 @@ dialog h2{margin:0 0 8px;font-size:1.1rem}
   /* B or "." blanks the room's screen while the presenter talks. */
   .js-deck .blanked::after{content:"";position:fixed;inset:0;z-index:50;background:#000}
 }
+/* === Phone copy: presented from a phone whose screen is mirrored to the room's TV ===
+   Mirroring shows everything on the phone, so only the slide shows, on black like the TV's own bars, and notes never
+   do. ⋯ lays the deck's bars over the slide and hides them again. The renderer applies the canvas rules at every width. */
+:root[data-mode=phone]{background:#000}
+:root[data-mode=phone] body{height:100dvh;background:#000}
+:root[data-mode=phone] .slide-frame{padding:0}
+:root[data-mode=phone] .slide{box-shadow:none;border:0}
+:root[data-mode=phone] :is(.deck-bar,.deck-nav,.notes,.keys){display:none}
+:root[data-mode=phone] :is(#notes-toggle,#print-button){display:none}
+:root[data-mode=phone] .show-controls :is(.deck-bar,.deck-nav){display:flex;position:fixed;left:0;right:0;z-index:20;
+  padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+:root[data-mode=phone] .show-controls .deck-bar{top:0;padding-right:calc(max(16px,env(safe-area-inset-right)) + 48px)}
+:root[data-mode=phone] .show-controls .deck-nav{bottom:0;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+/* Held sideways, the phone is wider than 16:9, so the button sits on the black beside the slide, not on it. */
+.controls-toggle{position:fixed;z-index:30;top:max(6px,env(safe-area-inset-top));right:max(6px,env(safe-area-inset-right));
+  width:44px;height:44px;padding:0;border:0;border-radius:50%;background:transparent;color:rgb(255 255 255 / .45);font-size:22px;line-height:1}
+.controls-toggle:hover{background:transparent;color:#fff}
+.controls-toggle[aria-expanded=true],.controls-toggle[aria-expanded=true]:hover{color:var(--ink);background:var(--tint)}
+.rotate-hint{display:none}
+@media (orientation:portrait){
+  :root[data-mode=phone] .rotate-hint{display:block;position:fixed;left:0;right:0;bottom:max(24px,env(safe-area-inset-bottom));margin:0;
+    text-align:center;font-size:.9rem;color:rgb(255 255 255 / .7)}
+}
 /* No "to" frame: each part ends at its own opacity (dimmed numerals stay dimmed). */
 @keyframes deck-rise{from{opacity:0;translate:0 12px}}
 @keyframes deck-build{from{opacity:0;translate:0 8px}}

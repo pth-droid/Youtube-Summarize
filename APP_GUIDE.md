@@ -15,7 +15,7 @@ The app needs your signed-in Codex CLI to create new pages with your subscriptio
 3. Select **Create interactive page** (or **Create lecture slides**), or press Enter in the link field. The app uses your saved settings. The Processing view shows progress.
 4. Open the saved page from your Library.
 
-Your language, knowledge level, and AI provider appear below the link. Select **Edit defaults** to change and save these settings. Open **Options for this page** to change them for one page or add a learning goal. Select **Use saved defaults** to reset those choices. API providers still need approval unless you enabled API use in Settings.
+Your language, knowledge level, and AI provider appear below the link. Select **Edit defaults** to change these settings; **Save preferences** appears at the bottom of Settings once a default changes. Open **Options for this page** to change them for one page or add a learning goal. Select **Use saved defaults** to reset those choices. API providers still need approval unless you enabled API use in Settings.
 
 Select an idea to see its meaning, conditions, relationships, and original evidence. Open **Dig deeper** for saved child ideas. Use the source timestamp to open the video at that point. Plain text has no verified timestamps. AI claims can still be wrong; original passages and visible uncertainty help you inspect them.
 
@@ -23,7 +23,7 @@ If the source already has a saved page, open it or create a new version. A new v
 
 ## Interactive page or lecture slides
 
-At the top of the start view, choose what to create: **Interactive page** or **Lecture slides**. Set the usual choice in **Settings → Default output**.
+At the top of the start view, choose what to create: **Interactive page** or **Lecture slides**. Set the usual choice in **Settings → Defaults → Make**.
 
 Lecture slides teach the same checked analysis as a talk you present to a group. The deck has a title, learning objectives, the central question, an agenda, one part per chapter, a summary, and a final slide with limits and the source. It has no quiz. Each content slide lists the times it comes from; a quote slide shows the speaker's original words. Inferences, added background and uncertain points keep their label. The lecture stage makes two or more extra AI requests after the analysis; it never re-reads the transcript.
 
@@ -39,9 +39,29 @@ Present with a click, the mouse wheel or trackpad, the arrow keys, Page Up/Down 
 - **Slate and petrol** suits engineering, data and code.
 - **Workshop violet** suits workshops and trainings.
 
-Every look has a light and a dark version, its own title type, and figures drawn in its colours. **Settings → Slide look** sets the starting choice. For a video that already has slides, making them in another look reuses the saved analysis and slide plan, so it needs no AI requests. Light or dark mode stays a choice while you present. **Print / PDF** prints one 16:9 slide per page. On a phone the slides read as a scrolling list.
+Every look has a light and a dark version, its own title type, and figures drawn in its colours. **Settings → Slide looks** sets the starting choice. For a video that already has slides, making them in another look reuses the saved analysis and slide plan, so it needs no AI requests. Light or dark mode stays a choice while you present. **Print / PDF** prints one 16:9 slide per page. On a phone the slides read as a scrolling list.
+
+### Customize a look
+
+Open **Settings → Slide looks** and select **Customize** on a look. The editor lists the look's colours in light and in dark: the slide, its text, the accent, statement slides and the five chart series, with the warning, inference and focus colours folded below. Pick a colour or type its hex code. Titles and body text can take the type of another look. All are installed fonts, so nothing downloads.
+
+The preview shows the look on four sample slides, or on one of your saved decks, and changes as you edit. **Readable on a projector** checks every text pair a deck draws against the slide-design library's contrast targets, in words as well as colour: **Good**, **Close up only** (it may fade on a projector in a lit room) or **Too faint**. ↺ puts one colour back; **Reset to original** puts the whole look back.
+
+**Save look** keeps only what differs from the look as designed. Every deck in that look shows the change when you present, export or share it, including decks made before the change, and nothing is made again. Leaving the editor with unsaved changes asks first.
 
 When a YouTube video already has an interactive page, choosing lecture slides offers **Make lecture slides from it**. The saved analysis is reused when the language, level, goal, provider and model match, so only the lecture stage runs. The same applies in the other direction. **Create a new version** in a format the source already has always analyses again. **Export HTML** saves a deck as one offline file, like a page.
+
+### Present from a phone
+
+To present from a phone and mirror its screen to a TV, open the slides and select **Share to phone**. Distill makes a phone copy of the deck from its saved slides, with no AI requests. Because mirroring shows everything on the phone, the copy shows only the slide, full height on black, and never shows presenter notes. Turn the phone sideways. Tap to go on, tap the left edge to go back, or swipe. **⋯** in the corner brings back the controls (slide list, light or dark, full screen where the phone allows it). Upright, the copy asks you to turn the phone. On an iPhone, **Share → Add to Home Screen** opens it without Safari's bars, so the slide is larger.
+
+The dialog shows a QR code and a link when [Tailscale](https://tailscale.com) on this computer serves Distill's share path to your tailnet. Scan it with a phone signed in to the same tailnet. Run this once on the computer, using the port Distill runs on (the dialog shows the exact command):
+
+```
+tailscale serve --bg --set-path /distill/share http://127.0.0.1:8767/share
+```
+
+Only shared phone copies are reachable this way, at `https://<computer>.<tailnet>.ts.net/distill/share/<id>`. The rest of Distill, including settings and API keys, still answers only on this computer, and other paths on the same Tailscale name keep serving whatever they served before. **Download phone HTML** saves the same phone copy as one file to send another way.
 
 ## Figures for processes and machines
 
@@ -82,7 +102,7 @@ Codex is the default. It uses your existing subscription through the local CLI. 
 
 Claude is the second subscription option. It uses the locally installed Claude Code CLI with your Claude subscription sign-in (run `claude`, then `/login`, once). The app removes `ANTHROPIC_API_KEY`, auth tokens, custom endpoints and cloud routing from its environment, so a Claude call is never billed to an API account; a `claude setup-token` subscription token is kept. Each call runs without tools, MCP servers, skills, user settings or saved sessions, and the CLI validates the answer against the stage's JSON schema. It counts against your plan's usage limits; when a limit is reached, the job pauses with a usage message. Leave the model empty to use the CLI default, or set `claude_code_model` in preferences.
 
-To use your own provider, open **Settings → Provider access → Add connection**. Enter a connection name, endpoint, exact model ID, and API format. Add a key if needed. You can save several models from the same provider. Open a saved connection to edit it or select **Use as default**. Read [PROVIDER_CONNECTIONS.md](PROVIDER_CONNECTIONS.md) for connection options.
+To use your own provider, open **Settings → AI providers → Add connection**. Enter a connection name, endpoint, exact model ID, and API format. Add a key if needed. You can save several models from the same provider. Open a saved connection to edit it or select **Use as default**. Read [PROVIDER_CONNECTIONS.md](PROVIDER_CONNECTIONS.md) for connection options.
 
 Approve API use for each page, or enable the API default in Settings. Provider failures do not switch to other providers automatically. Existing DeepSeek access remains available when configured. Saved keys stay in the operating system credential store. Saving a connection sends no AI request.
 
@@ -96,11 +116,11 @@ Select **Export HTML** to save one interactive file. It works in a local browser
 
 Your default Windows library is stored at `%LOCALAPPDATA%\VisualLearning`. It contains one SQLite database, saved interactive HTML pages, source transcripts, evidence and analysis records, processing jobs, and your preferences. SQLite needs no database server. The Settings view shows the exact location. Keep the database and files together.
 
-To change the saved folder, open **Settings ? Your saved library**. Paste a full folder path, for example `D:\MyLearningLibrary`, then select **Change library folder**. Choose a new or empty folder. Finish or cancel running, queued, and quota-waiting jobs first. The app copies the complete library, checks the copied database, and uses the selected folder immediately. The original folder stays as a backup, including a consistent `library-before-move-*.sqlite3` snapshot and `LIBRARY_MOVED.txt` restore instructions. API keys stay in the credential store.
+To change the saved folder, open **Settings → Library and tools**. Paste a full folder path, for example `D:\MyLearningLibrary`, then select **Change library folder**. Choose a new or empty folder. Finish or cancel running, queued, and quota-waiting jobs first. The app copies the complete library, checks the copied database, and uses the selected folder immediately. The original folder stays as a backup, including a consistent `library-before-move-*.sqlite3` snapshot and `LIBRARY_MOVED.txt` restore instructions. API keys stay in the credential store.
 
 Your folder choice is remembered outside the library in `%LOCALAPPDATA%\VisualLearningConfig\library-location.json`. The normal launcher uses it after restart. A deliberate `--data-dir` argument or `DISTILL_DATA_DIR` environment variable takes priority; an old copied library redirects to its new location. Keep the original backup until you have opened the saved pages in the new location. If a removable drive is unavailable, reconnect it before starting. Do not use a system folder, credential folder, or a folder inside the current library.
 
-In Settings, select **Download library backup** after processing has finished or has been cancelled. The ZIP contains the library database, source files, pages, jobs, and preferences. It excludes API keys. A large audio library can make the backup take time; avoid other library changes until the download finishes.
+In Settings, select **Download library backup** after processing has finished or has been cancelled. The ZIP contains the library database, source files, pages, jobs, preferences and slide looks. It excludes API keys. A large audio library can make the backup take time; avoid other library changes until the download finishes.
 
 To restore, close the app and its worker. Copy the ZIP's `library.sqlite3` and `jobs` folder into an empty library folder. Start with that folder using `.venv\Scripts\python.exe -m distill --data-dir D:\MyLearningLibrary`. Save provider keys again if you moved to another computer. Keep your original backup until you have opened the restored pages.
 
