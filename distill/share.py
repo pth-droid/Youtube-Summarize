@@ -35,18 +35,22 @@ def deck_look(generation: dict, deck: Path) -> str:
     return look if look in SLIDE_THEMES else "forest"
 
 
-def render_phone(store, generation: dict) -> Path:
-    """Write the phone copy beside the deck, from the records the deck was rendered from."""
-    deck = store.managed_path(generation["page_path"])
-    folder = deck.parent
+def deck_records(folder: Path) -> tuple[Transcript, KnowledgeModel, LecturePlan, FigurePlan | None]:
+    """The records a deck is rendered from, saved beside it."""
     source = Transcript.model_validate_json((folder / "source.json").read_text(encoding="utf-8"))
     knowledge = KnowledgeModel.model_validate_json((folder / "knowledge.json").read_text(encoding="utf-8"))
     saved = json.loads((folder / "lecture.json").read_text(encoding="utf-8"))
     saved.pop("questions", None)  # decks saved while they still ended in a quiz
     figures = folder / "figures.json"
     plan = FigurePlan.model_validate_json(figures.read_text(encoding="utf-8")) if figures.is_file() else None
-    phone = render_lecture(source, knowledge, LecturePlan.model_validate(saved), folder / PHONE_PAGE, plan,
-                           deck_look(generation, deck), phone=True)
+    return source, knowledge, LecturePlan.model_validate(saved), plan
+
+
+def render_phone(store, generation: dict) -> Path:
+    """Write the phone copy beside the deck, from the records the deck was rendered from."""
+    deck = store.managed_path(generation["page_path"])
+    source, knowledge, lecture, plan = deck_records(deck.parent)
+    phone = render_lecture(source, knowledge, lecture, deck.parent / PHONE_PAGE, plan, deck_look(generation, deck), phone=True)
     # The phone copy is a file served as it is, so the look's saved changes go into it now.
     return write_page(phone, with_custom_look(phone.read_text(encoding="utf-8"), store.custom_looks()))
 
