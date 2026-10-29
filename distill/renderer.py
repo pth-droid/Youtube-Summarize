@@ -13,7 +13,7 @@ from .deck_layouts import (ROOM, VARIANTS, Choice, arrange, column_choices, fits
                            step_choices, table_choices, timeline, timeline_choices)
 from .deck_layouts import items as layout_items
 from .figures import figure_ideas, figure_sections, figure_slides
-from .looks import LOOKS_CSS, SLIDE_THEMES
+from .looks import LOOKS_CSS, SLIDE_THEMES, designed_looks, font_faces
 from .models import (FigurePlan, KnowledgeModel, LecturePlan, PresentationPlan, Transcript, figure_unit_ids, validate_bundle,
                      validate_figures, validate_lecture)
 
@@ -334,7 +334,10 @@ def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: Lectu
                       f'<aside class="notes" aria-label="{t("Presenter notes", "Ghi chú người trình bày")}">{slide["notes"] or no_notes}</aside></article>')
     outline = "".join(f'<li><button type="button" data-go="{index}">{e(slide["title"])}</button></li>' for index, slide in enumerate(slides, 1))
     css, scripts = assets("lecture", figures, {slide["layout"] for slide in slides if slide.get("layout")})
-    css = LOOKS_CSS.read_text(encoding="utf-8") + "\n" + css
+    theme = theme if theme in SLIDE_THEMES else "forest"
+    # A look whose type most devices lack carries its font, so the deck looks the same on a phone or another computer.
+    type_stacks = designed_looks()[theme]["display"], designed_looks()[theme]["sans"]
+    css = font_faces(*type_stacks) + LOOKS_CSS.read_text(encoding="utf-8") + "\n" + css
     theme_script = (ASSET_DIR.parent / "web" / "theme.js").read_text(encoding="utf-8")
     mode, viewport, phone_head, phone_controls = "", "width=device-width,initial-scale=1", "", ""
     if phone:
@@ -347,7 +350,7 @@ def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: Lectu
                           f'aria-label="{t("Show controls", "Hiện điều khiển")}">⋯</button>'
                           f'<p class="rotate-hint">{t("Turn the phone sideways to present.", "Xoay ngang điện thoại để trình chiếu.")}</p>')
     page = f'''<!doctype html>
-<html lang="{knowledge.language}" data-look="{theme if theme in SLIDE_THEMES else "forest"}"{mode}><head><meta charset="utf-8"><meta name="viewport" content="{viewport}">
+<html lang="{knowledge.language}" data-look="{theme}"{mode}><head><meta charset="utf-8"><meta name="viewport" content="{viewport}">
 <meta name="color-scheme" content="dark light"><meta name="referrer" content="no-referrer">{phone_head}<script>{theme_script}</script>
 <script>document.documentElement.classList.add('js-deck')</script>
 <title>{e(lecture.title)} · Distill</title><style>{css}</style><noscript><style>.deck-bar button{{display:none}}</style></noscript></head>

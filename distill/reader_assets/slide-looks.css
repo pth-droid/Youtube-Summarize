@@ -1,6 +1,8 @@
 /* Copied from the slide-design skill (looks/presets.css): the seven deck looks, each with light and dark tokens.
    Refresh it from the skill rather than editing it here, then run the skill's check_look.mjs on it. distill/looks.py
-   names the looks for the app; lecture.css derives the figure colours from these tokens. */
+   names the looks for the app; lecture.css derives the figure colours from these tokens.
+   One difference to keep when refreshing: maroon here follows the Lighthouse brand (colours and Bricolage Grotesque),
+   and a deck in it carries that font inside the file (distill/looks.py, EMBEDDED_FONTS). */
 /* Deck looks: colour tokens, light and dark, and type stacks for slides shown on a shared screen.
    Pick one with <html data-look="NAME">; add data-theme="dark" for the dark version. Layout CSS reads
    only these tokens, so a look can change without touching a layout.
@@ -30,19 +32,22 @@
   --tint:#293f35;--feature:#94d8c9;--on-feature:#10201c;--warning:#e9c48a;--warning-bg:#372f23;--inference:#c7b1ff;--focus:#237f85;
   --data-1:#14a08e;--data-2:#d96f38;--data-3:#4f8fd8;--data-4:#b88a17;--data-5:#8c7be0}}
 
-/* ---------- maroon: deep maroon on beige. Humanities, history, ceremony; warm and serious. ----------
-   Same type as forest: the serif display carries the formality, the beige keeps it from feeling cold. */
+/* ---------- maroon: maroon red on antique cream, after the Lighthouse brand. History, humanities, ceremony, hospitality. ----------
+   Ruby red carries accents and numbers; the deeper maroon fills statement slides, as in the brand's app. Warm beige
+   around the slide, warm charcoal text. Bricolage Grotesque for titles and text, its optical size following the type size;
+   the deck embeds it, so a phone or a computer without it shows the same type. Dark mode is the brand's warm dark tone:
+   deep maroon surfaces with cream text and brass accents. */
 :root[data-look=maroon]{color-scheme:light;
-  --paper:#ece2d3;--surface:#fbf6ee;--ink:#2f1418;--muted:#6e5650;--line:#e3d5c2;--accent:#7a1c2a;--on-accent:#fbf6ee;
-  --tint:#f3e7d6;--feature:#7a1c2a;--on-feature:#f7eedf;--warning:#8a5410;--warning-bg:#f6e5c8;--inference:#5b3fa8;--focus:#b0283f;
-  --data-1:#9b2335;--data-2:#0f9d8a;--data-3:#2a5fa8;--data-4:#a07400;--data-5:#6a55c2;
-  --display:"Sitka Heading","Sitka Display",Cambria,"Iowan Old Style","Palatino Linotype",Georgia,serif;
-  --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
+  --paper:#ecdfca;--surface:#faf6ee;--ink:#241614;--muted:#625650;--line:#e4d6c1;--accent:#a21c21;--on-accent:#fdf8f0;
+  --tint:#f4e8d6;--feature:#7b131b;--on-feature:#f5edd8;--warning:#8a5410;--warning-bg:#f6e5c8;--inference:#5b3fa8;--focus:#b0283f;
+  --data-1:#a21c21;--data-2:#0e8c7a;--data-3:#2a5fa8;--data-4:#9a6f00;--data-5:#6a55c2;
+  --display:"Bricolage Grotesque","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  --sans:"Bricolage Grotesque","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;
   --mono:"Cascadia Mono","SF Mono",Consolas,"Liberation Mono",monospace}
 @media screen{:root[data-look=maroon][data-theme=dark]{color-scheme:dark;
-  --paper:#190b0e;--surface:#2a1217;--ink:#f2e7d7;--muted:#cfb9a8;--line:#4e2a31;--accent:#e6c99a;--on-accent:#2a1217;
-  --tint:#3b1b22;--feature:#7a1f2d;--on-feature:#f4e9d9;--warning:#f3a96b;--warning-bg:#43231a;--inference:#c9b3ff;--focus:#f0c98a;
-  --data-1:#d4475a;--data-2:#14a892;--data-3:#4a84d6;--data-4:#b88a17;--data-5:#8c7be0}}
+  --paper:#170909;--surface:#28110f;--ink:#f5edd8;--muted:#d4c1ab;--line:#4d2a28;--accent:#e9c48f;--on-accent:#28110f;
+  --tint:#3a1a19;--feature:#7b131b;--on-feature:#f5edd8;--warning:#f3a96b;--warning-bg:#43231a;--inference:#c9b3ff;--focus:#f0c98a;
+  --data-1:#e0525a;--data-2:#14a892;--data-3:#4a84d6;--data-4:#c29a2a;--data-5:#8c7be0}}
 
 /* ---------- navy: navy and ivory. Corporate reviews, client pitches, board updates. ----------
    A neo-grotesque sans throughout, because that is what business decks are read in; Aptos (Office) is used

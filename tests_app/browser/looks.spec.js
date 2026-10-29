@@ -73,11 +73,11 @@ test('look editor: change a look, see how readable it is, preview it on a deck a
     await expect(page.locator('.check-row', {hasText: 'Text on the slide'})).toContainText('Too faint');
     await expect(page.locator('#checks-summary')).toContainText('too faint');
     await page.getByRole('button', {name: 'Put text back to the original', exact: true}).click();
-    await expect(hex(page, 'Text')).toHaveValue('#2f1418');
+    await expect(hex(page, 'Text')).toHaveValue('#241614');
     await expect(page.locator('#checks-summary')).toContainText('every pair reads well');
     // Dark keeps its own colours, and the deck follows the editor into dark.
     await page.getByRole('button', {name: '☾ Dark'}).click();
-    await expect(hex(page, 'Slide background')).toHaveValue('#2a1217');
+    await expect(hex(page, 'Slide background')).toHaveValue('#28110f');
     await expect(deck.locator('html')).toHaveAttribute('data-theme', 'dark');
     await hex(page, 'Slide background').fill('#111111');
     await expect.poll(() => deckToken('--surface')).toBe('#111111');
@@ -87,7 +87,7 @@ test('look editor: change a look, see how readable it is, preview it on a deck a
     await expect.poll(() => deckToken('--surface')).toBe('#111111');
     // Sample slides show the look without a deck.
     await page.locator('#look-preview-source').selectOption('');
-    await expect(page.locator('#look-sample .sample-feature')).toHaveCSS('background-color', 'rgb(122, 31, 45)');
+    await expect(page.locator('#look-sample .sample-feature')).toHaveCSS('background-color', 'rgb(123, 19, 27)');
     await expect(page.locator('#look-sample .sample-title')).toHaveCSS('background-color', 'rgb(17, 17, 17)');
 
     await page.getByRole('button', {name: 'Save look'}).click();
@@ -113,7 +113,7 @@ test('look editor: change a look, see how readable it is, preview it on a deck a
     await expect(hex(page, 'Accent')).toHaveValue('#000000');
     // Reset to original, then save, puts the look back as designed.
     await page.getByRole('button', {name: 'Reset to original'}).click();
-    await expect(hex(page, 'Accent')).toHaveValue('#7a1c2a');
+    await expect(hex(page, 'Accent')).toHaveValue('#a21c21');
     await page.getByRole('button', {name: 'Save look'}).click();
     await expect(page.locator('#notice')).toContainText('back to its original design');
     expect((await (await request.get('/api/looks')).json()).looks.find(look => look.id === 'maroon').changes).toEqual({});
