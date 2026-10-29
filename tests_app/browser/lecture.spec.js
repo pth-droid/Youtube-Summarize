@@ -195,15 +195,18 @@ test('slide look: choose maroon and beige on the start view, and keep a default 
     await expect(deck.locator('.slide-frame.is-current .slide')).toHaveClass(/kind-title/);
     // The title's composition rotates with the deck, so the look is checked through its tokens and the deck bar.
     const token = name => deck.locator('html').evaluate((root, name) => getComputedStyle(root).getPropertyValue(name).trim(), name);
-    // Dark mode: deep maroon paper and beige text; filled slides use a brighter maroon.
-    await expect(deck.locator('.deck-bar')).toHaveCSS('background-color', 'rgb(42, 18, 23)');
-    expect(await token('--feature')).toBe('#7a1f2d');
-    expect(await token('--ink')).toBe('#f2e7d7');
-    // Light mode: beige paper and deep maroon.
+    // Maroon follows the Lighthouse brand, set in Bricolage Grotesque, which the deck carries inside itself.
+    await expect(deck.locator('.slide-frame.is-current h1, .slide-frame.is-current h2').first()).toHaveCSS('font-family', /^"Bricolage Grotesque"/);
+    expect(await deck.locator('html').evaluate(() => document.fonts.check('600 40px "Bricolage Grotesque"', 'Pha cà phê'))).toBe(true);
+    // Dark mode: the brand's warm dark tone, deep maroon with cream text; filled slides in the brand's maroon.
+    await expect(deck.locator('.deck-bar')).toHaveCSS('background-color', 'rgb(40, 17, 15)');
+    expect(await token('--feature')).toBe('#7b131b');
+    expect(await token('--ink')).toBe('#f5edd8');
+    // Light mode: antique cream, ruby accents and warm slate secondary text.
     await deck.locator('#theme-toggle').click();
-    await expect(deck.locator('.deck-bar')).toHaveCSS('background-color', 'rgb(251, 246, 238)');
-    expect(await token('--feature')).toBe('#7a1c2a');
-    await expect(deck.locator('.deck-title')).toHaveCSS('color', 'rgb(110, 86, 80)');
+    await expect(deck.locator('.deck-bar')).toHaveCSS('background-color', 'rgb(250, 246, 238)');
+    expect(await token('--accent')).toBe('#a21c21');
+    await expect(deck.locator('.deck-title')).toHaveCSS('color', 'rgb(98, 86, 80)');
 
     // A saved default look starts the choice on the next visit.
     await page.goto('/#settings');

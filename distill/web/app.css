@@ -156,6 +156,8 @@
 .share-dialog pre{margin:8px 0;padding:10px 12px;border-radius:8px;background:var(--paper);border:1px solid var(--line);white-space:pre-wrap;overflow-wrap:anywhere;font-size:.76rem}
 .share-tips{margin:14px 0 4px;padding-left:18px;font-size:.8rem;line-height:1.5}
 .share-dialog .button-row{justify-content:flex-end}
+/* Type a deck look may use that most computers lack; decks embed the same file (distill/looks.py, EMBEDDED_FONTS). */
+@font-face{font-family:"Bricolage Grotesque";src:url(/static/fonts/bricolage-grotesque.woff2) format("woff2");font-weight:200 800;font-style:normal;font-display:swap}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 /* Settings: section links beside the panels, and a save bar that shows while the defaults have unsaved changes. */
 .settings-layout{display:grid;grid-template-columns:184px minmax(0,880px);gap:34px;align-items:start}

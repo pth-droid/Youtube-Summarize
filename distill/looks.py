@@ -1,19 +1,24 @@
 """Deck looks. Their colours and type live in reader_assets/slide-looks.css, copied from the slide-design skill;
 this module names them for people, reads each look's tokens for the app's look picker and look editor, and applies
-the changes a person saved to a look (Settings → Slide looks) to every deck shown in that look."""
+each look as designed today, with the changes a person saved to it (Settings → Slide looks), to every deck shown in it."""
 
 from __future__ import annotations
 
+import base64
 from functools import cache
 from pathlib import Path
 import re
 
 LOOKS_CSS = Path(__file__).parent / "reader_assets" / "slide-looks.css"
+# Fonts a look may name that most computers and phones lack. A deck whose type names one carries it inside the file,
+# subset to Latin and Vietnamese (web/fonts/README.md); the app serves the same file for its look pickers.
+FONTS_DIR = Path(__file__).parent / "web" / "fonts"
+EMBEDDED_FONTS = {"Bricolage Grotesque": "bricolage-grotesque.woff2"}
 
 # Name and what each look suits, in the order the app offers them. Forest matches the app and stays the default.
 SLIDE_LOOKS = {
     "forest": ("Forest green", "Teaching and explainers"),
-    "maroon": ("Maroon and beige", "History, humanities, ceremonies"),
+    "maroon": ("Maroon and beige", "Lighthouse brand, hospitality and history"),
     "navy": ("Navy and ivory", "Business reviews and pitches"),
     "contrast": ("High contrast", "Bright rooms, weak projectors"),
     "editorial": ("Editorial", "Essays, books and culture"),
@@ -29,10 +34,11 @@ COLOR_TOKENS = ("surface", "paper", "ink", "muted", "line", "accent", "on-accent
                 "data-1", "data-2", "data-3", "data-4", "data-5", "warning", "warning-bg", "inference", "focus")
 # Type a look can switch to: the stacks the seven looks were designed with, read from the look named here.
 # Installed fonts only, so nothing downloads; each stack covers Vietnamese on Windows.
-DISPLAY_FONTS = {"sitka": ("Sitka serif", "forest"), "book": ("Book serif · Iowan, Palatino", "editorial"),
+DISPLAY_FONTS = {"bricolage": ("Bricolage Grotesque", "maroon"), "sitka": ("Sitka serif", "forest"),
+                 "book": ("Book serif · Iowan, Palatino", "editorial"),
                  "aptos": ("Aptos", "navy"), "segoe": ("Segoe UI Variable", "contrast"),
                  "din": ("Bahnschrift · DIN", "slate"), "avenir": ("Avenir Next · Candara", "workshop")}
-BODY_FONTS = {"system": ("System sans", "forest"), "aptos": ("Aptos", "navy"), "segoe": ("Segoe UI Variable", "contrast"),
+BODY_FONTS = {"bricolage": ("Bricolage Grotesque", "maroon"), "system": ("System sans", "forest"), "aptos": ("Aptos", "navy"), "segoe": ("Segoe UI Variable", "contrast"),
               "humanist": ("Humanist sans · Seravek, Gill Sans", "editorial"), "avenir": ("Avenir Next", "workshop")}
 DECK_LOOK = re.compile(r'(<html\b[^>]*\bdata-look=")([\w-]+)(")')
 
@@ -58,6 +64,28 @@ def designed_looks() -> dict[str, dict]:
     return {look: {"light": {key: full_hex(light[look][key]) for key in COLOR_TOKENS},
                    "dark": {key: full_hex(dark[look][key]) for key in COLOR_TOKENS},
                    "display": light[look]["display"], "sans": light[look]["sans"]} for look in SLIDE_LOOKS}
+
+
+@cache
+def look_blocks() -> dict[str, str]:
+    """Each look's own CSS as designed: its light block and its screen-only dark block."""
+    css = LOOKS_CSS.read_text(encoding="utf-8")
+    return {look: re.search(rf":root\[data-look={look}\]\{{[^}}]*\}}", css)[0]
+            + re.search(rf"@media screen\{{:root\[data-look={look}\]\[data-theme=dark\]\{{[^}}]*\}}\}}", css)[0]
+            for look in SLIDE_LOOKS}
+
+
+@cache
+def font_face(family: str) -> str:
+    data = base64.b64encode((FONTS_DIR / EMBEDDED_FONTS[family]).read_bytes()).decode("ascii")
+    return (f'@font-face{{font-family:"{family}";src:url(data:font/woff2;base64,{data}) format("woff2");'
+            "font-weight:200 800;font-style:normal;font-display:block}")
+
+
+def font_faces(*stacks: str, page: str = "") -> str:
+    """@font-face rules for the embedded fonts these type stacks name, unless the page carries them already."""
+    return "".join(font_face(family) for family in EMBEDDED_FONTS
+                   if any(f'"{family}"' in stack for stack in stacks) and f'font-family:"{family}";src:' not in page)
 
 
 def font_stack(kind: str, font: str) -> str:
@@ -97,15 +125,21 @@ def look_css(look: str, changes: dict) -> str:
 
 
 def with_custom_look(page: str, custom: dict[str, dict], look: str | None = None) -> str:
-    """A saved deck as it is shown now: in its own look, or in `look` for a preview, with that look's saved changes.
-    The changes are added when a deck is shown, so changing a look restyles the decks already made in it."""
+    """A saved deck as it is shown now: in its own look, or in `look` for a preview, as the look is designed today, with
+    the changes saved to it and any embedded font its type names. This is added when a deck is shown, so a change to a
+    look, saved by a person or made to its design, restyles the decks already made in it."""
     found = DECK_LOOK.search(page)
-    if not found:
+    name = look or (found and found[2])
+    if not found or name not in SLIDE_LOOKS:
         return page
-    if look and look != found[2]:
-        page = page[:found.start(2)] + look + page[found.end(2):]
-    css = look_css(look or found[2], custom.get(look or found[2], {}))
-    return page.replace("</head>", f'<style id="custom-look">{css}</style></head>', 1) if css else page
+    if name != found[2]:
+        page = page[:found.start(2)] + name + page[found.end(2):]
+    changes = custom.get(name, {})
+    now = current_look(name, changes)
+    # Last comes lecture.css's print rule, which these blocks would otherwise undo: print puts slides on their surface.
+    css = (font_faces(now["display"], now["sans"], page=page) + look_blocks()[name] + look_css(name, changes)
+           + "@media print{:root[data-look]{--paper:var(--surface)}}")
+    return page.replace("</head>", f'<style id="look">{css}</style></head>', 1)
 
 
 # Decks carry the scripts they were made with, so the look editor's preview adds its own: it takes the colours being

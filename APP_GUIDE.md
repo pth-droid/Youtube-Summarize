@@ -32,14 +32,14 @@ The AI chooses each slide's structure: points, steps, a timeline, a comparison, 
 Present with a click, the mouse wheel or trackpad, the arrow keys, Page Up/Down (a presenter remote) or the space bar. Each advance first reveals the slide's next point, then moves to the next slide; going back hides the last point, and an earlier slide comes back complete. **Shift** with an arrow skips the remaining points. **B** or **.** blanks the screen; any key brings the slide back. Press **N** for presenter notes, **F** for full screen (again, or Esc, to leave it), or open **Slides** to jump. Full screen works in the app and in an exported file. Choose the deck's look under the format cards, in **Slide look**. Each card is a small slide in that look with what it suits:
 
 - **Forest green** matches the app, for teaching and explainers.
-- **Maroon and beige** suits history, humanities and ceremonies.
+- **Maroon and beige** follows the Lighthouse brand: ruby and maroon red on antique cream, set in Bricolage Grotesque. It suits hospitality, history and ceremonies.
 - **Navy and ivory** suits business reviews and pitches.
 - **High contrast** suits bright rooms and weak projectors.
 - **Editorial** suits essays, books and culture.
 - **Slate and petrol** suits engineering, data and code.
 - **Workshop violet** suits workshops and trainings.
 
-Every look has a light and a dark version, its own title type, and figures drawn in its colours. **Settings → Slide looks** sets the starting choice. For a video that already has slides, making them in another look reuses the saved analysis and slide plan, so it needs no AI requests. Light or dark mode stays a choice while you present. **Print / PDF** prints one 16:9 slide per page. On a phone the slides read as a scrolling list.
+Every look has a light and a dark version, its own title type, and figures drawn in its colours. Bricolage Grotesque travels inside each maroon deck, so the deck looks the same on a phone or a computer without the font. Decks always show their look as it is designed now, so a refined look also reaches decks made earlier. **Settings → Slide looks** sets the starting choice. For a video that already has slides, making them in another look reuses the saved analysis and slide plan, so it needs no AI requests. Light or dark mode stays a choice while you present. **Print / PDF** prints one 16:9 slide per page. On a phone the slides read as a scrolling list.
 
 ### Customize a look
 

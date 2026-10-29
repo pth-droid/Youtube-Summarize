@@ -6,9 +6,14 @@ from fastapi.testclient import TestClient
 from distill import share
 from distill.app import create_app
 from distill.looks import (BODY_FONTS, COLOR_TOKENS, DISPLAY_FONTS, PREVIEW_SCRIPT, SLIDE_THEMES, designed_looks, font_stack,
-                           look_changes, look_css, look_preview, with_custom_look)
+                           look_blocks, look_changes, look_css, look_preview, with_custom_look)
+from distill.renderer import render_lecture
 from distill.storage import Store
+from tests_app.learning_fixture import fixture
+from tests_app.test_lecture import plan, slide
 from tests_app.test_share import made
+
+BRICOLAGE = 'font-family:"Bricolage Grotesque";src:url(data:font/woff2;base64,'
 
 
 def test_every_look_is_read_whole_and_its_type_choices_come_from_the_looks():
@@ -24,9 +29,9 @@ def test_every_look_is_read_whole_and_its_type_choices_come_from_the_looks():
 
 def test_only_what_differs_from_the_design_is_kept_and_laid_over_it():
     designed = designed_looks()["maroon"]
-    sent = {"light": designed["light"] | {"accent": "#1F4E8C"}, "dark": dict(designed["dark"]), "display": "din", "sans": "system"}
+    sent = {"light": designed["light"] | {"accent": "#1F4E8C"}, "dark": dict(designed["dark"]), "display": "din", "sans": "bricolage"}
     changes = look_changes("maroon", sent)
-    # Maroon's body type is the system sans already, so only the accent and the title type are kept.
+    # Maroon's body type is Bricolage Grotesque already, so only the accent and the title type are kept.
     assert changes == {"light": {"accent": "#1f4e8c"}, "display": "din"}
     assert look_changes("maroon", {"light": designed["light"], "dark": designed["dark"]}) == {}
     css = look_css("maroon", changes | {"dark": {"surface": "#111111"}})
@@ -35,12 +40,16 @@ def test_only_what_differs_from_the_design_is_kept_and_laid_over_it():
     assert css.endswith("@media screen{:root[data-look=maroon][data-theme=dark]{--surface:#111111}}")
 
 
-def test_a_deck_shows_its_look_with_the_saved_changes_and_a_preview_can_show_another_look():
+def test_a_deck_shows_its_look_as_designed_today_with_the_saved_changes_and_a_preview_can_show_another_look():
     page = '<!doctype html>\n<html lang="vi" data-look="maroon"><head><style>x</style></head><body><p>slide</p></body></html>'
     custom = {"maroon": {"light": {"accent": "#1f4e8c"}}, "navy": {"light": {"ink": "#000000"}}}
     shown = with_custom_look(page, custom)
-    assert '<style id="custom-look">:root[data-look=maroon]{--accent:#1f4e8c}</style></head>' in shown
-    assert with_custom_look(page, {"navy": custom["navy"]}) == page  # no changes to this deck's look
+    # A deck made before the look changed shows it as designed today, with its font, then the saved changes, then print.
+    style = shown[shown.index('<style id="look">'):shown.index("</head>")]
+    assert style.index(BRICOLAGE) < style.index(look_blocks()["maroon"]) < style.index(":root[data-look=maroon]{--accent:#1f4e8c}")
+    assert style.endswith("@media print{:root[data-look]{--paper:var(--surface)}}</style>")
+    assert "--accent:#1f4e8c" not in with_custom_look(page, {"navy": custom["navy"]})
+    assert BRICOLAGE not in with_custom_look(page.replace("maroon", "forest"), {})  # forest names installed fonts only
     assert with_custom_look("<html><head></head></html>", custom) == "<html><head></head></html>"  # a learning page
     # The editor's preview: the deck in navy, navy's saved changes, the type being tried, and the colour script.
     preview = look_preview(page, custom, "navy", {"display": "sitka", "sans": ""})
@@ -58,7 +67,7 @@ def test_saved_looks_restyle_every_deck_in_the_look_as_it_is_shown_exported_or_s
         looks = client.get("/api/looks").json()
         assert [look["id"] for look in looks["looks"]] == list(SLIDE_THEMES) and looks["tokens"] == list(COLOR_TOKENS)
         assert {font["id"] for font in looks["fonts"]["display"]} == set(DISPLAY_FONTS)
-        assert client.get(f"/api/generations/{deck}/page").text.count('id="custom-look"') == 0
+        assert "--accent:#1f4e8c" not in client.get(f"/api/generations/{deck}/page").text
 
         designed = designed_looks()["maroon"]
         sent = {"light": designed["light"] | {"accent": "#1f4e8c"}, "dark": designed["dark"] | {"surface": "#111111"}, "display": "din"}
@@ -93,5 +102,19 @@ def test_saved_looks_restyle_every_deck_in_the_look_as_it_is_shown_exported_or_s
         # Reset puts the look back as designed for every deck.
         reset = client.delete("/api/looks/maroon", headers=headers).json()
         assert next(look for look in reset["looks"] if look["id"] == "maroon")["changes"] == {}
-        assert 'id="custom-look"' not in client.get(f"/api/generations/{deck}/page").text
+        assert "--accent:#1f4e8c" not in client.get(f"/api/generations/{deck}/page").text
         assert store.custom_looks() == {}
+
+
+def test_a_maroon_deck_carries_bricolage_grotesque_once_wherever_it_is_opened(tmp_path):
+    source, knowledge, _ = fixture()
+    lecture = plan(slide(), slide("steps", title="In order"))
+    maroon = render_lecture(source, knowledge, lecture, tmp_path / "maroon.html", theme="maroon").read_text(encoding="utf-8")
+    forest = render_lecture(source, knowledge, lecture, tmp_path / "forest.html", theme="forest").read_text(encoding="utf-8")
+    phone = render_lecture(source, knowledge, lecture, tmp_path / "phone.html", theme="maroon", phone=True).read_text(encoding="utf-8")
+    # The font is inside the file, Latin and Vietnamese, and only in a look whose type names it.
+    assert maroon.count(BRICOLAGE) == 1 and phone.count(BRICOLAGE) == 1 and BRICOLAGE not in forest
+    assert '--display:"Bricolage Grotesque"' in maroon and '--sans:"Bricolage Grotesque"' in maroon
+    # Shown again, the deck keeps its one copy; a forest deck whose type is changed to Bricolage gains it.
+    assert with_custom_look(maroon, {}).count(BRICOLAGE) == 1
+    assert with_custom_look(forest, {"forest": {"display": "bricolage"}}).count(BRICOLAGE) == 1
