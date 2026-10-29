@@ -106,6 +106,7 @@ class Store:
                     language TEXT NOT NULL, provider TEXT NOT NULL, model TEXT NOT NULL,
                     page_path TEXT NOT NULL, metadata TEXT NOT NULL, created_at TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS generations_source ON generations(source_id,created_at);
+                CREATE TABLE IF NOT EXISTS looks(id TEXT PRIMARY KEY, changes TEXT NOT NULL, updated_at TEXT NOT NULL);
             """)
             con.execute("INSERT OR IGNORE INTO migrations VALUES(1,?)", (utcnow(),))
             for key, value in DEFAULT_SETTINGS.items():
@@ -129,6 +130,19 @@ class Store:
                 con.execute("INSERT INTO settings VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, json_text(value)))
             con.commit()
         return self.settings()
+
+    def custom_looks(self) -> dict[str, dict]:
+        """The changes saved to each deck look, by look; a look without changes is absent."""
+        with self.connection() as con:
+            return {row["id"]: json.loads(row["changes"]) for row in con.execute("SELECT id,changes FROM looks")}
+
+    def save_look(self, look: str, changes: dict) -> None:
+        with self.connection() as con:
+            if changes:
+                con.execute("INSERT INTO looks VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET changes=excluded.changes,updated_at=excluded.updated_at",
+                            (look, json_text(changes), utcnow()))
+            else:
+                con.execute("DELETE FROM looks WHERE id=?", (look,))
 
     def _job(self, row) -> dict | None:
         if row is None:

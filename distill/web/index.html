@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/connections.js" defer></script>
   <script src="/static/app.js" defer></script>
+  <script src="/static/looks.js" defer></script>
 </head>
 <body>
   <button id="drawer-backdrop" class="drawer-backdrop" type="button" aria-label="Close menu" tabindex="-1" hidden></button>
@@ -73,32 +74,132 @@
         <div class="jobs-layout"><div id="jobs-list" class="jobs-list"></div><div id="job-detail" class="panel job-detail"><p class="muted">Choose a job to see its progress.</p></div></div>
       </section>
 
-      <section id="view-reader" class="view reader-view" aria-labelledby="reader-title" hidden><header class="reader-header"><button type="button" class="button quiet" data-view="library">← Library</button><h1 id="reader-title">Learning page</h1><a id="reader-export" class="button primary" href="#">Export HTML</a></header><iframe id="reader-frame" title="Interactive learning page" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" allow="fullscreen" referrerpolicy="no-referrer"></iframe></section>
+      <section id="view-reader" class="view reader-view" aria-labelledby="reader-title" hidden><header class="reader-header"><button type="button" class="button quiet" data-view="library">← Library</button><h1 id="reader-title">Learning page</h1><button id="reader-share" type="button" class="button secondary" aria-haspopup="dialog" hidden>Share to phone</button><a id="reader-export" class="button primary" href="#">Export HTML</a></header>
+        <dialog id="share-dialog" class="share-dialog" aria-labelledby="share-title">
+          <h2 id="share-title">Present from your phone</h2>
+          <p class="share-lede">A phone copy of these slides. Only the slide shows, so mirroring the phone to a TV puts the slide alone on the screen.</p>
+          <div id="share-ready" class="share-ready" hidden><img id="share-qr" alt="QR code for the phone link" width="196" height="196">
+            <p>Scan it with a phone signed in to your Tailscale network, or open:</p>
+            <p class="share-link"><a id="share-url" href="#" target="_blank" rel="noopener noreferrer"></a></p>
+            <button id="share-copy" type="button" class="button quiet">Copy link</button></div>
+          <div id="share-setup" hidden><p id="share-setup-text"></p><pre><code id="share-command"></code></pre></div>
+          <ul class="share-tips"><li>Turn the phone sideways. Tap to go on, tap the left edge to go back, or swipe.</li>
+            <li>⋯ in the corner shows the controls. Presenter notes stay off the phone, since mirroring shows everything on it.</li>
+            <li>On an iPhone, Share → Add to Home Screen opens the slides without Safari's bars.</li></ul>
+          <div class="button-row"><a id="share-download" class="button secondary" href="#">Download phone HTML</a><button id="share-done" type="button" class="button primary">Done</button></div>
+        </dialog><iframe id="reader-frame" title="Interactive learning page" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" allow="fullscreen" referrerpolicy="no-referrer"></iframe></section>
 
-      <section id="view-settings" class="view" aria-labelledby="settings-title" hidden>
-        <header class="page-header"><div><p class="eyebrow">YOUR DEFAULTS</p><h1 id="settings-title">Settings</h1><p class="lede">Choose how your next learning pages are made.</p></div></header>
-        <div class="settings-grid"><form id="settings-form" class="panel"><h2>Learning preferences</h2><label for="settings-language">Explanation language</label><select id="settings-language"><option value="vi">Vietnamese · keep technical terms</option><option value="en">English</option></select><label for="settings-level">Knowledge level</label><select id="settings-level"><option value="beginner">Beginner</option><option value="balanced">Balanced</option><option value="advanced">Advanced</option></select><label for="settings-output">Default output</label><select id="settings-output"><option value="page">Interactive learning page</option><option value="lecture">Lecture slides · presenter notes and figures</option></select><label for="settings-slide-theme">Slide look</label><select id="settings-slide-theme"></select><label for="settings-provider">Default AI provider</label><select id="settings-provider"><option value="codex">Codex · existing subscription</option></select><label for="codex-model">Codex model <span class="optional">optional</span></label><input id="codex-model" maxlength="100" placeholder="Use CLI default"><p class="hint">Choose a supported model for your account. A model change starts a new analysis.</p><label class="check"><input id="allow-paid" type="checkbox">Allow API requests without approval for each page. Hosted providers may charge.</label><h2 class="section-gap">Audio transcription</h2><p class="hint">Choose a service for each kind of recording. Soniox labels each voice (Speaker 1, Speaker 2); a single voice gets no label. Groq Whisper has a free tier and returns no speaker labels.</p><label for="transcribe-meeting">Meeting recordings</label><select id="transcribe-meeting" data-workflow="meeting"><option value="soniox">Soniox · speaker labels, paid per audio hour</option><option value="groq">Groq Whisper · free tier, no speaker labels</option></select><label for="transcribe-lecture">Lectures and talks</label><select id="transcribe-lecture" data-workflow="lecture"><option value="soniox">Soniox · speaker labels, paid per audio hour</option><option value="groq">Groq Whisper · free tier, no speaker labels</option></select><label for="transcribe-video">YouTube videos without captions</label><select id="transcribe-video" data-workflow="video"><option value="soniox">Soniox · speaker labels, paid per audio hour</option><option value="groq">Groq Whisper · free tier, no speaker labels</option></select><label for="groq-model">Groq model</label><select id="groq-model"><option value="whisper-large-v3-turbo">Whisper Large v3 Turbo · faster</option><option value="whisper-large-v3">Whisper Large v3</option></select><label class="check"><input id="groq-free" type="checkbox">Use a free Groq account only.</label><label class="check"><input id="retain-audio" type="checkbox">Keep source audio after successful transcription.</label><p class="hint">Audio processing always needs approval for the source. Check billing in your transcription account.</p><button class="button primary" type="submit">Save preferences</button></form>
-          <div><section class="panel credentials-panel" aria-labelledby="provider-hub-title">
-            <div class="hub-header"><div><h2 id="provider-hub-title">Provider access</h2><p class="hint">Add your own providers and models. Save a separate connection for each model or endpoint.</p></div><button id="add-connection" type="button" class="button primary">＋ Add connection</button></div>
-            <form id="connection-editor" class="connection-editor" hidden>
-              <h3 id="connection-editor-title">Add a connection</h3>
-              <label for="connection-name">Connection name</label><input id="connection-name" maxlength="120" required placeholder="For example: My provider · fast model">
-              <label for="connection-endpoint">API endpoint</label><input id="connection-endpoint" type="url" maxlength="2000" required placeholder="https://your-provider.example/v1"><p class="hint">Enter the base URL or the full request URL.</p>
-              <label for="connection-model">Model ID</label><input id="connection-model" maxlength="100" required placeholder="Enter the exact model name from your provider">
-              <label for="connection-protocol">API format</label><select id="connection-protocol"><option value="openai">OpenAI-compatible chat</option><option value="anthropic">Anthropic Messages</option></select>
-              <label for="connection-key">API key <span class="optional">optional</span></label><input id="connection-key" type="password" autocomplete="new-password" maxlength="4096" placeholder="Enter an API key, if required"><p class="hint">Keys stay in the operating system credential store.</p>
-              <details class="advanced"><summary>Connection options</summary><label class="check"><input id="connection-no-key" type="checkbox">This endpoint does not need an API key.</label><div id="connection-compatible-options"><label class="check"><input id="connection-json-mode" type="checkbox" checked>Request JSON mode.</label><label for="connection-token-parameter">Output limit field</label><select id="connection-token-parameter"><option value="max_tokens">max_tokens</option><option value="max_completion_tokens">max_completion_tokens</option></select></div></details>
-              <div id="connection-error" class="form-error" role="alert" hidden></div><div class="button-row"><button id="save-connection" class="button primary" type="submit">Save connection</button><button id="cancel-connection" class="button quiet" type="button">Cancel</button></div>
-            </form>
-            <p id="connection-empty" class="connection-empty">No API connections yet. Add a provider, endpoint, and model to get started.</p>
-            <div id="api-connection-list"></div>
-            <div class="provider-access"><strong>Codex subscription</strong><span id="codex-status" class="badge">Checking</span><p>Uses your existing Codex CLI sign-in.</p></div>
-            <div class="provider-access"><strong>Claude subscription</strong><span id="claude-status" class="badge">Checking</span><p>Uses your existing Claude Code sign-in (claude, then /login). API keys are never passed to it.</p></div>
-            <details id="legacy-deepseek" hidden><summary>Existing DeepSeek connection</summary><label for="deepseek-model">DeepSeek model</label><input id="deepseek-model" maxlength="100" placeholder="Model ID from DeepSeek"><p class="hint">Select Save preferences to save this model.</p><form class="credential-form" data-provider="deepseek"><label for="deepseek-key">API key <span id="deepseek-status" class="badge"></span></label><input id="deepseek-key" type="password" autocomplete="new-password" placeholder="Enter a key to save it"><div class="button-row"><button class="button secondary" type="submit">Save key</button><button class="button quiet" type="button" data-remove-key="deepseek">Remove saved key</button></div></form></details>
-            <details class="audio-access"><summary>Audio transcription access</summary><form class="credential-form" data-provider="soniox"><label for="soniox-key">Soniox API key <span id="soniox-status" class="badge"></span></label><input id="soniox-key" type="password" autocomplete="new-password" placeholder="Enter a key to save it"><div class="button-row"><button class="button secondary" type="submit">Save key</button><button class="button quiet" type="button" data-remove-key="soniox">Remove saved key</button></div></form><form class="credential-form" data-provider="groq"><label for="groq-key">Groq API key <span id="groq-status" class="badge"></span></label><input id="groq-key" type="password" autocomplete="new-password" placeholder="Enter a key to save it"><div class="button-row"><button class="button secondary" type="submit">Save key</button><button class="button quiet" type="button" data-remove-key="groq">Remove saved key</button></div></form></details>
-            <div class="downloader-panel" aria-labelledby="downloader-title"><h3 id="downloader-title">YouTube downloader</h3><p id="ytdlp-status" class="hint" aria-live="polite">Checking yt-dlp…</p><div class="button-row"><button id="ytdlp-check" type="button" class="button quiet">Check for update</button><button id="ytdlp-update" type="button" class="button secondary" hidden>Update yt-dlp</button></div><p class="hint">YouTube changes often. When captions or audio stop downloading, update yt-dlp first. The update comes from the Python Package Index and changes only this app's environment.</p></div>
-            <p class="hint">Saving a connection sends no AI request. Select it in your learning preferences or use it as your default.</p>
-          </section><section class="panel storage-panel"><h2>Your saved library</h2><p id="storage-details" class="muted"></p><p>Your database is one SQLite file. It needs no separate server.</p><form id="library-folder-form"><label for="library-folder">Library folder</label><input id="library-folder" type="text" maxlength="4096" placeholder="D:\MyLearningLibrary" required><p class="hint">Paste a full folder path. Choose a new or empty folder. All saved pages, source files, and preferences are copied there. The current folder stays as a backup. Finish or cancel processing first.</p><div class="button-row folder-actions"><button id="library-browse-button" type="button" class="button secondary">Browse…</button><button id="library-folder-button" type="submit" class="button primary">Change library folder</button></div></form><p class="hint">This choice is remembered for the next launch. API keys stay in the Windows credential store.</p><button id="backup-button" type="button" class="button secondary">Download library backup</button><p class="hint">A backup contains saved source files, pages, jobs, and preferences. It has no API keys.</p></section></div>
+      <section id="view-settings" class="view settings-view" aria-labelledby="settings-title" hidden>
+        <header class="page-header"><div><p class="eyebrow">YOUR DEFAULTS</p><h1 id="settings-title">Settings</h1><p class="lede">How new pages and slides are made, the services they use, and where your library lives.</p></div></header>
+        <div class="settings-layout">
+          <nav class="settings-nav" aria-label="Settings sections">
+            <a href="#settings/defaults" data-section="defaults"><span aria-hidden="true">◎</span>Defaults</a>
+            <a href="#settings/looks" data-section="looks"><span aria-hidden="true">◧</span>Slide looks</a>
+            <a href="#settings/ai" data-section="ai"><span aria-hidden="true">✦</span>AI providers</a>
+            <a href="#settings/audio" data-section="audio"><span aria-hidden="true">♪</span>Transcription</a>
+            <a href="#settings/library" data-section="library"><span aria-hidden="true">▤</span>Library and tools</a>
+          </nav>
+          <div class="settings-sections">
+            <!-- Preferences live in every section; their controls belong to #settings-form, the save bar at the end. -->
+            <section id="settings-defaults" class="panel settings-section" aria-labelledby="defaults-heading">
+              <div class="section-head"><h2 id="defaults-heading">Defaults for new work</h2><p class="hint">What the start page picks for you. You can still change any of it for one page there.</p></div>
+              <fieldset class="segmented-field"><legend>Make</legend><div class="segmented">
+                <label class="plain"><input type="radio" name="settings-output" value="page" form="settings-form"><span><strong>Interactive learning page</strong><small>Overview, connections and source evidence</small></span></label>
+                <label class="plain"><input type="radio" name="settings-output" value="lecture" form="settings-form"><span><strong>Lecture slides</strong><small>A deck to present, with notes and figures</small></span></label>
+              </div></fieldset>
+              <div class="field-grid">
+                <div><label for="settings-language">Explanation language</label><select id="settings-language" form="settings-form"><option value="vi">Vietnamese · keep technical terms</option><option value="en">English</option></select></div>
+                <div><label for="settings-level">Knowledge level</label><select id="settings-level" form="settings-form"><option value="beginner">Beginner</option><option value="balanced">Balanced</option><option value="advanced">Advanced</option></select></div>
+                <div><label for="settings-provider">AI provider</label><select id="settings-provider" form="settings-form"><option value="codex">Codex · existing subscription</option></select></div>
+                <div><label for="codex-model">Codex model <span class="optional">optional</span></label><input id="codex-model" form="settings-form" maxlength="100" placeholder="Use CLI default"><p class="hint">A model change starts a new analysis.</p></div>
+              </div>
+              <label class="check"><input id="allow-paid" type="checkbox" form="settings-form">Allow API requests without approval for each page. Hosted providers may charge.</label>
+            </section>
+
+            <section id="settings-looks" class="panel settings-section" aria-labelledby="looks-heading">
+              <div class="section-head"><h2 id="looks-heading">Slide looks</h2><p class="hint">Choose the look new slides are made in. Customize changes a look's colours and type, and every deck in that look shows the change.</p></div>
+              <div id="settings-look-grid" class="look-cards" role="radiogroup" aria-labelledby="looks-heading"></div>
+            </section>
+
+            <section id="settings-ai" class="panel settings-section credentials-panel" aria-labelledby="provider-hub-title">
+              <div class="hub-header"><div><h2 id="provider-hub-title">AI providers</h2><p class="hint">Your subscriptions, and your own providers and models. Save a separate connection for each model or endpoint.</p></div><button id="add-connection" type="button" class="button primary">＋ Add connection</button></div>
+              <div class="provider-cards">
+                <div class="provider-access"><div><strong>Codex subscription</strong><p>Uses your existing Codex CLI sign-in.</p></div><span id="codex-status" class="badge">Checking</span></div>
+                <div class="provider-access"><div><strong>Claude subscription</strong><p>Uses your existing Claude Code sign-in (claude, then /login). API keys are never passed to it.</p></div><span id="claude-status" class="badge">Checking</span></div>
+              </div>
+              <form id="connection-editor" class="connection-editor" hidden>
+                <h3 id="connection-editor-title">Add a connection</h3>
+                <label for="connection-name">Connection name</label><input id="connection-name" maxlength="120" required placeholder="For example: My provider · fast model">
+                <label for="connection-endpoint">API endpoint</label><input id="connection-endpoint" type="url" maxlength="2000" required placeholder="https://your-provider.example/v1"><p class="hint">Enter the base URL or the full request URL.</p>
+                <label for="connection-model">Model ID</label><input id="connection-model" maxlength="100" required placeholder="Enter the exact model name from your provider">
+                <label for="connection-protocol">API format</label><select id="connection-protocol"><option value="openai">OpenAI-compatible chat</option><option value="anthropic">Anthropic Messages</option></select>
+                <label for="connection-key">API key <span class="optional">optional</span></label><input id="connection-key" type="password" autocomplete="new-password" maxlength="4096" placeholder="Enter an API key, if required"><p class="hint">Keys stay in the operating system credential store.</p>
+                <details class="advanced"><summary>Connection options</summary><label class="check"><input id="connection-no-key" type="checkbox">This endpoint does not need an API key.</label><div id="connection-compatible-options"><label class="check"><input id="connection-json-mode" type="checkbox" checked>Request JSON mode.</label><label for="connection-token-parameter">Output limit field</label><select id="connection-token-parameter"><option value="max_tokens">max_tokens</option><option value="max_completion_tokens">max_completion_tokens</option></select></div></details>
+                <div id="connection-error" class="form-error" role="alert" hidden></div><div class="button-row"><button id="save-connection" class="button primary" type="submit">Save connection</button><button id="cancel-connection" class="button quiet" type="button">Cancel</button></div>
+              </form>
+              <h3 class="subhead">Your connections</h3>
+              <p id="connection-empty" class="connection-empty">No API connections yet. Add a provider, endpoint, and model to get started.</p>
+              <div id="api-connection-list"></div>
+              <details id="legacy-deepseek" hidden><summary>Existing DeepSeek connection</summary><label for="deepseek-model">DeepSeek model</label><input id="deepseek-model" form="settings-form" maxlength="100" placeholder="Model ID from DeepSeek"><form class="credential-form" data-provider="deepseek"><label for="deepseek-key">API key <span id="deepseek-status" class="badge"></span></label><input id="deepseek-key" type="password" autocomplete="new-password" placeholder="Enter a key to save it"><div class="button-row"><button class="button secondary" type="submit">Save key</button><button class="button quiet" type="button" data-remove-key="deepseek">Remove saved key</button></div></form></details>
+              <p class="hint">Saving a connection sends no AI request. Choose it as the AI provider under Defaults, or for one page on the start page.</p>
+            </section>
+
+            <section id="settings-audio" class="panel settings-section" aria-labelledby="audio-heading">
+              <div class="section-head"><h2 id="audio-heading">Audio transcription</h2><p class="hint">Choose a service for each kind of recording. Soniox labels each voice (Speaker 1, Speaker 2); a single voice gets no label. Groq Whisper has a free tier and returns no speaker labels.</p></div>
+              <div class="field-grid">
+                <div><label for="transcribe-meeting">Meeting recordings</label><select id="transcribe-meeting" data-workflow="meeting" form="settings-form"><option value="soniox">Soniox · speaker labels, paid per audio hour</option><option value="groq">Groq Whisper · free tier, no speaker labels</option></select></div>
+                <div><label for="transcribe-lecture">Lectures and talks</label><select id="transcribe-lecture" data-workflow="lecture" form="settings-form"><option value="soniox">Soniox · speaker labels, paid per audio hour</option><option value="groq">Groq Whisper · free tier, no speaker labels</option></select></div>
+                <div><label for="transcribe-video">YouTube videos without captions</label><select id="transcribe-video" data-workflow="video" form="settings-form"><option value="soniox">Soniox · speaker labels, paid per audio hour</option><option value="groq">Groq Whisper · free tier, no speaker labels</option></select></div>
+                <div><label for="groq-model">Groq model</label><select id="groq-model" form="settings-form"><option value="whisper-large-v3-turbo">Whisper Large v3 Turbo · faster</option><option value="whisper-large-v3">Whisper Large v3</option></select></div>
+              </div>
+              <label class="check"><input id="groq-free" type="checkbox" form="settings-form">Use a free Groq account only.</label>
+              <label class="check"><input id="retain-audio" type="checkbox" form="settings-form">Keep source audio after successful transcription.</label>
+              <p class="hint">Audio processing always needs approval for the source. Check billing in your transcription account.</p>
+              <h3 class="subhead">Service keys</h3>
+              <div class="key-grid">
+                <form class="credential-form" data-provider="soniox"><label for="soniox-key">Soniox API key <span id="soniox-status" class="badge"></span></label><input id="soniox-key" type="password" autocomplete="new-password" placeholder="Enter a key to save it"><div class="button-row"><button class="button secondary" type="submit">Save key</button><button class="button quiet" type="button" data-remove-key="soniox">Remove saved key</button></div></form>
+                <form class="credential-form" data-provider="groq"><label for="groq-key">Groq API key <span id="groq-status" class="badge"></span></label><input id="groq-key" type="password" autocomplete="new-password" placeholder="Enter a key to save it"><div class="button-row"><button class="button secondary" type="submit">Save key</button><button class="button quiet" type="button" data-remove-key="groq">Remove saved key</button></div></form>
+              </div>
+              <p class="hint">Keys stay in the operating system credential store.</p>
+            </section>
+
+            <section id="settings-library" class="panel settings-section storage-panel" aria-labelledby="library-heading">
+              <div class="section-head"><h2 id="library-heading">Library and tools</h2><p class="hint">Your library is one SQLite file and its folders. It needs no separate server.</p></div>
+              <p id="storage-details" class="storage-details"></p>
+              <form id="library-folder-form"><label for="library-folder">Library folder</label><input id="library-folder" type="text" maxlength="4096" placeholder="D:\MyLearningLibrary" required><p class="hint">Paste a full folder path, or browse. Choose a new or empty folder: saved pages, source files and preferences are copied there, and the current folder stays as a backup. Finish or cancel processing first. The choice is remembered for the next launch.</p><div class="button-row folder-actions"><button id="library-browse-button" type="button" class="button secondary">Browse…</button><button id="library-folder-button" type="submit" class="button primary">Change library folder</button></div></form>
+              <div class="tool-row"><div><h3>Backup</h3><p class="hint">Saved source files, pages, jobs, preferences and slide looks. API keys are not included.</p></div><button id="backup-button" type="button" class="button secondary">Download library backup</button></div>
+              <div class="tool-row downloader-panel" aria-labelledby="downloader-title"><div><h3 id="downloader-title">YouTube downloader</h3><p id="ytdlp-status" class="hint" aria-live="polite">Checking yt-dlp…</p><p class="hint">YouTube changes often. When captions or audio stop downloading, update yt-dlp first. The update comes from the Python Package Index and changes only this app's environment.</p></div><div class="button-row"><button id="ytdlp-check" type="button" class="button quiet">Check for update</button><button id="ytdlp-update" type="button" class="button secondary" hidden>Update yt-dlp</button></div></div>
+            </section>
+
+            <form id="settings-form" class="settings-savebar" hidden><p><strong>Unsaved changes</strong><span>New pages use your defaults once you save.</span></p><div class="button-row"><button id="settings-discard" type="button" class="button quiet">Discard</button><button class="button primary" type="submit">Save preferences</button></div></form>
+          </div>
+        </div>
+      </section>
+
+      <!-- One slide look, opened from Settings → Slide looks. Saved changes restyle every deck in the look. -->
+      <section id="view-look" class="view look-view" aria-labelledby="look-title" hidden>
+        <nav class="crumbs" aria-label="Breadcrumb"><a href="#settings">Settings</a><span aria-hidden="true">›</span><a href="#settings/looks">Slide looks</a><span aria-hidden="true">›</span><span id="look-crumb" aria-current="page">Look</span></nav>
+        <header class="page-header look-header"><div><p class="eyebrow">CUSTOMIZE A LOOK</p><h1 id="look-title">Slide look</h1><p id="look-lede" class="lede"></p></div>
+          <div class="button-row look-actions"><button id="look-reset" type="button" class="button quiet">Reset to original</button><button id="look-discard" type="button" class="button secondary" hidden>Discard changes</button><button id="look-save" type="submit" form="look-form" class="button primary">Save look</button></div></header>
+        <div class="look-editor">
+          <form id="look-form" class="panel look-controls" novalidate>
+            <div class="mode-switch" role="group" aria-label="Colours to edit"><button type="button" data-look-mode="light" aria-pressed="true">☀ Light</button><button type="button" data-look-mode="dark" aria-pressed="false">☾ Dark</button></div>
+            <p class="hint">Viewers switch a deck between light and dark, and each keeps its own colours. Print always uses light.</p>
+            <div id="look-fields"></div>
+            <div class="look-type" role="group" aria-labelledby="look-type-title"><h3 id="look-type-title">Type</h3><label for="look-display">Titles</label><select id="look-display"></select><label for="look-sans">Body text</label><select id="look-sans"></select><p class="hint">Installed fonts only, so nothing downloads. A font a computer lacks falls back to the next one in its family.</p></div>
+          </form>
+          <div class="look-stage">
+            <div class="stage-bar"><label class="plain" for="look-preview-source">Preview on</label><select id="look-preview-source"><option value="">Sample slides</option></select></div>
+            <div id="look-sample" class="look-sample">
+              <div class="sample-slide sample-title"><p class="s-eyebrow">BÀI GIẢNG · 01</p><p class="s-title">Nhiệt đi vào hạt cà phê</p><p class="s-sub">Ba đường truyền nhiệt và cách điều chỉnh chúng</p><i class="s-rule"></i></div>
+              <div class="sample-slide sample-points"><p class="s-eyebrow">NHIỆT ĐI VÀO HẠT</p><p class="s-head">Ba đường truyền nhiệt</p><ol><li><b>01</b>Dẫn nhiệt khi hạt chạm thành trống</li><li><b>02</b>Đối lưu qua dòng khí nóng</li><li><b>03</b>Bức xạ từ thành trống</li></ol><p class="s-chips"><span class="s-tint">Gió nhiều</span><span class="s-warning">Chưa chắc chắn</span><span class="s-inference">Suy luận</span></p></div>
+              <div class="sample-slide sample-feature"><p class="s-eyebrow">Ý CHÍNH</p><p class="s-quote">Gió vừa truyền nhiệt vừa làm sạch trống: chỉnh gió là chỉnh cả hai.</p></div>
+              <div class="sample-slide sample-chart"><p class="s-eyebrow">SỐ LIỆU</p><p class="s-head">Thời gian đến nứt lần 1</p><div class="s-bars"><i></i><i></i><i></i><i></i><i></i></div><p class="s-legend"><span>Mẻ 1</span><span>Mẻ 2</span><span>Mẻ 3</span><span>Mẻ 4</span><span>Mẻ 5</span></p><span class="s-button">▶ 09:12</span></div>
+            </div>
+            <div id="look-deck" class="look-deck" hidden><iframe id="look-frame" title="A saved deck in this look" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe></div>
+            <p id="look-deck-hint" class="hint" hidden>Click the deck or use its arrows to see other slides. Your changes show as you make them; save to keep them.</p>
+            <section class="look-checks" aria-labelledby="checks-title"><div class="checks-head"><h2 id="checks-title">Readable on a projector</h2><p id="checks-summary" class="hint"></p></div><ul id="look-checks"></ul></section>
+          </div>
         </div>
       </section>
       <footer class="app-footer"><span>Distill</span><span>Overview first. Evidence always within reach.</span></footer>

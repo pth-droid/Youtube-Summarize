@@ -97,6 +97,68 @@ test('lecture slides read as stacked cards on a phone and print one slide per pa
   expect(pdf.match(/\/Type\s*\/Page[^s]/g).length).toBe(sizes.length);
 });
 
+test('share to phone: a phone copy that presents the slide alone, sideways or upright', async ({page, browser, request}) => {
+  const library = await (await request.get('/api/library')).json();
+  const lecture = library.generations.find(item => item.metadata?.output_format === 'lecture');
+  test.skip(!lecture, 'Runs after the lecture creation test');
+  await page.goto('/#library');
+  await page.locator('.page-card').filter({hasText: lecture.title}).getByRole('button', {name: 'Present'}).click();
+  await page.getByRole('button', {name: 'Share to phone'}).click();
+  const dialog = page.locator('#share-dialog');
+  await expect(dialog).toBeVisible();
+  // A tailnet link with its QR code when Tailscale serves this app, otherwise the one command that sets it up.
+  await expect(dialog.locator('#share-ready:visible, #share-setup:visible')).toHaveCount(1);
+  await expect(dialog.getByRole('link', {name: 'Download phone HTML'})).toHaveAttribute('href', `/api/generations/${lecture.id}/share/download`);
+  const download = await request.get(`/api/generations/${lecture.id}/share/download`);
+  expect(download.headers()['content-disposition']).toContain('lecture-slides-phone-');
+  await dialog.getByRole('button', {name: 'Done'}).click();
+  await expect(dialog).toBeHidden();
+
+  // An iPhone 14 Pro held sideways shows 734x343 CSS pixels: below the computer deck's 761px canvas, so the copy forces it.
+  const {devices} = require('@playwright/test');
+  const sideways = await browser.newContext({...devices['iPhone 14 Pro landscape']});
+  const phone = await sideways.newPage();
+  const errors = [];
+  phone.on('pageerror', error => errors.push(error.message));
+  await phone.goto(`/share/${lecture.id}`);
+  const total = await phone.locator('.slide-frame').count();
+  // Only the slide shows, the full height of the screen; mirroring puts exactly this on the TV.
+  await expect(phone.locator('.deck-bar')).toBeHidden();
+  await expect(phone.locator('.deck-nav')).toBeHidden();
+  const box = await phone.locator('.slide-frame.is-current .slide-box').boundingBox();
+  expect(Math.round(box.height)).toBe(343);
+  expect(Math.abs(box.width / box.height - 16 / 9)).toBeLessThan(0.02);
+  await expect(phone.locator('.rotate-hint')).toBeHidden();
+  // A tap moves on, a tap on the left edge goes back; notes never open.
+  await phone.mouse.click(600, 170);
+  await expect(phone.locator('#counter')).toHaveText(`2 / ${total}`);
+  await phone.mouse.click(120, 170);
+  await expect(phone.locator('#counter')).toHaveText(`1 / ${total}`);
+  await phone.keyboard.press('n');
+  await expect(phone.locator('body')).not.toHaveClass(/show-notes/);
+  await expect(phone.locator('.notes')).toHaveCount(total);
+  await expect(phone.locator('.notes:visible')).toHaveCount(0);
+  // The corner button lays the controls over the slide and takes them away again.
+  await phone.locator('#controls-toggle').click();
+  await expect(phone.locator('#controls-toggle')).toHaveAttribute('aria-expanded', 'true');
+  await expect(phone.locator('.deck-bar')).toBeVisible();
+  await expect(phone.locator('#outline-button')).toBeVisible();
+  await expect(phone.locator('#notes-toggle')).toBeHidden();
+  await phone.locator('#controls-toggle').click();
+  await expect(phone.locator('.deck-nav')).toBeHidden();
+  expect(errors).toEqual([]);
+  await sideways.close();
+
+  // Upright, the slide keeps its shape across the width and asks to turn the phone.
+  const upright = await browser.newContext({...devices['iPhone 14 Pro']});
+  const portrait = await upright.newPage();
+  await portrait.goto(`/share/${lecture.id}`);
+  await expect(portrait.locator('.rotate-hint')).toBeVisible();
+  const narrow = await portrait.locator('.slide-frame.is-current .slide-box').boundingBox();
+  expect(Math.round(narrow.width)).toBe(393);
+  await upright.close();
+});
+
 test('slide look: choose maroon and beige on the start view, and keep a default in settings', async ({page}) => {
   const title = `Maroon lecture ${Date.now()}`;
   await page.goto('/#new');
@@ -146,14 +208,14 @@ test('slide look: choose maroon and beige on the start view, and keep a default 
     // A saved default look starts the choice on the next visit.
     await page.goto('/#settings');
     await expect(page.locator('#storage-details')).not.toBeEmpty();
-    await expect(page.locator('#settings-slide-theme')).toHaveValue('forest');
-    await expect(page.locator('#settings-slide-theme option')).toHaveCount(7);
-    await page.locator('#settings-slide-theme').selectOption('maroon');
+    await expect(page.locator('input[name="settings-look"][value="forest"]')).toBeChecked();
+    await expect(page.locator('#settings-look-grid .look-card')).toHaveCount(7);
+    await page.locator('#settings-look-grid label', {hasText: 'Maroon and beige'}).click();
     await page.getByRole('button', {name: 'Save preferences'}).click();
     await expect(page.locator('#notice')).toContainText('Preferences saved');
     await page.reload();
     await expect(page.locator('#storage-details')).not.toBeEmpty();
-    await expect(page.locator('#settings-slide-theme')).toHaveValue('maroon');
+    await expect(page.locator('input[name="settings-look"][value="maroon"]')).toBeChecked();
     await page.locator('.nav-item[data-view="new"]').click();
     await page.getByRole('button', {name: 'Lecture slides', exact: true}).click();
     await expect(maroon).toHaveAttribute('aria-pressed', 'true');
@@ -175,14 +237,14 @@ test('settings choose a transcription service for each kind of recording', async
     // The downloader reports its version without asking PyPI until Check for update is selected.
     await expect(page.locator('#ytdlp-status')).toContainText(/^yt-dlp \d{4}\./);
     await page.locator('#transcribe-lecture').selectOption('groq');
-    await page.locator('#settings-output').selectOption('lecture');
+    await page.locator('label', {has: page.locator('input[name="settings-output"][value="lecture"]')}).click();
     await page.getByRole('button', {name: 'Save preferences'}).click();
     await expect(page.locator('#notice')).toContainText('Preferences saved');
     await page.reload();
     await expect(page.locator('#storage-details')).not.toBeEmpty();
     await expect(page.locator('#transcribe-lecture')).toHaveValue('groq');
     await expect(page.locator('#transcribe-meeting')).toHaveValue('soniox');
-    await expect(page.locator('#settings-output')).toHaveValue('lecture');
+    await expect(page.locator('input[name="settings-output"][value="lecture"]')).toBeChecked();
 
     await page.locator('.nav-item[data-view="new"]').click();
     await expect(page.getByRole('button', {name: 'Create lecture slides'})).toBeVisible();
