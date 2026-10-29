@@ -74,7 +74,9 @@
         <div class="jobs-layout"><div id="jobs-list" class="jobs-list"></div><div id="job-detail" class="panel job-detail"><p class="muted">Choose a job to see its progress.</p></div></div>
       </section>
 
-      <section id="view-reader" class="view reader-view" aria-labelledby="reader-title" hidden><header class="reader-header"><button type="button" class="button quiet" data-view="library">← Library</button><h1 id="reader-title">Learning page</h1><button id="reader-share" type="button" class="button secondary" aria-haspopup="dialog" hidden>Share to phone</button><a id="reader-export" class="button primary" href="#">Export HTML</a></header>
+      <section id="view-reader" class="view reader-view" aria-labelledby="reader-title" hidden><header class="reader-header"><button type="button" class="button quiet" data-view="library">← Library</button><h1 id="reader-title">Learning page</h1>
+        <div id="edit-bar" class="edit-bar" hidden><p id="edit-status" class="edit-status" role="status" aria-live="polite"></p><button id="edit-cancel" type="button" class="button quiet">Cancel</button><button id="edit-save" type="button" class="button primary" disabled>Save changes</button></div>
+        <button id="reader-edit" type="button" class="button secondary" hidden>Edit slides</button><button id="reader-share" type="button" class="button secondary" aria-haspopup="dialog" hidden>Share to phone</button><a id="reader-export" class="button primary" href="#">Export HTML</a></header>
         <dialog id="share-dialog" class="share-dialog" aria-labelledby="share-title">
           <h2 id="share-title">Present from your phone</h2>
           <p class="share-lede">A phone copy of these slides. Only the slide shows, so mirroring the phone to a TV puts the slide alone on the screen.</p>

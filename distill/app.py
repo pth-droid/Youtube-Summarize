@@ -107,6 +107,18 @@ class LookChange(StrictModel):
     sans: Literal[tuple(BODY_FONTS)] | None = None
 
 
+class SlideTextChange(StrictModel):
+    """One changed text from a deck's edit mode: its place in the saved records, and the span of a piece of it."""
+    field: str = Field(min_length=1, max_length=80)
+    span: str = Field("", pattern=r"^(\d{1,5}:\d{1,5})?$")
+    text: str = Field(max_length=4000)
+
+
+class SlideEdits(StrictModel):
+    version: str = Field(pattern=r"^[0-9a-f]{16}$")
+    changes: list[SlideTextChange] = Field(min_length=1, max_length=600)
+
+
 class NewJob(StrictModel):
     url: str = Field(min_length=1, max_length=2000)
     preferences: Preferences = Field(default_factory=Preferences)
@@ -673,12 +685,39 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
         name = "lecture-slides-" if result.get("metadata", {}).get("output_format") == "lecture" else "learning-page-"
         return Response(page, media_type="text/html", headers={"Content-Disposition": f'attachment; filename="{name}{generation_id[:8]}.html"'})
 
-    # Share to a phone: the phone copy is rendered when shared, read at /share over the tailnet, or downloaded.
-    def shared_deck(generation_id):
+    def deck_or_409(generation_id, message):
         result = generation_or_404(generation_id)
         if result.get("metadata", {}).get("output_format") != "lecture":
-            raise HTTPException(409, "Only lecture slides can be shared to a phone.")
+            raise HTTPException(409, message)
         return result
+
+    # Edit mode: the deck drawn again from its saved records with its text marked in place, and a save that puts the
+    # changed text into those records and draws the deck again. No AI request is made.
+    @app.get("/api/generations/{generation_id}/slides/edit")
+    def edit_slides(generation_id: str):
+        from .deck_edits import edit_page
+        result = deck_or_409(generation_id, "Only lecture slides can be edited.")
+        try:
+            page = edit_page(store, result)
+        except (OSError, ValueError) as error:
+            raise HTTPException(410, "The saved slides cannot be read again, so they cannot be edited.") from error
+        return HTMLResponse(page, headers={"Content-Security-Policy": READER_POLICY})
+
+    @app.put("/api/generations/{generation_id}/slides")
+    def save_slides(generation_id: str, value: SlideEdits):
+        from .deck_edits import EditError, save_edits
+        result = deck_or_409(generation_id, "Only lecture slides can be edited.")
+        try:
+            save_edits(store, result, value.version, [change.model_dump() for change in value.changes])
+        except EditError as error:
+            raise HTTPException(error.status, str(error)) from error
+        except (OSError, ValueError) as error:
+            raise HTTPException(410, "The saved slides cannot be read again, so they cannot be edited.") from error
+        return {"saved": len(value.changes)}
+
+    # Share to a phone: the phone copy is rendered when shared, read at /share over the tailnet, or downloaded.
+    def shared_deck(generation_id):
+        return deck_or_409(generation_id, "Only lecture slides can be shared to a phone.")
 
     @app.post("/api/generations/{generation_id}/share")
     def share_to_phone(generation_id: str, request: Request):

@@ -6,16 +6,18 @@ import html
 import json
 import os
 import re
+from functools import cache
 from pathlib import Path
 
 from .chapters import NOTE_LEAF_LIMITS
-from .deck_layouts import (ROOM, VARIANTS, Choice, arrange, column_choices, fits, level_choices, point_choices, small_icons, stat_choices,
-                           step_choices, table_choices, timeline, timeline_choices)
+from .deck_layouts import (ROOM, VARIANTS, Choice, Editable, arrange, column_choices, fits, level_choices, point_choices, small_icons,
+                           stat_choices, step_choices, table_choices, timeline, timeline_choices)
+from .deck_layouts import e as slide_text
 from .deck_layouts import items as layout_items
 from .figures import figure_ideas, figure_sections, figure_slides
 from .looks import LOOKS_CSS, SLIDE_THEMES, designed_looks, font_faces
-from .models import (FigurePlan, KnowledgeModel, LecturePlan, PresentationPlan, Transcript, figure_unit_ids, validate_bundle,
-                     validate_figures, validate_lecture)
+from .models import (Chapter, FigurePlan, KnowledgeModel, LectureColumn, LectureEntry, LecturePlan, LectureSlide, PresentationPlan, Transcript,
+                     figure_unit_ids, validate_bundle, validate_figures, validate_lecture)
 
 ASSET_DIR = Path(__file__).parent / "reader_assets"
 
@@ -126,17 +128,58 @@ def excerpt(text: str, limit: int = 420) -> str:
 STILL = {"title", "objectives", "question", "agenda", "divider", "limits"}
 
 
+@cache
+def text_limit(model, name: str) -> int:
+    """The most characters a contract allows in a text field, or in each text of a list field."""
+    schema = model.model_json_schema()["properties"][name]
+    return schema.get("maxLength") or schema["items"]["maxLength"]
+
+
+def editable_plan(lecture: LecturePlan) -> LecturePlan:
+    """The plan with each text a person may edit marked with its place in lecture.json, for the deck's edit mode."""
+    def texts(values, field, model, name):
+        return [Editable(value, f"{field}.{index}", text_limit(model, name)) for index, value in enumerate(values)]
+
+    def slide(at, value):
+        return value.model_copy(update={
+            "title": Editable(value.title, f"{at}.title", text_limit(LectureSlide, "title")),
+            "points": texts(value.points, f"{at}.points", LectureSlide, "points"),
+            "columns": [column.model_copy(update={
+                "heading": Editable(column.heading, f"{at}.columns.{k}.heading", text_limit(LectureColumn, "heading")),
+                "points": texts(column.points, f"{at}.columns.{k}.points", LectureColumn, "points")}) for k, column in enumerate(value.columns)],
+            "entries": [entry.model_copy(update={
+                "label": Editable(entry.label, f"{at}.entries.{k}.label", text_limit(LectureEntry, "label")),
+                "text": Editable(entry.text, f"{at}.entries.{k}.text", text_limit(LectureEntry, "text"))}) for k, entry in enumerate(value.entries)],
+            "notes": Editable(value.notes, f"{at}.notes", text_limit(LectureSlide, "notes"))})
+
+    parts = [part.model_copy(update={"slides": [slide(f"parts.{p}.slides.{s}", value) for s, value in enumerate(part.slides)]})
+             for p, part in enumerate(lecture.parts)]
+    return lecture.model_copy(update={"title": Editable(lecture.title, "title", text_limit(LecturePlan, "title")),
+                                      "objectives": texts(lecture.objectives, "objectives", LecturePlan, "objectives"),
+                                      "takeaways": texts(lecture.takeaways, "takeaways", LecturePlan, "takeaways"), "parts": parts})
+
+
 def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: LecturePlan, output: Path,
                    figures: FigurePlan | None = None, theme: str = "forest", phone: bool = False) -> Path:
-    """Write one portable slide deck. Slides teach validated knowledge; quotes and times come from the source.
+    """Write one portable slide deck (see lecture_page)."""
+    output = Path(output)
+    page = lecture_page(source, knowledge, lecture, figures, theme, phone)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    return write_page(output, page)
+
+
+def lecture_page(source: Transcript, knowledge: KnowledgeModel, lecture: LecturePlan, figures: FigurePlan | None = None,
+                 theme: str = "forest", phone: bool = False, editable: bool = False) -> str:
+    """One portable slide deck. Slides teach validated knowledge; quotes and times come from the source.
 
     The theme names the deck's look; light and dark mode stay the viewer's choice. A phone copy is for presenting from
-    a phone whose screen is mirrored to a TV: it always presents, and only the slide shows until ⋯ brings the controls."""
+    a phone whose screen is mirrored to a TV: it always presents, and only the slide shows until ⋯ brings the controls.
+    An editable deck is the app's edit mode: the same slides, with the text a person may change marked in place."""
     validate_lecture(knowledge, lecture)
     if figures:
         validate_figures(knowledge, figures)
-    output = Path(output)
-    output.parent.mkdir(parents=True, exist_ok=True)
+    if editable:
+        lecture = editable_plan(lecture)
     vi = knowledge.language == "vi"
     t = lambda en, vn: vn if vi else en
     e = html.escape
@@ -178,6 +221,9 @@ def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: Lectu
 
     def notes_for(text, ids=()):
         body = "".join(f"<p>{e(paragraph)}</p>" for paragraph in text.split("\n") if paragraph.strip())
+        if isinstance(text, Editable):  # the notes are one text to edit, an empty one included
+            body = (f'<div class="notes-text" data-field="{text.field}" data-limit="{text.limit}" data-lines '
+                    f'data-placeholder="{t("Type what you will say on this slide.", "Nhập lời bạn sẽ nói ở slide này.")}">{body}</div>')
         caveats = [caveat for uid in ids for caveat in units[uid].caveats][:3]
         if caveats:
             body += f'<p class="notes-label">{t("Caveats", "Lưu ý")}</p>' + items(caveats, cls="caveats")
@@ -202,7 +248,7 @@ def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: Lectu
     def add(kind, title, content="", *, eyebrow="", heading=None, notes="", footer="", marks="", choices=None):
         """A slide; `choices` lists the library layouts its content fits, and `arrange` picks one."""
         slides.append({"kind": kind, "title": title, "eyebrow": eyebrow, "marks": marks, "content": content,
-                       "heading": f'<h2 data-part="0">{e(title)}</h2>' if heading is None else heading, "notes": notes,
+                       "heading": f'<h2 data-part="0">{slide_text(title)}</h2>' if heading is None else heading, "notes": notes,
                        "footer": footer, "choices": choices})
 
     def chapter_ideas(chapter_id):
@@ -242,7 +288,7 @@ def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: Lectu
     meta.append((t("Parts", "Số phần"), str(len(lecture.parts))))
     cover = (f'<p class="lead" data-part="1">{e(excerpt(source.title, 120))}</p><dl class="meta" data-part="2">'
              + "".join(f"<div><dt>{e(name)}</dt><dd>{e(value)}</dd></div>" for name, value in meta) + "</dl>")
-    add("title", lecture.title, eyebrow=t("LECTURE", "BÀI GIẢNG"), heading=f'<h1 data-part="0">{e(lecture.title)}</h1>',
+    add("title", lecture.title, eyebrow=t("LECTURE", "BÀI GIẢNG"), heading=f'<h1 data-part="0">{slide_text(lecture.title)}</h1>',
         choices=[Choice("title", VARIANTS if len(lecture.title) <= 48 * ROOM else (1, 2, 4), lambda: cover)])
     add("objectives", t("After this lecture you can", "Sau bài này, bạn có thể"), eyebrow=t("LEARNING OBJECTIVES", "MỤC TIÊU BÀI HỌC"),
         choices=[c for c in point_choices("", lecture.objectives, t) if c.layout != "accent"])
@@ -250,7 +296,10 @@ def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: Lectu
     question = f'<figure class="quote" data-part="1"><blockquote><p>{e(knowledge.main_question)}</p></blockquote></figure>'
     add("question", knowledge.main_question, eyebrow=t("THE CENTRAL QUESTION", "CÂU HỎI TRUNG TÂM"),
         heading=f'<h2 data-part="0">{t("This talk answers", "Bài giảng trả lời")}</h2>', choices=[Choice("quote", (2, 4), lambda: question)])
-    titles = [chapters[part.chapter_id].title if part.chapter_id in chapters else knowledge.main_question for part in lecture.parts]
+    # Part titles are the chapter titles of the knowledge model; edit mode changes them there.
+    part_titles = {chapter.id: Editable(chapter.title, f"chapters.{index}.title", text_limit(Chapter, "title")) if editable else chapter.title
+                   for index, chapter in enumerate(knowledge.chapters)}
+    titles = [part_titles[part.chapter_id] if part.chapter_id in chapters else knowledge.main_question for part in lecture.parts]
     starts = [chapter_start(chapters[part.chapter_id]) if part.chapter_id in chapters else "" for part in lecture.parts]
     if len(lecture.parts) > 1:
         agenda = [c for c in point_choices("", titles, t) if c.layout in ("bullets", "big-bullets")]
@@ -320,8 +369,8 @@ def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: Lectu
     no_notes = f'<p class="muted">{t("No presenter notes for this slide.", "Slide này không có ghi chú.")}</p>'
     frames = []
     # The deck title sets where each rotation starts, so one-off slides such as the title also vary from deck
-    # to deck, and a re-render of the same deck is stable.
-    arrange(slides, int(hashlib.sha256(lecture.title.encode("utf-8")).hexdigest()[:8], 16))
+    # to deck, and a re-render of the same deck is stable. A renamed deck keeps the title it was made with here.
+    arrange(slides, int(hashlib.sha256((lecture.layout_seed or lecture.title).encode("utf-8")).hexdigest()[:8], 16))
     for index, slide in enumerate(slides, 1):
         layout = f' layout-{slide["layout"]} variant-{slide["variant"]}' if slide.get("layout") else ""
         # Only content slides build step by step; the frame slides arrive whole.
@@ -349,7 +398,10 @@ def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: Lectu
         phone_controls = (f'<button id="controls-toggle" class="controls-toggle" type="button" aria-expanded="false" '
                           f'aria-label="{t("Show controls", "Hiện điều khiển")}">⋯</button>'
                           f'<p class="rotate-hint">{t("Turn the phone sideways to present.", "Xoay ngang điện thoại để trình chiếu.")}</p>')
-    page = f'''<!doctype html>
+    if editable:
+        css += "\n" + (ASSET_DIR / "lecture-edit.css").read_text(encoding="utf-8")
+        scripts += f'<script>{(ASSET_DIR / "lecture-edit.js").read_text(encoding="utf-8")}</script>'
+    return f'''<!doctype html>
 <html lang="{knowledge.language}" data-look="{theme}"{mode}><head><meta charset="utf-8"><meta name="viewport" content="{viewport}">
 <meta name="color-scheme" content="dark light"><meta name="referrer" content="no-referrer">{phone_head}<script>{theme_script}</script>
 <script>document.documentElement.classList.add('js-deck')</script>
@@ -369,4 +421,3 @@ def render_lecture(source: Transcript, knowledge: KnowledgeModel, lecture: Lectu
 <dialog id="outline" aria-labelledby="outline-title"><form method="dialog"><h2 id="outline-title">{t("Slides", "Danh sách slide")}</h2><ol class="outline">{outline}</ol><button value="close">{t("Close", "Đóng")}</button></form></dialog>
 {phone_controls}<p id="deck-status" class="sr-only" role="status" aria-live="polite"></p>
 {scripts}</body></html>'''
-    return write_page(output, page)

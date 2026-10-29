@@ -55,6 +55,8 @@
     status.textContent = hide ? frames[current].getAttribute('aria-label') : '';
     // Stacked reading mode keeps the address unchanged; the browser would scroll to the fragment.
     if (hide) try { history.replaceState(null, '', `#slide-${current + 1}`); } catch {}
+    // In the app the workspace keeps the slide in view, so its edit mode opens at the same slide.
+    if (framed) window.parent.postMessage({type: 'distill-slide', slide: current + 1}, '*');
     fit();
   }
   // The click wins (motion rules, after Emil Kowalski): a step first finishes the slide's running entrances, so

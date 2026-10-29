@@ -1,0 +1,11 @@
+/* Edit mode, in the app only: the renderer marks text a person may change with data-field. Every build step shows
+   and nothing moves, so all of a slide's text can be reached. */
+:root.editing .build-pending{opacity:1!important;pointer-events:auto!important}
+:root.editing .slide-frame [data-part]{animation:none!important}
+[data-field]{border-radius:3px;outline:1px dashed color-mix(in srgb,var(--muted) 50%,transparent);outline-offset:2px;cursor:text}
+[data-field]:hover{outline-color:var(--accent)}
+[data-field]:focus{outline:2px solid var(--focus);outline-offset:3px}
+[data-field].edited{background:color-mix(in srgb,var(--accent) 16%,transparent)}
+[data-field][aria-invalid=true]{outline:2px solid var(--warning)}
+.notes-text{display:block;min-height:1.6em;white-space:pre-wrap}
+.notes-text:empty::before{content:attr(data-placeholder);color:var(--muted)}

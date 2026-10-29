@@ -51,6 +51,12 @@ The preview shows the look on four sample slides, or on one of your saved decks,
 
 When a YouTube video already has an interactive page, choosing lecture slides offers **Make lecture slides from it**. The saved analysis is reused when the language, level, goal, provider and model match, so only the lecture stage runs. The same applies in the other direction. **Create a new version** in a format the source already has always analyses again. **Export HTML** saves a deck as one offline file, like a page.
 
+### Edit slide text
+
+Open the slides and select **Edit slides**. The deck stays as it is, at the slide in view. Every text you can change has a dashed outline. That covers the lecture title, objectives, slide titles, bullets, column headings, timeline and stats entries, part titles, takeaways and presenter notes, which show below each slide. Click a text and type. Enter ends a one-line text, and Esc puts a text back. While you type, arrows, space and clicks stay in the text instead of moving the deck. The bar above the slides counts the changes not saved yet. It also names the slide of a text that is empty or longer than its place holds; such text cannot be saved.
+
+**Save changes** writes the text into the deck's saved slides and draws the deck again, with no AI requests. Export, the phone copy and any later look change all use the edited text. A slide may move to a layout that fits its new text, but renaming the deck keeps every slide's layout. The source's own words stay as they are: the central question, the conclusion, quotations and the limits slide. A figure on a stats slide must still be a number the source states. **Cancel**, or leaving the deck, asks before dropping unsaved changes. Making the slides again from the source starts from the AI's text, not the edited one.
+
 ### Present from a phone
 
 To present from a phone and mirror its screen to a TV, open the slides and select **Share to phone**. Distill makes a phone copy of the deck from its saved slides, with no AI requests. Because mirroring shows everything on the phone, the copy shows only the slide, full height on black, and never shows presenter notes. Turn the phone sideways. Tap to go on, tap the left edge to go back, or swipe. **⋯** in the corner brings back the controls (slide list, light or dark, full screen where the phone allows it). Upright, the copy asks you to turn the phone. On an iPhone, **Share → Add to Home Screen** opens it without Safari's bars, so the slide is larger.

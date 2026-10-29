@@ -355,6 +355,8 @@ class LectureFrame(Contract):
 class LecturePlan(LectureFrame):
     schema_version: str = SCHEMA_VERSION
     parts: list[LecturePart] = Field(min_length=1)
+    # The title the deck's layouts were chosen by, kept when a person renames the deck so its slides keep their layouts.
+    layout_seed: str = Field(default="", max_length=160)
 
 
 def validate_lecture(knowledge: KnowledgeModel, lecture: LecturePlan) -> None:

@@ -5,7 +5,8 @@ the library's character limits, and writes the library's markup. `arrange` then 
 per slide by rotation, so a deck never shows the same frame twice in a row (LAYOUTS.md, "Rotation").
 
 Markup conventions: `data-part` orders the arrival stagger (0 is the title); `data-build` marks the items a
-presenter reveals one advance at a time. The first item of a list always arrives with the slide.
+presenter reveals one advance at a time. The first item of a list always arrives with the slide. In the deck's
+edit mode, `data-field` marks text a person may change (see Editable).
 """
 from __future__ import annotations
 
@@ -14,7 +15,40 @@ import re
 from dataclasses import dataclass
 from typing import Callable
 
-e = html.escape
+
+class Editable(str):
+    """Slide text a person may change in the deck's edit mode, with its place in the saved records.
+
+    It is plain text to every layout rule, so an editable deck chooses the same layouts as the deck itself. `e` marks
+    it in the markup. A layout that shows part of a text, such as the label of 'Label: text', cuts a piece that keeps
+    its character span in the whole text, so a change to the piece can be put back into the whole."""
+
+    def __new__(cls, text: str, field: str, limit: int, start: int = 0, whole: bool = True):
+        value = super().__new__(cls, text)
+        value.field, value.limit, value.start, value.whole = field, limit, start, whole
+        return value
+
+    def cut(self, start: int, end: int) -> Editable:
+        return Editable(self[start:end], self.field, self.limit, self.start + start, False)
+
+
+def e(value):
+    """Escaped slide text. Editable text is marked with its place, so the edit mode can change it."""
+    text = html.escape(value)
+    if not isinstance(value, Editable) or not value:
+        return text
+    place = f' data-limit="{value.limit}"' if value.whole else f' data-span="{value.start}:{value.start + len(value)}"'
+    return f'<span data-field="{value.field}"{place}>{text}</span>'
+
+
+def trim(text, start, end):
+    """text[start:end] without surrounding spaces; a piece of editable text keeps its place in the whole."""
+    piece = text[start:end]
+    start += len(piece) - len(piece.lstrip())
+    end = start + len(piece.strip())
+    return text.cut(start, end) if isinstance(text, Editable) else text[start:end]
+
+
 VARIANTS = (1, 2, 3, 4)
 # The library's limits are for full-size type; .dense and .denser give about 20-35% more room before text shrinks.
 ROOM = 1.25
@@ -37,9 +71,11 @@ def fits(values, limit):
 
 def labelled(text, limit):
     """'Label: text' as (label, text) when the label is short, else None. Clock times such as 10:30 are not labels."""
-    head, sep, tail = text.partition(":")
-    head, tail = head.strip(), tail.strip()
-    if not sep or not head or not tail or len(head) > limit or (head[-1:].isdigit() and tail[:1].isdigit()):
+    colon = text.find(":")
+    if colon < 0:
+        return None
+    head, tail = trim(text, 0, colon), trim(text, colon + 1, len(text))
+    if not head or not tail or len(head) > limit or (head[-1:].isdigit() and tail[:1].isdigit()):
         return None
     return head, tail
 
@@ -119,7 +155,7 @@ FIGURE = re.compile(r"^\s*([−\-+]?\d[\d.,\s]*(?:[–-]\s?\d[\d.,]*)?)\s*(.*?)\
 def figure(label):
     """A stated figure as (value, unit), e.g. '18–22%' -> ('18–22', '%'), or None."""
     match = FIGURE.match(label)
-    return (match.group(1).strip(), match.group(2)) if match else None
+    return (trim(label, *match.span(1)), trim(label, *match.span(2))) if match else None
 
 
 def number(value):
