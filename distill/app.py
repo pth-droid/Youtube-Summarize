@@ -81,9 +81,10 @@ class Preferences(StrictModel):
     api_connections: dict[ProviderName, APIConnection] | None = None
     output_format: Literal["page", "lecture"] | None = None
     slide_theme: Literal[SLIDE_THEMES] | None = None
-    transcription_providers: dict[Literal["video", "meeting", "lecture"], Literal["soniox", "groq"]] | None = None
+    transcription_providers: dict[Literal["video", "meeting", "lecture"], Literal["soniox", "groq", "local"]] | None = None
     soniox_model: str | None = Field(None, pattern=r"^stt-async-[a-z0-9.-]{1,40}$")
     groq_model: Literal["whisper-large-v3", "whisper-large-v3-turbo"] | None = None
+    local_whisper_model: Literal["large-v3-turbo", "small"] | None = None
     groq_free_only: bool | None = None
     allow_paid_llm: bool | None = None
     retain_audio: bool | None = None
@@ -278,6 +279,8 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
         from .downloader import installed_version
         tools = {name: bool(shutil.which(name)) for name in ("codex", "claude", "ffmpeg", "deno")}
         tools["yt-dlp"] = installed_version() is not None  # the app runs yt-dlp from its own environment, not PATH
+        from .audio import whisper_python
+        tools["local-whisper"] = whisper_python() is not None
         return {"preferences": settings, "credentials": credentials, "tools": tools, "storage": store.storage_info(),
                 "looks": look_swatches(store.custom_looks())}
 
@@ -539,6 +542,9 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
         if job["state"] != "awaiting_approval" or not job.get("approval"):
             raise HTTPException(409, "This job is not waiting for audio approval.")
         approval = job["approval"]
+        if approval.get("provider") == "local":  # free and nothing leaves the computer: approving the source is enough
+            approval.update({"approved": True})
+            return public_job(store.update_job(job_id, approval=approval, state="queued", error=None, next_run_at=0, progress={"stage": "queued", "message": "Audio approved. Waiting for the worker."}))
         if approval.get("free_only", True) and not value.free_account_confirmed:
             raise HTTPException(409, "Confirm that this Groq account has no paid billing before using the free-only route.")
         if not approval.get("free_only", True) and not value.paid_usage_approved:
@@ -636,7 +642,7 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
         input_data = job["input"] | {"audio_source": source_id, "audio_path": str(audio_path.relative_to(store.root))}
         from .audio import PROVIDER_LABELS, approval_request
         approval = approval_request(selected, job["id"], source_id, "Audio import needs cloud speech transcription.", workflow=recording_type)
-        job = store.update_job(job["id"], input=input_data, approval=approval, state="awaiting_approval", progress={"stage": "awaiting_approval", "message": f"Audio is saved locally. Approve sending it to {PROVIDER_LABELS[approval['provider']]} before processing."})
+        job = store.update_job(job["id"], input=input_data, approval=approval, state="awaiting_approval", progress={"stage": "awaiting_approval", "message": "Audio is saved locally. Approve transcribing it on this computer with Local Whisper." if approval["provider"] == "local" else f"Audio is saved locally. Approve sending it to {PROVIDER_LABELS[approval['provider']]} before processing."})
         return {"job": public_job(job)}
 
     @app.delete("/api/jobs/{job_id}/audio")

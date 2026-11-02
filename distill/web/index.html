@@ -102,7 +102,7 @@
             <a href="#settings/library" data-section="library"><span aria-hidden="true">▤</span>Library and tools</a>
           </nav>
           <div class="settings-sections">
-            <!-- Preferences live in every section; their controls belong to #settings-form, the save bar at the end. -->
+            <!-- One section shows at a time (app.js showSection). Preferences live in every section; their controls belong to #settings-form, the save bar at the end, which stays shown whichever section is open. -->
             <section id="settings-defaults" class="panel settings-section" aria-labelledby="defaults-heading">
               <div class="section-head"><h2 id="defaults-heading">Defaults for new work</h2><p class="hint">What the start page picks for you. You can still change any of it for one page there.</p></div>
               <fieldset class="segmented-field"><legend>Make</legend><div class="segmented">
@@ -147,13 +147,15 @@
             </section>
 
             <section id="settings-audio" class="panel settings-section" aria-labelledby="audio-heading">
-              <div class="section-head"><h2 id="audio-heading">Audio transcription</h2><p class="hint">Choose a service for each kind of recording. Soniox labels each voice (Speaker 1, Speaker 2); a single voice gets no label. Groq Whisper has a free tier and returns no speaker labels.</p></div>
+              <div class="section-head"><h2 id="audio-heading">Audio transcription</h2><p class="hint">Choose a service for each kind of recording. Soniox labels each voice (Speaker 1, Speaker 2); a single voice gets no label. Groq Whisper has a free tier and returns no speaker labels. Local Whisper is free and runs on this computer, so nothing is uploaded; it is slower and returns no speaker labels.</p></div>
               <div class="field-grid">
-                <div><label for="transcribe-meeting">Meeting recordings</label><select id="transcribe-meeting" data-workflow="meeting" form="settings-form"><option value="soniox">Soniox · speaker labels, paid per audio hour</option><option value="groq">Groq Whisper · free tier, no speaker labels</option></select></div>
-                <div><label for="transcribe-lecture">Lectures and talks</label><select id="transcribe-lecture" data-workflow="lecture" form="settings-form"><option value="soniox">Soniox · speaker labels, paid per audio hour</option><option value="groq">Groq Whisper · free tier, no speaker labels</option></select></div>
-                <div><label for="transcribe-video">YouTube videos without captions</label><select id="transcribe-video" data-workflow="video" form="settings-form"><option value="soniox">Soniox · speaker labels, paid per audio hour</option><option value="groq">Groq Whisper · free tier, no speaker labels</option></select></div>
+                <div><label for="transcribe-meeting">Meeting recordings</label><select id="transcribe-meeting" data-workflow="meeting" form="settings-form"><option value="soniox">Soniox · speaker labels, paid per audio hour</option><option value="groq">Groq Whisper · free tier, no speaker labels</option><option value="local">Local Whisper · free, on this computer, no speaker labels</option></select></div>
+                <div><label for="transcribe-lecture">Lectures and talks</label><select id="transcribe-lecture" data-workflow="lecture" form="settings-form"><option value="soniox">Soniox · speaker labels, paid per audio hour</option><option value="groq">Groq Whisper · free tier, no speaker labels</option><option value="local">Local Whisper · free, on this computer, no speaker labels</option></select></div>
+                <div><label for="transcribe-video">YouTube videos without captions</label><select id="transcribe-video" data-workflow="video" form="settings-form"><option value="soniox">Soniox · speaker labels, paid per audio hour</option><option value="groq">Groq Whisper · free tier, no speaker labels</option><option value="local">Local Whisper · free, on this computer, no speaker labels</option></select></div>
                 <div><label for="groq-model">Groq model</label><select id="groq-model" form="settings-form"><option value="whisper-large-v3-turbo">Whisper Large v3 Turbo · faster</option><option value="whisper-large-v3">Whisper Large v3</option></select></div>
+                <div><label for="local-whisper-model">Local Whisper model</label><select id="local-whisper-model" form="settings-form"><option value="large-v3-turbo">Large v3 Turbo · best, about a third of the audio's length</option><option value="small">Small · faster, less accurate</option></select></div>
               </div>
+              <p id="local-whisper-status" class="hint"></p>
               <label class="check"><input id="groq-free" type="checkbox" form="settings-form">Use a free Groq account only.</label>
               <label class="check"><input id="retain-audio" type="checkbox" form="settings-form">Keep source audio after successful transcription.</label>
               <p class="hint">Audio processing always needs approval for the source. Check billing in your transcription account.</p>

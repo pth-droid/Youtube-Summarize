@@ -209,7 +209,7 @@ test('slide look: choose maroon and beige on the start view, and keep a default 
     await expect(deck.locator('.deck-title')).toHaveCSS('color', 'rgb(98, 86, 80)');
 
     // A saved default look starts the choice on the next visit.
-    await page.goto('/#settings');
+    await page.goto('/#settings/looks');
     await expect(page.locator('#storage-details')).not.toBeEmpty();
     await expect(page.locator('input[name="settings-look"][value="forest"]')).toBeChecked();
     await expect(page.locator('#settings-look-grid .look-card')).toHaveCount(7);
@@ -239,7 +239,9 @@ test('settings choose a transcription service for each kind of recording', async
     await expect(page.locator('#transcribe-video')).toHaveValue('soniox');
     // The downloader reports its version without asking PyPI until Check for update is selected.
     await expect(page.locator('#ytdlp-status')).toContainText(/^yt-dlp \d{4}\./);
+    await page.locator('.settings-nav a[data-section="audio"]').click();
     await page.locator('#transcribe-lecture').selectOption('groq');
+    await page.locator('.settings-nav a[data-section="defaults"]').click();
     await page.locator('label', {has: page.locator('input[name="settings-output"][value="lecture"]')}).click();
     await page.getByRole('button', {name: 'Save preferences'}).click();
     await expect(page.locator('#notice')).toContainText('Preferences saved');

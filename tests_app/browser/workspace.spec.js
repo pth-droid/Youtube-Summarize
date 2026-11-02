@@ -11,6 +11,7 @@ test.beforeEach(async ({page}) => {
 
 test('change library folder preserves saved pages and worker processing', async ({page, request}) => {
   await page.locator('.nav-item[data-view="settings"]').click();
+  await page.locator('.settings-nav a[data-section="library"]').click();
   await expect(page.locator('#library-folder')).toBeVisible();
   const original = await page.locator('#library-folder').inputValue();
   const selected = path.join(path.dirname(original), 'selected-library');
@@ -19,6 +20,7 @@ test('change library folder preserves saved pages and worker processing', async 
   await expect(page.locator('#storage-details')).toContainText(selected);
   await page.reload();
   await page.locator('.nav-item[data-view="settings"]').click();
+  await page.locator('.settings-nav a[data-section="library"]').click();
   await expect(page.locator('#library-folder')).toHaveValue(selected);
   const settings = await (await request.get('/api/settings')).json();
   expect(settings.storage.path).toBe(selected);
@@ -154,6 +156,7 @@ test('mobile library, genuine semantic page, settings persistence and backup', a
   await expect(page.locator('#notice')).toContainText('Preferences saved');
   await page.reload();
   await expect(page.locator('#settings-language')).toHaveValue('en');
+  await page.locator('.settings-nav a[data-section="library"]').click();
   const pending = page.waitForEvent('download');
   await page.getByRole('button', {name: 'Download library backup'}).click();
   const backup = await pending;
