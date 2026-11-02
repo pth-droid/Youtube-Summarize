@@ -7,11 +7,11 @@ const hex = (page, name) => page.getByRole('textbox', {name: `${name} hex code`,
 test('settings: linked sections, a save bar for unsaved defaults, and look cards that open the look editor', async ({page}) => {
   await page.goto('/#settings');
   await expect(page.locator('#storage-details')).not.toBeEmpty();
-  // Five sections, linked beside them; a link scrolls to its section and the address names it.
+  // Five sections, linked beside them; a link shows its section alone and the address names it.
   await expect(page.locator('.settings-nav a')).toHaveText([/Defaults$/, /Slide looks$/, /AI providers$/, /Transcription$/, /Library and tools$/]);
   await page.locator('.settings-nav a[data-section="audio"]').click();
   await expect(page).toHaveURL(/#settings\/audio$/);
-  await expect(page.locator('#settings-audio')).toBeInViewport();
+  await expect(page.locator('#settings-audio')).toBeVisible();
   await expect(page.locator('.settings-nav a[data-section="audio"]')).toHaveClass(/active/);
   // Nothing to save until a default changes, and the save bar can put it back.
   await expect(page.locator('#settings-form')).toBeHidden();
@@ -21,6 +21,7 @@ test('settings: linked sections, a save bar for unsaved defaults, and look cards
   await expect(page.locator('#settings-form')).toBeHidden();
   await expect(page.locator('#transcribe-video')).toHaveValue('soniox');
   // Looks: seven cards, the default marked, each with its editor a link away.
+  await page.locator('.settings-nav a[data-section="looks"]').click();
   const cards = page.locator('#settings-look-grid .look-card');
   await expect(cards).toHaveCount(7);
   await expect(page.locator('input[name="settings-look"][value="forest"]')).toBeChecked();
@@ -32,7 +33,7 @@ test('settings: linked sections, a save bar for unsaved defaults, and look cards
   await expect(page.locator('.nav-item[data-view="settings"]')).toHaveClass(/active/);
   await crumbs(page).getByRole('link', {name: 'Slide looks'}).click();
   await expect(page).toHaveURL(/#settings\/looks$/);
-  await expect(page.locator('#settings-looks')).toBeInViewport();
+  await expect(page.locator('#settings-looks')).toBeVisible();
 });
 
 test('look editor: change a look, see how readable it is, preview it on a deck and save it for every deck', async ({page, request}) => {

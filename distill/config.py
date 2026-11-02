@@ -32,6 +32,8 @@ DEFAULT_SETTINGS = {
     "soniox_model": "stt-async-v5",
     "groq_model": "whisper-large-v3-turbo",
     "groq_free_only": True,
+    # faster-whisper model for the "local" service; see distill.audio.LOCAL_MODELS.
+    "local_whisper_model": "large-v3-turbo",
     "allow_paid_llm": False,
     "retain_audio": False,
 }

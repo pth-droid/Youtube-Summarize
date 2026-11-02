@@ -17,7 +17,7 @@ const test = base.extend({
 });
 
 async function openHub(page) {
-  await page.goto('/#settings');
+  await page.goto('/#settings/ai');
   await expect(page.locator('#create-button')).toBeEnabled();
   await expect(page.getByRole('heading',{name:'AI providers',exact:true})).toBeVisible();
 }

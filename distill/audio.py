@@ -1,7 +1,8 @@
-"""Approved audio download, timestamp-preserving preparation, and cloud STT.
+"""Approved audio download, timestamp-preserving preparation, and speech-to-text.
 
 Soniox (default) transcribes one upload per source with speaker labels. Groq
-Whisper transcribes ten-minute sections and returns no speakers.
+Whisper transcribes ten-minute sections and returns no speakers. Local Whisper
+runs faster-whisper on this computer's CPU: free, nothing uploaded, no speakers.
 """
 from __future__ import annotations
 
@@ -29,7 +30,11 @@ MAX_UPLOAD_BYTES = 24_000_000
 MAX_AUDIO_DURATION_SECONDS = 6 * 3600
 # Imported content must not make FFmpeg fetch a playlist or external URLs.
 MEDIA_INPUT_LIMITS = ["-protocol_whitelist", "file,pipe", "-format_whitelist", "wav,mp3,mov,ogg,matroska,webm,flac,aac"]
-PROVIDER_LABELS = {"soniox": "Soniox", "groq": "Groq"}
+PROVIDER_LABELS = {"soniox": "Soniox", "groq": "Groq", "local": "Local Whisper"}
+# faster-whisper names; large-v3-turbo resolves to mobiuslabsgmbh/faster-whisper-large-v3-turbo.
+LOCAL_MODELS = {"large-v3-turbo", "small"}
+# Reelcrew installs faster-whisper in its own runtime; the app can borrow it instead of installing a copy.
+REELCREW_WHISPER = Path.home() / ".reelcrew" / "runtime" / "whisper"
 WORKFLOWS = ("video", "meeting", "lecture")
 SONIOX_API = "https://api.soniox.com/v1"
 SONIOX_MODEL = re.compile(r"stt-async-[a-z0-9.-]{1,40}")
@@ -52,6 +57,8 @@ def approval_request(preferences: dict, job_id: str, source: str, reason: str, *
     request = {"approved": False, "job_id": job_id, "source": source, "provider": provider, "workflow": workflow, "free_account_confirmed": False, "retain_audio": bool(preferences.get("retain_audio")), "source_language": preferences.get("source_language") or None, "reason": reason, "duration": None}
     if provider == "soniox":
         request |= {"model": preferences.get("soniox_model", "stt-async-v5"), "free_only": False, "speaker_labels": True, "quota": "Soniox bills transcribed audio by duration. The account balance is unknown."}
+    elif provider == "local":
+        request |= {"model": preferences.get("local_whisper_model", "large-v3-turbo"), "free_only": False, "local": True, "quota": "Free. Runs on this computer's processor; the audio is not uploaded. Takes roughly a third of the audio's length."}
     else:
         request |= {"model": preferences.get("groq_model", "whisper-large-v3-turbo"), "free_only": bool(preferences.get("groq_free_only", True)), "quota": "Remaining Groq account quota is unknown."}
     return request | extra
@@ -65,6 +72,10 @@ def validate_approval(approval: dict, source: str, model: str) -> None:
             raise ProviderError("configuration", "Choose a Soniox async transcription model.")
         if not any(approval.get(key) is True for key in ("paid_approved", "paid_usage_approved")):
             raise ProviderError("paid_approval", "Approve paid Soniox transcription explicitly before processing audio.")
+        return
+    if approval["provider"] == "local":
+        if model not in LOCAL_MODELS:
+            raise ProviderError("configuration", "Choose a supported local Whisper model.")
         return
     if model not in SUPPORTED_MODELS:
         raise ProviderError("configuration", "Choose a supported Groq Whisper transcription model.")
@@ -438,11 +449,102 @@ def _transcribe_soniox(audio_path: Path, work_dir: Path, approval: dict, source:
     return transcript
 
 
+def whisper_python() -> str | None:
+    """A Python that can import faster-whisper: DISTILL_WHISPER_PYTHON, the app's own, or Reelcrew's runtime."""
+    import importlib.util, os
+    if os.environ.get("DISTILL_WHISPER_PYTHON"):
+        return os.environ["DISTILL_WHISPER_PYTHON"]
+    if importlib.util.find_spec("faster_whisper"):
+        return sys.executable
+    for python, packages in ((REELCREW_WHISPER / "Scripts" / "python.exe", REELCREW_WHISPER / "Lib" / "site-packages"),
+                             (REELCREW_WHISPER / "bin" / "python3", next((REELCREW_WHISPER / "lib").glob("python3*/site-packages"), REELCREW_WHISPER))):
+        if python.is_file() and (packages / "faster_whisper").is_dir():
+            return str(python)
+    return None
+
+
+def _run_whisper(command: list[str], log: Path, duration: float, progress=None, cancelled=None) -> None:
+    """Run the worker, reporting how far it has got, and stop it when the job is cancelled."""
+    import queue, threading
+    with log.open("wb") as errors:
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=errors, stdin=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        lines = queue.Queue()
+        threading.Thread(target=lambda: [lines.put(line) for line in process.stdout], daemon=True).start()
+        deadline = time.monotonic() + max(1800, duration * 4)
+        try:
+            while process.poll() is None or not lines.empty():
+                if cancelled and cancelled(): raise ProviderError("cancelled", "Audio processing was cancelled.")
+                if time.monotonic() > deadline: raise ProviderError("timeout", "Local Whisper took too long. Retry, or choose a cloud service in Settings.")
+                try: line = lines.get(timeout=0.5)
+                except queue.Empty: continue
+                try: done = json.loads(line).get("done")
+                except ValueError: continue
+                if progress and done and duration:
+                    progress(f"Local Whisper has transcribed {min(99, int(done / duration * 100))}% of the audio")
+        finally:
+            stop_process(process)
+    if process.returncode:
+        tail = log.read_text(encoding="utf-8", errors="replace").strip().splitlines()[-3:]
+        raise ProviderError("provider_failed", "Local Whisper stopped before finishing" + (f": {tail[-1]}" if tail else "."), diagnostics={"tool": "faster-whisper", "exit_code": process.returncode, "error_lines": tail})
+
+
+def _transcribe_local(audio_path: Path, work_dir: Path, approval: dict, source: str, progress=None, cancelled=None, language: str | None = None) -> Transcript:
+    python = whisper_python()
+    if not python:
+        raise ProviderError("missing_dependency", "Local Whisper needs faster-whisper. Run `reelcrew transcribe setup whisper`, or `pip install faster-whisper` in the app's Python.")
+    model = approval["model"]
+    audio_path, work_dir = Path(audio_path).resolve(), Path(work_dir).resolve()
+    work_dir.mkdir(parents=True, exist_ok=True)
+    audio_hash = _audio_hash(audio_path)
+    signature = {"audio_hash": audio_hash, "provider": "local", "model": model, "language": language or "", "source": source}
+    state_path, completed = work_dir / "local-state.json", work_dir / "transcript.json"
+    if state_path.exists():
+        if json.loads(state_path.read_text(encoding="utf-8")).get("signature") != signature:
+            raise ProviderError("checkpoint_mismatch", "Saved audio belongs to another source or model. Start a new generation to change transcription settings.")
+        if completed.exists():
+            return Transcript.model_validate_json(completed.read_text(encoding="utf-8"))
+    _atomic_json(state_path, {"signature": signature})
+    duration = _probe_duration(audio_path, cancelled)
+    wav = work_dir / "chunks" / "local.wav"
+    wav.parent.mkdir(parents=True, exist_ok=True)
+    if not wav.is_file():
+        if progress: progress("Preparing audio for local Whisper")
+        temporary = wav.with_suffix(".partial.wav")
+        # FFmpeg reads the import under the same limits as the cloud routes; Whisper only sees this WAV.
+        _run([_binary("ffmpeg"), "-nostdin", "-v", "error", "-y", *MEDIA_INPUT_LIMITS, "-i", str(audio_path), "-map", "0:a:0", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(temporary)], cancelled)
+        temporary.replace(wav)
+    output = work_dir / "responses" / "local-whisper.json"
+    if not output.is_file():
+        output.parent.mkdir(exist_ok=True)
+        if progress: progress("Loading local Whisper")
+        hint = (language or "").split("-")[0].lower()
+        _run_whisper([python, "-I", str(Path(__file__).with_name("whisper_worker.py")), str(wav), model, hint if re.fullmatch(r"[a-z]{2,3}", hint) else "", str(output)],
+                     work_dir / "local-whisper.log", duration, progress, cancelled)
+    try:
+        body = json.loads(output.read_text(encoding="utf-8"))
+        chunk = AudioChunk(0, str(wav), 0, duration, 0, duration)  # one section: the whole recording
+        _validate_response(body, chunk)
+        snippets, warnings = merge_chunks([chunk], [body])
+    except (ValueError, ProviderError):
+        output.unlink(missing_ok=True)  # Do not keep output that cannot become a transcript.
+        raise
+    video_id = source if re.fullmatch(r"[A-Za-z0-9_-]{11}", source) else None
+    transcript = Transcript(source_id=source, video_id=video_id, url=f"https://www.youtube.com/watch?v={source}" if video_id else None, title=f"Audio transcript · {source}", language=body.get("language") or language or "unknown", origin="audio", snippets=snippets, metadata={"provider": "local", "model": model, "audio_hash": audio_hash, "requested_source_language": language or "", "warnings": warnings, "speaker_labels": "none", "billing_note": "Transcribed on this computer; nothing was uploaded or billed.", "audio_duration": duration, "temporary_audio_retention": "Successful managed audio is deleted by default; failed audio is eligible for cleanup after 24 hours on worker activity. User originals are preserved."})
+    _atomic_json(completed, transcript.model_dump(mode="json"))
+    if not approval.get("retain_audio", False):
+        wav.unlink(missing_ok=True)
+        if audio_path.parent == work_dir and audio_path.name.startswith("source-audio."):
+            audio_path.unlink(missing_ok=True)
+    return transcript
+
+
 def transcribe_audio(audio_path: Path, work_dir: Path, approval: dict, source: str, progress=None, cancelled=None, checkpoint=None, load_checkpoint=None, language: str | None = None, secret_store: SecretStore | None = None) -> Transcript:
     model = approval.get("model", "whisper-large-v3-turbo")
     validate_approval(approval, source, model)
     if approval["provider"] == "soniox":
         return _transcribe_soniox(audio_path, work_dir, approval, source, progress, cancelled, language, secret_store)
+    if approval["provider"] == "local":
+        return _transcribe_local(audio_path, work_dir, approval, source, progress, cancelled, language)
     if cancelled and cancelled():
         raise ProviderError("cancelled", "Audio processing was cancelled.")
     key = (secret_store or SecretStore()).get("groq")
@@ -531,8 +633,11 @@ def transcribe_youtube(video_id: str, work_dir: Path, approval: dict, progress=N
     validate_approval(approval, video_id, model)
     if cancelled and cancelled():
         raise ProviderError("cancelled", "Audio processing was cancelled.")
-    # Check key before any media download.
-    if not SecretStore().get(approval["provider"]):
+    # Check key (or the local engine) before any media download.
+    if approval["provider"] == "local":
+        if not whisper_python():
+            raise ProviderError("missing_dependency", "Local Whisper needs faster-whisper. Run `reelcrew transcribe setup whisper`, or `pip install faster-whisper` in the app's Python.")
+    elif not SecretStore().get(approval["provider"]):
         raise ProviderError("authentication", f"Configure a {PROVIDER_LABELS[approval['provider']]} API key before downloading audio.")
     work_dir = Path(work_dir).resolve()
     work_dir.mkdir(parents=True, exist_ok=True)

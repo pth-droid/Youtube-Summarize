@@ -167,7 +167,6 @@
 .settings-nav a:hover{background:var(--mint);color:var(--ink)}
 .settings-nav a.active{background:var(--mint);color:var(--green-dark);font-weight:650}
 .settings-sections{display:flex;flex-direction:column;gap:22px;min-width:0}
-.settings-section{scroll-margin-top:24px}
 .section-head h2{margin-bottom:6px}
 .section-head .hint{margin:0;max-width:66ch}
 .subhead{font-size:.92rem;margin:26px 0 0;padding-top:22px;border-top:1px solid var(--line)}
@@ -220,8 +219,8 @@
 .settings-savebar p span{font-size:.78rem;color:var(--muted)}
 @keyframes rise-in{from{opacity:0;transform:translateY(10px)}}
 [data-theme=dark] .settings-savebar{box-shadow:0 14px 34px #0008}
-@media(max-width:1100px){.settings-layout{grid-template-columns:minmax(0,1fr);gap:16px}.settings-nav{position:static;flex-direction:row;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.settings-nav a{flex-shrink:0;min-height:38px;padding:7px 12px;border:1px solid var(--line);background:var(--white);font-size:.8rem}.settings-nav a.active{border-color:var(--green)}}
-@media(max-width:650px){.field-grid,.segmented,.provider-cards,.key-grid{grid-template-columns:minmax(0,1fr)}.look-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.look-cards .look-hint{display:none}.tool-row{flex-direction:column;gap:12px}.settings-savebar{padding:10px 12px}}
+@media(max-width:1100px){.settings-layout{grid-template-columns:minmax(0,1fr);gap:16px}.settings-nav{position:static;flex-direction:row;flex-wrap:nowrap;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.settings-nav a{flex-shrink:0;min-height:38px;padding:7px 12px;border:1px solid var(--line);background:var(--white);font-size:.8rem}.settings-nav a.active{border-color:var(--green)}}
+@media(max-width:650px){.settings-nav{margin:0 -18px;padding:0 18px 4px;scroll-padding-inline:18px}.field-grid,.segmented,.provider-cards,.key-grid{grid-template-columns:minmax(0,1fr)}.look-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.look-cards .look-hint{display:none}.tool-row{flex-direction:column;gap:12px}.settings-savebar{padding:10px 12px}}
 
 /* Look editor: colours on the left, the look on sample slides or a saved deck on the right, and how readable it is. */
 .crumbs{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 18px;font-size:.8rem;color:var(--muted)}
