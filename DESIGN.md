@@ -359,14 +359,14 @@ Pills that lift slightly and press down.
 
 ### Cards / Containers
 - **Sheet:** graphite or white, 28px radius, 28px padding, sheet shadow. Settings shows one sheet at a time, each rising 8px on entry.
-- **Library card:** 26px radius, 8px padding, min 330px tall; a 140px terrain cover with a white round cover pin (40px) bottom left and tags top right; title, a three-line summary, then meta and a 40px round delete button and an Open pill. Hover lifts it 3px.
+- **Library card:** the whole card opens its page or deck (its delete and open buttons keep their own jobs); 26px radius, 8px padding, min 330px tall; a 140px terrain cover with a white round cover pin (40px) bottom left and tags top right; title, a three-line summary, then meta and a 40px round delete button and an Open pill. Hover lifts it 3px.
 - **Choice tiles** (format options, Settings segmented choices): sheet inset, 20px radius, a 46px round icon well, title and description, a 20px radio ring top right. Chosen: amber-line border, amber-soft wash, amber icon well, and the ring filled as an amber dot.
 - **Callouts:** sheet inset, 20px radius, hairline, 16px 18px. The approval panel is amber soft with an amber-line border at 24px radius.
 - **Notices:** a sheet-coloured pill floating at the top centre of the map with an info or alert mask; drops in 12px.
 - **Empty states:** one centred sheet (to 620px) with a route drawing, a heading, one line and one action. The empty library draws the amber route and offers to create; a search or filter that matches nothing keeps the same sheet and offers to clear itself. Processing with no jobs drops its list column and draws the route untravelled (dotted hairline, hollow stops).
 
 ### Inputs / Fields
-- **Style:** sheet inset, a strong hairline, 14px radius, 46px tall, 11px 14px. Selects carry a stroke chevron; textareas start at 96px; file inputs are a dashed 20px tile with a pin-coloured pill button.
+- **Style:** sheet inset, a strong hairline, 14px radius, 46px tall, 11px 14px. Selects carry a stroke chevron, and where the browser supports a customizable select their open list is a sheet (18px radius, sheet shadow, 6px padding) of 40px rows with an amber-ink tick on the chosen one, rising 6px over 200ms; a long label is clipped before the chevron; textareas start at 96px; file inputs are a dashed 20px tile with a pin-coloured pill button.
 - **Hover:** border to ink at 30%.
 - **Focus:** border goes amber with a 4px amber-soft halo; elsewhere focus is a 2px amber outline at 3px offset.
 - **Error:** bad border with a 3px bad-soft halo; form errors are a bad-soft panel with an alert mask. The link field is checked by the app, not the browser (`novalidate`): it takes the bad border and a 4px bad-soft halo, and the form error sits directly under it. A stopped job's error uses the same panel.
@@ -391,7 +391,7 @@ The hero sheet's tab draws the route a new source will take (Captions for a link
 At 1280px and wider, the last pages stand in a column of glass rows, each with a 58px terrain thumbnail at 16px radius, joined by a 2px dashed trail in on-map at 35%. Hover nudges a row 2px right.
 
 ### Look swatches
-Each slide look is shown as a miniature slide: its surface, a title "Aa" in its display face, an accent bar, a statement panel on the right third, and five data bars, always in the look's light colours whatever the app theme. These belong to the slide looks, not the workspace palette. The chosen look in Settings carries a 22px amber tick disc in the statement panel's empty lower corner, clear of the accent bar.
+Each slide look is shown as a miniature slide: its surface, a title "Aa" in its display face, an accent bar, a statement panel on the right third, and five data bars, always in the look's light colours whatever the app theme. These belong to the slide looks, not the workspace palette. A chosen look, on the start sheet and in Settings, takes the chosen-tile treatment (amber border, amber-soft wash) and carries a 22px amber tick disc in the statement panel's empty lower corner, clear of the accent bar.
 
 ## Do's and Don'ts
 
