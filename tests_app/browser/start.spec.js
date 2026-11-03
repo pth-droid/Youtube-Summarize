@@ -148,7 +148,6 @@ test('mobile home keeps the link and start button in view and supports other sou
   await expect(page.locator('#video-url')).toBeVisible();
   await expect(page.locator('#video-url')).toHaveAttribute('required');
   await expect(page.locator('#source-file')).not.toHaveAttribute('required');
-  await page.getByRole('button', {name: 'Menu', exact: true}).click();
   await page.locator('.nav-item[data-view="library"]').click();
   await expect(page.locator('#view-library')).toBeVisible();
   await page.getByRole('button', {name: 'New learning page'}).click();

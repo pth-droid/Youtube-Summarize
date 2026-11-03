@@ -80,7 +80,7 @@ test('edit slides: change text in place, keep the deck keys out of it, and save 
   await expect(page.locator('#edit-bar')).toBeVisible();
   await expect(heading).toHaveText('A title that is not kept');
   page.once('dialog', dialog => dialog.accept());
-  await page.getByRole('button', {name: '← Library'}).click();
+  await page.getByRole('button', {name: 'Back to library'}).click();
   await expect(page).toHaveURL(/#library$/);
   await page.locator('.page-card', {hasText: title}).getByRole('button', {name: /Present|Open/}).first().click();
   await expect(page.frameLocator('#reader-frame').locator('.slide-frame').nth(3)).toContainText(before);

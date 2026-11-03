@@ -149,7 +149,6 @@ test('mobile library, genuine semantic page, settings persistence and backup', a
     expect(await frame.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({path: '.feasibility/screenshots/real-reader-mobile.png', fullPage: true});
   }
-  await page.getByRole('button', {name: 'Menu', exact: true}).click();
   await page.locator('.nav-item[data-view="settings"]').click();
   await page.locator('#settings-language').selectOption('en');
   await page.getByRole('button', {name: 'Save preferences'}).click();
