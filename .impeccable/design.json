@@ -1,0 +1,880 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-02T20:14:49+00:00",
+  "title": "Design System: Distill",
+  "extensions": {
+    "colorMeta": {
+      "amber": {
+        "role": "primary",
+        "displayName": "Route Amber",
+        "canonical": "#f5a524",
+        "tonalRamp": [
+          "#3c2b11",
+          "#6f4d16",
+          "#a87015",
+          "#e8940d",
+          "#ecab40",
+          "#e9bf7c",
+          "#ecd7b6",
+          "#f8f4ec"
+        ]
+      },
+      "amber-ink-night": {
+        "role": "primary",
+        "displayName": "Amber Ink (night)",
+        "canonical": "#f7b13a",
+        "tonalRamp": [
+          "#3c2c11",
+          "#6f4e15",
+          "#a97214",
+          "#e9970c",
+          "#edad40",
+          "#eac17b",
+          "#edd8b6",
+          "#f8f4ec"
+        ]
+      },
+      "amber-ink-day": {
+        "role": "primary",
+        "displayName": "Amber Ink (day)",
+        "canonical": "#975700",
+        "tonalRamp": [
+          "#3e2a0f",
+          "#734a12",
+          "#af6b0d",
+          "#f28d03",
+          "#f5a538",
+          "#eebc77",
+          "#efd6b3",
+          "#f9f3ec"
+        ]
+      },
+      "on-amber": {
+        "role": "primary",
+        "displayName": "On Amber",
+        "canonical": "#1d1304",
+        "tonalRamp": [
+          "#382a14",
+          "#674a1d",
+          "#9c6b21",
+          "#d58d20",
+          "#dea54f",
+          "#e0bc85",
+          "#e8d6bb",
+          "#f7f3ed"
+        ]
+      },
+      "pin-white": {
+        "role": "secondary",
+        "displayName": "Pin White",
+        "canonical": "#f7faf9",
+        "tonalRamp": [
+          "#212c28",
+          "#374e46",
+          "#4c7165",
+          "#5f9684",
+          "#81ac9e",
+          "#a5c0b7",
+          "#cad8d3",
+          "#f1f4f3"
+        ]
+      },
+      "pin-ink": {
+        "role": "secondary",
+        "displayName": "Pin Ink",
+        "canonical": "#0f1618",
+        "tonalRamp": [
+          "#21292c",
+          "#37494e",
+          "#4c6971",
+          "#5f8a96",
+          "#81a3ac",
+          "#a5bac0",
+          "#cad5d8",
+          "#f1f3f4"
+        ]
+      },
+      "cover-teal": {
+        "role": "tertiary",
+        "displayName": "Survey Teal",
+        "canonical": "#2a6a69",
+        "tonalRamp": [
+          "#1c3030",
+          "#2d5757",
+          "#3b8180",
+          "#47aead",
+          "#6ebfbe",
+          "#99cccb",
+          "#c4dede",
+          "#eff5f5"
+        ]
+      },
+      "cover-moss": {
+        "role": "tertiary",
+        "displayName": "Survey Moss",
+        "canonical": "#56733c",
+        "tonalRamp": [
+          "#262e1f",
+          "#415233",
+          "#5d7845",
+          "#78a055",
+          "#95b479",
+          "#b1c5a0",
+          "#d1dac8",
+          "#f2f4f0"
+        ]
+      },
+      "cover-blue": {
+        "role": "tertiary",
+        "displayName": "Survey Blue",
+        "canonical": "#335a8a",
+        "tonalRamp": [
+          "#1b2531",
+          "#2c4059",
+          "#395a84",
+          "#4375b2",
+          "#6b92c2",
+          "#97b0ce",
+          "#c3d0df",
+          "#eff2f5"
+        ]
+      },
+      "cover-ochre": {
+        "role": "tertiary",
+        "displayName": "Survey Ochre",
+        "canonical": "#9a6a1c",
+        "tonalRamp": [
+          "#372a16",
+          "#644a21",
+          "#966c26",
+          "#cd8e28",
+          "#d8a655",
+          "#dcbc89",
+          "#e6d6bd",
+          "#f7f3ee"
+        ]
+      },
+      "cover-clay": {
+        "role": "tertiary",
+        "displayName": "Survey Clay",
+        "canonical": "#8a4a36",
+        "tonalRamp": [
+          "#31211c",
+          "#58372d",
+          "#824c3b",
+          "#af5f46",
+          "#c0816d",
+          "#cda598",
+          "#decac4",
+          "#f5f1ef"
+        ]
+      },
+      "cover-violet": {
+        "role": "tertiary",
+        "displayName": "Survey Violet",
+        "canonical": "#4f4a80",
+        "tonalRamp": [
+          "#21202d",
+          "#38354f",
+          "#4d4974",
+          "#605a9a",
+          "#827db0",
+          "#a6a3c2",
+          "#cbc9d9",
+          "#f1f1f4"
+        ]
+      },
+      "ground-night": {
+        "role": "neutral",
+        "displayName": "Night Ground",
+        "canonical": "#0e1416",
+        "tonalRamp": [
+          "#21292b",
+          "#37484d",
+          "#4c6770",
+          "#608895",
+          "#82a1ab",
+          "#a5b9c0",
+          "#cad4d8",
+          "#f1f3f4"
+        ]
+      },
+      "ground-day": {
+        "role": "neutral",
+        "displayName": "Day Survey",
+        "canonical": "#e2e8e5",
+        "tonalRamp": [
+          "#242926",
+          "#3d4842",
+          "#55685e",
+          "#6d887a",
+          "#8ca196",
+          "#acb9b3",
+          "#ced5d1",
+          "#f2f3f2"
+        ]
+      },
+      "sheet-night": {
+        "role": "neutral",
+        "displayName": "Graphite Sheet",
+        "canonical": "#172023",
+        "tonalRamp": [
+          "#21292b",
+          "#38474c",
+          "#4e676f",
+          "#628793",
+          "#83a0aa",
+          "#a6b9bf",
+          "#cbd4d7",
+          "#f1f3f4"
+        ]
+      },
+      "sheet-day": {
+        "role": "neutral",
+        "displayName": "White Sheet",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#262626",
+          "#424242",
+          "#5e5e5e",
+          "#7a7a7a",
+          "#969696",
+          "#b2b2b2",
+          "#d1d1d1",
+          "#f2f2f2"
+        ]
+      },
+      "sheet-inset-night": {
+        "role": "neutral",
+        "displayName": "Sheet Inset (night)",
+        "canonical": "#10171a",
+        "tonalRamp": [
+          "#21282c",
+          "#37474e",
+          "#4b6672",
+          "#5e8697",
+          "#809fad",
+          "#a4b8c1",
+          "#cad4d8",
+          "#f1f3f4"
+        ]
+      },
+      "sheet-inset-day": {
+        "role": "neutral",
+        "displayName": "Sheet Inset (day)",
+        "canonical": "#f1f4f2",
+        "tonalRamp": [
+          "#232925",
+          "#3c4840",
+          "#55685b",
+          "#6c8976",
+          "#8ba293",
+          "#abbab0",
+          "#ced5d0",
+          "#f1f3f2"
+        ]
+      },
+      "raise-night": {
+        "role": "neutral",
+        "displayName": "Raise (night)",
+        "canonical": "#202a2d",
+        "tonalRamp": [
+          "#22282a",
+          "#3a474b",
+          "#51666c",
+          "#66858f",
+          "#879fa6",
+          "#a8b8bd",
+          "#ccd4d6",
+          "#f1f3f3"
+        ]
+      },
+      "raise-day": {
+        "role": "neutral",
+        "displayName": "Raise (day)",
+        "canonical": "#e8edea",
+        "tonalRamp": [
+          "#232926",
+          "#3c4841",
+          "#54685c",
+          "#6c8977",
+          "#8ba294",
+          "#abbab1",
+          "#cdd5d0",
+          "#f1f3f2"
+        ]
+      },
+      "ink-night": {
+        "role": "neutral",
+        "displayName": "Ink (night)",
+        "canonical": "#eef3f1",
+        "tonalRamp": [
+          "#222a27",
+          "#3a4b44",
+          "#506c61",
+          "#668f7f",
+          "#86a79a",
+          "#a8bdb5",
+          "#ccd6d2",
+          "#f1f3f2"
+        ]
+      },
+      "ink-day": {
+        "role": "neutral",
+        "displayName": "Ink (day)",
+        "canonical": "#12191b",
+        "tonalRamp": [
+          "#22292b",
+          "#39484c",
+          "#4e676f",
+          "#628892",
+          "#84a1a9",
+          "#a7b9be",
+          "#cbd4d7",
+          "#f1f3f4"
+        ]
+      },
+      "muted-night": {
+        "role": "neutral",
+        "displayName": "Muted (night)",
+        "canonical": "#9aaca7",
+        "tonalRamp": [
+          "#242927",
+          "#3e4744",
+          "#566662",
+          "#6f8680",
+          "#8da09b",
+          "#adb8b5",
+          "#ced4d2",
+          "#f2f3f3"
+        ]
+      },
+      "muted-day": {
+        "role": "neutral",
+        "displayName": "Muted (day)",
+        "canonical": "#56635f",
+        "tonalRamp": [
+          "#252827",
+          "#3f4644",
+          "#596461",
+          "#72837e",
+          "#909d99",
+          "#aeb7b4",
+          "#cfd3d2",
+          "#f2f3f2"
+        ]
+      },
+      "on-map-night": {
+        "role": "neutral",
+        "displayName": "On Map (night)",
+        "canonical": "#f3f6f5",
+        "tonalRamp": [
+          "#232a27",
+          "#3b4945",
+          "#536a62",
+          "#698c80",
+          "#89a49b",
+          "#aabbb5",
+          "#cdd5d3",
+          "#f1f3f3"
+        ]
+      },
+      "on-map-muted-day": {
+        "role": "neutral",
+        "displayName": "On Map Muted (day)",
+        "canonical": "#45524f",
+        "tonalRamp": [
+          "#242827",
+          "#3e4745",
+          "#576562",
+          "#708580",
+          "#8e9f9b",
+          "#adb8b5",
+          "#cfd4d2",
+          "#f2f3f3"
+        ]
+      },
+      "primary-hover-day": {
+        "role": "neutral",
+        "displayName": "Primary Hover (day)",
+        "canonical": "#263134",
+        "tonalRamp": [
+          "#23282a",
+          "#3b474a",
+          "#52666b",
+          "#68858d",
+          "#889fa5",
+          "#a9b8bc",
+          "#ccd4d6",
+          "#f1f3f3"
+        ]
+      },
+      "good-night": {
+        "role": "neutral",
+        "displayName": "Good (night)",
+        "canonical": "#63c792",
+        "tonalRamp": [
+          "#1b3126",
+          "#2b5941",
+          "#38845c",
+          "#42b377",
+          "#6ac394",
+          "#96cfb1",
+          "#c3dfd0",
+          "#eff5f2"
+        ]
+      },
+      "good-day": {
+        "role": "neutral",
+        "displayName": "Good (day)",
+        "canonical": "#1c7f4d",
+        "tonalRamp": [
+          "#173526",
+          "#236142",
+          "#2b925e",
+          "#2ec77a",
+          "#5ad396",
+          "#8cd9b2",
+          "#bee4d1",
+          "#eef6f2"
+        ]
+      },
+      "bad-night": {
+        "role": "neutral",
+        "displayName": "Bad (night)",
+        "canonical": "#ff8a7a",
+        "tonalRamp": [
+          "#3e140f",
+          "#731d12",
+          "#af210d",
+          "#f21f03",
+          "#f54f38",
+          "#ee8577",
+          "#efbbb3",
+          "#f9edec"
+        ]
+      },
+      "bad-day": {
+        "role": "neutral",
+        "displayName": "Bad (day)",
+        "canonical": "#b8352a",
+        "tonalRamp": [
+          "#351a17",
+          "#612824",
+          "#91332c",
+          "#c63b2f",
+          "#d2645b",
+          "#d8938d",
+          "#e4c1be",
+          "#f6efee"
+        ]
+      },
+      "line-night": {
+        "role": "neutral",
+        "displayName": "Hairline (night)",
+        "canonical": "rgb(255 255 255 / .08)"
+      },
+      "line-strong-night": {
+        "role": "neutral",
+        "displayName": "Strong Hairline (night)",
+        "canonical": "rgb(255 255 255 / .15)"
+      },
+      "line-day": {
+        "role": "neutral",
+        "displayName": "Hairline (day)",
+        "canonical": "rgb(15 30 28 / .09)"
+      },
+      "line-strong-day": {
+        "role": "neutral",
+        "displayName": "Strong Hairline (day)",
+        "canonical": "rgb(15 30 28 / .17)"
+      },
+      "glass-night": {
+        "role": "neutral",
+        "displayName": "Glass (night)",
+        "canonical": "rgb(26 36 39 / .55)"
+      },
+      "glass-hover-night": {
+        "role": "neutral",
+        "displayName": "Glass Hover (night)",
+        "canonical": "rgb(52 66 70 / .7)"
+      },
+      "glass-day": {
+        "role": "neutral",
+        "displayName": "Glass (day)",
+        "canonical": "rgb(255 255 255 / .58)"
+      },
+      "glass-hover-day": {
+        "role": "neutral",
+        "displayName": "Glass Hover (day)",
+        "canonical": "rgb(255 255 255 / .9)"
+      },
+      "contour-night": {
+        "role": "neutral",
+        "displayName": "Contour (night)",
+        "canonical": "rgb(214 232 226 / .085)"
+      },
+      "contour-day": {
+        "role": "neutral",
+        "displayName": "Contour (day)",
+        "canonical": "rgb(22 48 44 / .12)"
+      },
+      "pool-teal-night": {
+        "role": "neutral",
+        "displayName": "Teal Pool (night; day rgb(126 178 176 / .5))",
+        "canonical": "rgb(42 116 120 / .42)"
+      },
+      "pool-amber-night": {
+        "role": "primary",
+        "displayName": "Amber Pool (night; day .2)",
+        "canonical": "rgb(245 165 36 / .11)"
+      },
+      "amber-soft": {
+        "role": "primary",
+        "displayName": "Amber Soft (day .16)",
+        "canonical": "rgb(245 165 36 / .13)"
+      },
+      "amber-line-night": {
+        "role": "primary",
+        "displayName": "Amber Line (night)",
+        "canonical": "rgb(245 165 36 / .6)"
+      },
+      "amber-line-day": {
+        "role": "primary",
+        "displayName": "Amber Line (day)",
+        "canonical": "rgb(214 132 6 / .7)"
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "View heading on the map, in on-map colour; 1.5rem below 640px."
+      },
+      "title-lg": {
+        "displayName": "Title Large",
+        "purpose": "Job detail, Settings section and dialog headings."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Library card titles, approval and editor headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Base text and ledes."
+      },
+      "body-sm": {
+        "displayName": "Body Small",
+        "purpose": "Buttons (600), notices, callouts, disclosure summaries."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels, hints, tabs, chips, route pill."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "purpose": "Card and recent meta, stop names, badges."
+      },
+      "micro": {
+        "displayName": "Micro",
+        "purpose": "Count badges (700, tabular), cover tags, lobe stop names."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "URLs, logs, hex inputs, storage paths, the share command only."
+      }
+    },
+    "shadows": [
+      {
+        "name": "sheet-night",
+        "value": "inset 0 1px 0 rgb(255 255 255 / .05), 0 28px 60px -20px rgb(0 0 0 / .7), 0 2px 8px rgb(0 0 0 / .25)",
+        "purpose": "Sheets, cards, dialogs, notices, reader frame at night."
+      },
+      {
+        "name": "sheet-day",
+        "value": "0 28px 60px -24px rgb(22 50 46 / .32), 0 2px 6px rgb(22 50 46 / .08)",
+        "purpose": "Same role by day."
+      },
+      {
+        "name": "drop-night",
+        "value": "drop-shadow(0 24px 30px rgb(0 0 0 / .42)) drop-shadow(0 2px 4px rgb(0 0 0 / .3))",
+        "purpose": "filter for lobed sheets at night, so the shadow follows sheet and tab."
+      },
+      {
+        "name": "drop-day",
+        "value": "drop-shadow(0 22px 28px rgb(22 50 46 / .17)) drop-shadow(0 2px 3px rgb(22 50 46 / .08))",
+        "purpose": "filter for lobed sheets by day."
+      },
+      {
+        "name": "glass-night",
+        "value": "0 12px 30px -12px rgb(0 0 0 / .55)",
+        "purpose": "Rail, orbs, glass fields and rows, tooltips, pins."
+      },
+      {
+        "name": "glass-day",
+        "value": "0 12px 30px -14px rgb(20 45 42 / .35)",
+        "purpose": "Same role by day."
+      },
+      {
+        "name": "pin-lift",
+        "value": "0 6px 16px -6px rgb(0 0 0 / .45)",
+        "purpose": "Active nav pin; the cover pin uses .55."
+      },
+      {
+        "name": "primary-button",
+        "value": "0 8px 20px -10px rgb(0 0 0 / .6)",
+        "purpose": "Primary pill cast shadow."
+      },
+      {
+        "name": "savebar",
+        "value": "0 22px 44px -16px rgb(0 0 0 / .6)",
+        "purpose": "Sticky Settings save bar."
+      },
+      {
+        "name": "focus-halo",
+        "value": "0 0 0 4px rgb(245 165 36 / .13)",
+        "purpose": "Field and link-field focus, with an amber border."
+      },
+      {
+        "name": "glass-blur",
+        "value": "backdrop-filter: blur(18px) saturate(1.4)",
+        "purpose": "Frosted controls on the map only."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(.16,1,.3,1)",
+        "purpose": "Exponential ease-out for every state change and entrance."
+      },
+      {
+        "name": "state-colour",
+        "value": "180ms",
+        "purpose": "Background, border, colour and shadow changes."
+      },
+      {
+        "name": "state-transform",
+        "value": "200ms",
+        "purpose": "Press scale (0.97 buttons, 0.95 orbs), pin scale 1.05, recent nudge 2px."
+      },
+      {
+        "name": "disclosure",
+        "value": "220ms",
+        "purpose": "Chevron turns 180deg when a disclosure opens."
+      },
+      {
+        "name": "rise",
+        "value": "220ms, translateY(8px) from opacity .4",
+        "purpose": "A view or dialog entering; Settings sections 240ms, help card and save bar 220ms."
+      },
+      {
+        "name": "drop-in",
+        "value": "220ms, 12px down from opacity 0",
+        "purpose": "Notices at the top of the map."
+      },
+      {
+        "name": "card-lift",
+        "value": "250ms, translateY(-3px)",
+        "purpose": "Library card hover."
+      },
+      {
+        "name": "flow",
+        "value": "1s linear infinite, dash 7 7, offset -14",
+        "purpose": "The live route leg."
+      },
+      {
+        "name": "beacon",
+        "value": "1.8s infinite",
+        "purpose": "Live stop ring and live job dot."
+      },
+      {
+        "name": "pulse-dot",
+        "value": "1.6s ease-in-out infinite",
+        "purpose": "Live badge dot."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce removes all transitions and animations",
+        "purpose": "Required."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "wide",
+        "value": "1280px",
+        "note": "At and above: Recent column beside the hero sheet; look editor in two columns."
+      },
+      {
+        "name": "settings",
+        "value": "1100px",
+        "note": "Below: Settings rail becomes a pill row; job list 260px."
+      },
+      {
+        "name": "dock",
+        "value": "900px",
+        "note": "Below: rail splits into a top row and a fixed bottom dock."
+      },
+      {
+        "name": "phone",
+        "value": "640px",
+        "note": "Below: Create button leaves the link field; single-column grids; compact lobe."
+      }
+    ],
+    "themes": {
+      "default": "night",
+      "switch": ":root[data-theme=light] overrides the same custom properties; theme.js sets data-theme before paint (storage key visual-learning-theme)."
+    },
+    "constraints": [
+      "CSP style-src self: no inline style attributes; per-item values go through style.setProperty.",
+      "img-src self and data: only; masks are /static/terrain.svg or data-URI SVGs.",
+      "Fonts self-hosted from distill/web/fonts with provenance in fonts/README.md.",
+      "Look swatch markup (.look-preview with b, i.eyebrow, i.feature, .bars) and --look-* properties are read by browser tests.",
+      "Saved pages and decks inside the reader frame keep their own styles."
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one action per surface: a pill in the pin colour (white at night, ink by day).",
+      "html": "<button class=\"ds-btn-primary\">Create interactive page<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg></button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 20px;border:1px solid transparent;border-radius:999px;background:#f7faf9;color:#0f1618;font:600 .875rem/1.2 \"Be Vietnam Pro\",system-ui,sans-serif;box-shadow:0 8px 20px -10px rgb(0 0 0 / .6);cursor:pointer;transition:background .18s,transform .2s cubic-bezier(.16,1,.3,1)}.ds-btn-primary svg{width:17px;height:17px}.ds-btn-primary:hover{background:#fff}.ds-btn-primary:active{transform:scale(.97)}.ds-btn-primary:focus-visible{outline:2px solid #f5a524;outline-offset:3px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Supporting action inside a sheet.",
+      "html": "<button class=\"ds-btn-secondary\">Change options</button>",
+      "css": ".ds-btn-secondary{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 20px;border:1px solid rgb(255 255 255 / .15);border-radius:999px;background:#10171a;color:#eef3f1;font:600 .875rem/1.2 \"Be Vietnam Pro\",system-ui,sans-serif;cursor:pointer;transition:background .18s,transform .2s cubic-bezier(.16,1,.3,1)}.ds-btn-secondary:hover{background:#202a2d}.ds-btn-secondary:active{transform:scale(.97)}.ds-btn-secondary:focus-visible{outline:2px solid #f5a524;outline-offset:3px}"
+    },
+    {
+      "name": "Glass Orb",
+      "kind": "button",
+      "refersTo": "orb",
+      "description": "Frosted 44px round control that floats on the map (theme, help).",
+      "html": "<button class=\"ds-orb\" aria-label=\"Switch to light mode\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 3v2M12 19v2M3 12h2M19 12h2\"/></svg></button>",
+      "css": ".ds-orb{display:grid;place-items:center;width:44px;height:44px;padding:0;border-radius:50%;border:1px solid rgb(255 255 255 / .13);background:rgb(26 36 39 / .55);color:#f3f6f5;box-shadow:0 12px 30px -12px rgb(0 0 0 / .55);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);cursor:pointer;transition:background .18s,transform .2s cubic-bezier(.16,1,.3,1)}.ds-orb svg{width:19px;height:19px}.ds-orb:hover{background:rgb(52 66 70 / .7)}.ds-orb:active{transform:scale(.95)}.ds-orb:focus-visible{outline:2px solid #f5a524;outline-offset:3px}"
+    },
+    {
+      "name": "Link Field",
+      "kind": "input",
+      "refersTo": "link-field",
+      "description": "The most used control: a 64px pill with the primary Create button inside its right end.",
+      "html": "<div class=\"ds-link\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1\"/><path d=\"M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1\"/></svg><input placeholder=\"Paste a YouTube link\" aria-label=\"YouTube link\"><button class=\"ds-link-go\">Create<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg></button></div>",
+      "css": ".ds-link{position:relative;display:flex;align-items:center;gap:12px;width:560px;max-width:100%;height:64px;padding:0 150px 0 22px;border-radius:999px;border:1px solid rgb(255 255 255 / .15);background:#10171a;color:#9aaca7;font-family:\"Be Vietnam Pro\",system-ui,sans-serif;transition:border-color .18s,box-shadow .18s}.ds-link svg{width:20px;height:20px}.ds-link:hover{border-color:rgb(238 243 241 / .3)}.ds-link:focus-within{border-color:#f5a524;box-shadow:0 0 0 4px rgb(245 165 36 / .13)}.ds-link input{flex:1;height:100%;border:0;background:transparent;color:#eef3f1;font:400 1rem \"Be Vietnam Pro\",system-ui,sans-serif;caret-color:#f5a524;outline:none}.ds-link-go{position:absolute;top:8px;right:8px;display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 22px;border:0;border-radius:999px;background:#f7faf9;color:#0f1618;font:600 .875rem \"Be Vietnam Pro\",system-ui,sans-serif;cursor:pointer}.ds-link-go svg{width:17px;height:17px}.ds-link-go:hover{background:#fff}.ds-link-go:focus-visible{outline:2px solid #f5a524;outline-offset:3px}"
+    },
+    {
+      "name": "Rail Navigation",
+      "kind": "nav",
+      "refersTo": "nav-pin-active",
+      "description": "Frosted capsule of labelled round pins; the active pin takes the pin colour; counts are amber badges.",
+      "html": "<nav class=\"ds-rail\"><a class=\"ds-nav on\" href=\"#\" aria-current=\"page\"><span class=\"ds-pin\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"/></svg></span>Create</a><a class=\"ds-nav\" href=\"#\"><span class=\"ds-pin\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 4h4v16H5zM11 4h4v16h-4zM17 5l3 .8-3.6 14-3-.8\"/></svg><span class=\"ds-count\">12</span></span>Library</a></nav>",
+      "css": ".ds-rail{display:inline-flex;flex-direction:column;gap:4px;padding:8px 6px;border-radius:44px;background:rgb(26 36 39 / .55);border:1px solid rgb(255 255 255 / .13);box-shadow:0 12px 30px -12px rgb(0 0 0 / .55);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4)}.ds-nav{display:flex;flex-direction:column;align-items:center;gap:5px;width:74px;padding:7px 2px 8px;border-radius:30px;color:rgb(243 246 245 / .7);font:500 .71875rem/1.2 \"Be Vietnam Pro\",system-ui,sans-serif;text-decoration:none}.ds-pin{position:relative;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;transition:background .18s}.ds-pin svg{width:21px;height:21px}.ds-nav:hover{color:#f3f6f5}.ds-nav:hover .ds-pin{background:rgb(52 66 70 / .7)}.ds-nav.on{color:#f3f6f5;font-weight:600}.ds-nav.on .ds-pin{background:#f7faf9;color:#0f1618;box-shadow:0 6px 16px -6px rgb(0 0 0 / .45)}.ds-nav:focus-visible{outline:2px solid #f5a524;outline-offset:3px}.ds-count{position:absolute;top:-3px;right:-5px;display:grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#f5a524;color:#1d1304;font-size:.6875rem;font-weight:700;font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px rgb(0 0 0 / .22)}"
+    },
+    {
+      "name": "Segmented Tabs",
+      "kind": "chip",
+      "refersTo": "segmented-pressed",
+      "description": "Pill track; the pressed choice fills amber.",
+      "html": "<div class=\"ds-seg\"><button aria-pressed=\"true\">YouTube link</button><button aria-pressed=\"false\">Transcript file</button><button aria-pressed=\"false\">Audio file</button></div>",
+      "css": ".ds-seg{display:inline-flex;gap:2px;padding:4px;border-radius:999px;background:#10171a;border:1px solid rgb(255 255 255 / .08)}.ds-seg button{min-height:38px;padding:0 15px;border:0;border-radius:999px;background:transparent;color:#9aaca7;font:500 .8125rem \"Be Vietnam Pro\",system-ui,sans-serif;cursor:pointer;transition:background .18s,color .18s}.ds-seg button:hover{color:#eef3f1}.ds-seg button[aria-pressed=true]{background:#f5a524;color:#1d1304;box-shadow:0 4px 12px -6px rgb(0 0 0 / .45)}.ds-seg button:focus-visible{outline:2px solid #f5a524;outline-offset:3px}"
+    },
+    {
+      "name": "Default Chip and Badge",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Saved-default chips (label and value) and state badges (dot plus word).",
+      "html": "<div class=\"ds-chips\"><span class=\"ds-chip\"><small>Language</small>Vietnamese</span><span class=\"ds-badge live\">Analyzing ideas</span><span class=\"ds-badge ok\">Ready</span></div>",
+      "css": ".ds-chips{display:flex;flex-wrap:wrap;gap:8px;font-family:\"Be Vietnam Pro\",system-ui,sans-serif}.ds-chip{display:inline-flex;align-items:baseline;gap:7px;padding:6px 12px;border-radius:999px;background:#10171a;border:1px solid rgb(255 255 255 / .08);color:#eef3f1;font-size:.8125rem;font-weight:500}.ds-chip small{font-size:.6875rem;color:#9aaca7}.ds-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.75rem;font-weight:500}.ds-badge::before{content:\"\";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.7}.ds-badge.live{color:#f7b13a;background:rgb(245 165 36 / .13)}.ds-badge.ok{color:#63c792;background:rgb(99 199 146 / .14)}"
+    },
+    {
+      "name": "Library Card",
+      "kind": "card",
+      "refersTo": "page-card",
+      "description": "Graphite card with a generated terrain cover, a white cover pin and an Open pill.",
+      "html": "<article class=\"ds-card\"><div class=\"ds-cover\"><span class=\"ds-cover-pin\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 4h4v16H5zM11 4h4v16h-4zM17 5l3 .8-3.6 14-3-.8\"/></svg></span><span class=\"ds-tag\">Slides</span></div><div class=\"ds-card-body\"><h3>Roast development and first crack</h3><p>How heat, time and airflow shape a roast, with the evidence for each claim.</p></div><div class=\"ds-card-foot\"><span>Nov 3, 2026</span><button>Open</button></div></article>",
+      "css": ".ds-card{display:flex;flex-direction:column;width:300px;padding:8px;border-radius:26px;background:#172023;color:#eef3f1;font-family:\"Be Vietnam Pro\",system-ui,sans-serif;box-shadow:inset 0 1px 0 rgb(255 255 255 / .05),0 28px 60px -20px rgb(0 0 0 / .7),0 2px 8px rgb(0 0 0 / .25);transition:transform .25s cubic-bezier(.16,1,.3,1)}.ds-card:hover{transform:translateY(-3px)}.ds-cover{position:relative;height:140px;border-radius:19px;background:radial-gradient(120% 90% at 70% 20%,rgb(255 255 255 / .2),transparent 60%),linear-gradient(155deg,#2a6a69,#0f2a2c)}.ds-cover-pin{position:absolute;left:12px;bottom:12px;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#f7faf9;color:#0f1618;box-shadow:0 6px 16px -6px rgb(0 0 0 / .55)}.ds-tag{position:absolute;top:10px;right:10px;padding:4px 10px;border-radius:999px;background:#f5a524;color:#1d1304;font-size:.6875rem;font-weight:600}.ds-card-body{padding:16px 12px 8px}.ds-card h3{margin:0 0 8px;font-size:1.0625rem;line-height:1.35;font-weight:600;letter-spacing:-.01em}.ds-card p{margin:0;font-size:.84375rem;line-height:1.55;color:#9aaca7}.ds-card-foot{display:flex;align-items:center;justify-content:space-between;padding:8px 4px 4px 12px;font-size:.75rem;color:#9aaca7}.ds-card-foot button{min-height:40px;padding:0 16px;border:0;border-radius:999px;background:#f7faf9;color:#0f1618;font:600 .875rem \"Be Vietnam Pro\",system-ui,sans-serif;cursor:pointer}.ds-card-foot button:focus-visible{outline:2px solid #f5a524;outline-offset:3px}"
+    },
+    {
+      "name": "Job Route",
+      "kind": "custom",
+      "refersTo": "route-pill",
+      "description": "Signature: stops on a curved line; done legs solid, the live leg flows in amber dashes, the rest dotted; a pill counts the stops left.",
+      "html": "<div class=\"ds-route\"><span class=\"ds-route-pill\">3 stops left</span><svg viewBox=\"0 0 500 64\" width=\"100%\" height=\"64\" aria-hidden=\"true\"><path class=\"d\" d=\"M50 44C100 44 100 20 150 20\"/><path class=\"l\" d=\"M150 20C200 20 200 44 250 44\"/><path class=\"n\" d=\"M250 44C300 44 300 20 350 20C400 20 400 32 450 32\"/><circle class=\"sd\" cx=\"50\" cy=\"44\" r=\"11\"/><circle class=\"sd\" cx=\"150\" cy=\"20\" r=\"11\"/><circle class=\"sl\" cx=\"250\" cy=\"44\" r=\"11.5\"/><circle class=\"sn\" cx=\"350\" cy=\"20\" r=\"6\"/><circle class=\"sn\" cx=\"450\" cy=\"32\" r=\"6\"/></svg></div>",
+      "css": ".ds-route{width:520px;max-width:100%;padding:24px;border-radius:28px;background:#172023;font-family:\"Be Vietnam Pro\",system-ui,sans-serif}.ds-route-pill{display:inline-flex;padding:6px 14px 6px 10px;border-radius:999px;background:rgb(245 165 36 / .13);color:#f7b13a;font-size:.8125rem;font-weight:600}.ds-route svg{display:block;margin-top:14px;overflow:visible}.ds-route path{fill:none;stroke-width:2.5;stroke-linecap:round}.ds-route .d{stroke:rgb(238 243 241 / .55)}.ds-route .l{stroke:#f5a524;stroke-width:3;stroke-dasharray:7 7;animation:ds-flow 1s linear infinite}.ds-route .n{stroke:rgb(255 255 255 / .15);stroke-dasharray:.5 7}.ds-route .sd{fill:#f7faf9}.ds-route .sl{fill:#f5a524;stroke:#172023;stroke-width:3}.ds-route .sn{fill:#172023;stroke:rgb(255 255 255 / .15);stroke-width:2}@keyframes ds-flow{to{stroke-dashoffset:-14}}@media (prefers-reduced-motion:reduce){.ds-route .l{animation:none}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Learning Atlas",
+    "overview": "The workspace is a map of what the owner is learning. A dark topographic ground fills the window: a generated contour sheet (`terrain.svg`, used as a CSS mask) over two soft pools of light, teal high on the right and amber low on the left. Work never sits flat on that ground. It floats on it as graphite sheets at night and white sheets by day, and the few controls that touch the map directly (the rail, theme and help orbs, library search, recent stops, job rows) are frosted glass, because the map scrolls beneath them. Every job is a route: stops on a curved line, the live leg flowing in amber, the destination pin filling when the page is ready.\n\nDensity is calm and operational. One family (Be Vietnam Pro, 400 to 700) carries every word, set in a short ramp from 28px view headings down to 11px tags. One signal colour, amber, marks routes, the live stop, the pressed choice and count badges; everything else is ink, graphite and translucent white. Primary actions are pills in the pin colour (white at night, ink by day), so amber stays free to mean \"here, now, chosen\".\n\nThe world rejects the grey sidebar beside a white grid of cards and the old forest-green sidebar it replaced. It lands as the pinned Dribbble reference (Nixtio, \"Bike Rental & Navigation App UI Design\") asked: an immersive map canvas, round frosted controls, floating cards and amber route lines.",
+    "keyCharacteristics": [
+      "A fixed map ground (two radial pools plus a masked contour layer) behind everything, in both themes.",
+      "Floating sheets with a 28px radius and a shadow that follows the shape; one hero sheet grows a lobe.",
+      "Frosted glass only where a control floats directly on the map.",
+      "White pins with ink icons at night, inverted by day; amber is the single signal.",
+      "Routes as the signature: curved legs, stops, a stops-left pill, a destination pin.",
+      "One family, authored 1.6px stroke icons from a single sprite."
+    ],
+    "rules": [
+      {
+        "name": "The One Signal Rule",
+        "body": "Amber means here, now or chosen: a route, the live stop, a pressed choice, a count, focus. If an element is amber and none of those, it is wrong.",
+        "section": "colors"
+      },
+      {
+        "name": "The Pin Colour Rule",
+        "body": "The primary action wears the pin colour, white at night and ink by day. Amber fills a button only where the button sits on a pin-coloured surface (the Settings save bar), so it still reads as the one thing to press.",
+        "section": "colors"
+      },
+      {
+        "name": "The Glass Earns Its Place Rule",
+        "body": "Frosted glass (blur 18px, saturate 1.4) appears only on controls that float directly over the map. Inside a sheet, surfaces are solid.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Family Rule",
+        "body": "Be Vietnam Pro sets every word of the workspace. Bricolage Grotesque is served only so the maroon slide look can preview its own type; it never sets workspace text.",
+        "section": "typography"
+      },
+      {
+        "name": "The Weight Not Case Rule",
+        "body": "Hierarchy is weight (400, 500, 600, 700) and a short size ramp. No uppercase labels, no letter-spaced captions, no small text above a heading.",
+        "section": "typography"
+      },
+      {
+        "name": "The Shadow Follows The Shape Rule",
+        "body": "A sheet with a lobe drops its box-shadow and takes the shape drop, so the tab and the concave corner cast one continuous shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Map Is Fixed Rule",
+        "body": "The ground, pools and contours are `position: fixed` behind all content; content scrolls over the map, never the map over itself.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep the map (ground, two pools, contour mask) fixed behind every view in both themes.",
+      "Do float work on sheets (28px radius, sheet shadow) and use glass only for controls that sit directly on the map.",
+      "Do keep amber to routes, the live stop, pressed choices, counts and focus; read amber text in amber ink.",
+      "Do make the primary action a pill in the pin colour: white at night, ink by day.",
+      "Do draw progress as a route: curved legs, stops, a stops-left pill, an amber destination.",
+      "Do give every source a generated terrain cover: one of the six survey tints and an offset into `terrain.svg`, both from a hash of its id.",
+      "Do set all workspace text in Be Vietnam Pro and draw icons from the 1.6px stroke sprite.",
+      "Do move with a 180 to 220ms exponential ease-out (`cubic-bezier(.16,1,.3,1)`): 180ms for colour, 200ms for scale and nudges, an 8px rise on a view or section, and nothing at all under reduced motion.",
+      "Do respect the CSP: set per-item values (cover offsets, look swatch colours) through the CSSOM with `style.setProperty`, never inline style attributes; load masks and images only from `/static` or data URIs; serve fonts from `distill/web/fonts` with their provenance in its README.",
+      "Do keep the look swatch markup and its `--look-*` custom properties (surface, display, ink, accent, feature, on-feature, data-1 to data-5): the browser tests read the swatch's background, its statement panel and its accent bar.",
+      "Do keep theme.js's storage key and message types; saved pages embed a copy."
+    ],
+    "donts": [
+      "Don't return to a grey sidebar beside a white grid of cards, or to the forest-green sidebar.",
+      "Don't fill a primary button with amber outside a pin-coloured bar, or use amber as decoration.",
+      "Don't put glass inside a sheet or stack glass on glass.",
+      "Don't use hard offset shadows, or box-shadow on a lobed sheet.",
+      "Don't add a second workspace typeface, uppercase letter-spaced labels or small text set above a heading.",
+      "Don't use text glyphs or emoji as icons; add a symbol to the sprite.",
+      "Don't load fonts, images or masks from another host, or write `style=\"...\"` into markup.",
+      "Don't restyle the saved pages and decks inside the reader frame from here; they are portable documents with their own styles."
+    ]
+  }
+}

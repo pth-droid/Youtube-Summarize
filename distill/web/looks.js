@@ -16,7 +16,7 @@ const LOOK_PAIRS=[['ink','surface','Text on the slide',4.5,7],['ink','paper','Te
   ['accent','tint','Accent on soft fill',4.5,4.5],['on-accent','accent','Text on accent',4.5,4.5],['on-feature','feature','Statement text',4.5,4.5],
   ['warning','warning-bg','Warning label',4.5,4.5],['warning','surface','Warning on the slide',4.5,4.5],['inference','surface','Inference label',4.5,4.5],
   ['focus','surface','Focus ring',3,3],...[1,2,3,4,5].map(n=>[`data-${n}`,'surface',`Series ${n} on the slide`,3,3])];
-const LOOK_VERDICTS={ok:'✓ Good',warn:'! Close up only',bad:'✕ Too faint'};
+const LOOK_VERDICTS={ok:'Good',warn:'Close up only',bad:'Too faint'};
 
 const lookEdit={details:null,id:null,mode:'light',values:null,saved:'',decks:[]};
 const lookItem=id=>lookEdit.details?.looks.find(item=>item.id===id);
@@ -30,7 +30,7 @@ function luminance(hex){const value=parseInt(hex.slice(1),16);return[value>>16,v
 function contrast(a,b){const x=luminance(a),y=luminance(b);return(Math.max(x,y)+.05)/(Math.min(x,y)+.05);}
 function normalHex(text){const value=text.trim().toLowerCase().replace(/^#?/,'#');if(/^#[0-9a-f]{3}$/.test(value))return'#'+[...value.slice(1)].map(c=>c+c).join('');return/^#[0-9a-f]{6}$/.test(value)?value:null;}
 
-function colourRow([token,name,hint]){return`<div class="colour-row" data-row="${token}"><input type="color" data-colour="${token}" aria-label="${escapeHTML(name)} colour"><label class="plain" for="look-hex-${token}"><strong>${escapeHTML(name)}</strong><small>${escapeHTML(hint)}</small></label><input id="look-hex-${token}" class="hex-input" data-hex="${token}" maxlength="7" spellcheck="false" autocomplete="off" aria-label="${escapeHTML(name)} hex code"><button type="button" class="token-reset" data-reset="${token}" title="Back to the original" aria-label="Put ${escapeHTML(name.toLowerCase())} back to the original" hidden>↺</button></div>`;}
+function colourRow([token,name,hint]){return`<div class="colour-row" data-row="${token}"><input type="color" data-colour="${token}" aria-label="${escapeHTML(name)} colour"><label class="plain" for="look-hex-${token}"><strong>${escapeHTML(name)}</strong><small>${escapeHTML(hint)}</small></label><input id="look-hex-${token}" class="hex-input" data-hex="${token}" maxlength="7" spellcheck="false" autocomplete="off" aria-label="${escapeHTML(name)} hex code"><button type="button" class="token-reset" data-reset="${token}" title="Back to the original" aria-label="Put ${escapeHTML(name.toLowerCase())} back to the original" hidden>${icon('reset')}</button></div>`;}
 function renderLookFields(){const group=([title,rows])=>`<div class="colour-group"><h3>${title}</h3>${rows.map(colourRow).join('')}</div>`;$('look-fields').innerHTML=LOOK_GROUPS.map(group).join('')+`<details class="colour-more"><summary>${LOOK_MORE[0]}: warning, inference and focus</summary>${group(LOOK_MORE)}</details>`;}
 function fontOptions(kind,designed){const fonts=lookEdit.details.fonts[kind];return(designed?'':`<option value="">As designed</option>`)+fonts.map(font=>`<option value="${font.id}">${escapeHTML(font.name)}${font.id===designed?' · as designed':''}</option>`).join('');}
 

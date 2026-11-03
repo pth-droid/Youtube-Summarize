@@ -22,3 +22,4 @@ BUILD_STATUS.local.md
 .build-data/
 artifacts-local/
 *.log
+.impeccable/review/

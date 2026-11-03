@@ -67,7 +67,7 @@ test('lecture slides: choose the output, present and take notes', async ({page, 
 
   await page.locator('.nav-item[data-view="library"]').click();
   const card = page.locator('.page-card').filter({hasText: title});
-  await expect(card).toContainText('SLIDES');
+  await expect(card).toContainText('Slides');
   await expect(card.getByRole('button', {name: 'Present'})).toBeVisible();
   const library = await (await request.get('/api/library')).json();
   const lecture = library.generations.find(item => item.title === title);

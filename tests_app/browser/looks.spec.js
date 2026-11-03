@@ -77,7 +77,7 @@ test('look editor: change a look, see how readable it is, preview it on a deck a
     await expect(hex(page, 'Text')).toHaveValue('#241614');
     await expect(page.locator('#checks-summary')).toContainText('every pair reads well');
     // Dark keeps its own colours, and the deck follows the editor into dark.
-    await page.getByRole('button', {name: '☾ Dark'}).click();
+    await page.getByRole('button', {name: 'Dark', exact: true}).click();
     await expect(hex(page, 'Slide background')).toHaveValue('#28110f');
     await expect(deck.locator('html')).toHaveAttribute('data-theme', 'dark');
     await hex(page, 'Slide background').fill('#111111');

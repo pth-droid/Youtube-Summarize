@@ -11,3 +11,11 @@ It was made from the variable font `BricolageGrotesque-VariableFont_opsz,wdth,wg
 - **Width** is fixed at normal (`wdth` 100), with `varLib.instancer`.
 - **Weight** (200–800) and **optical size** (12–96) stay variable.
 - **Characters** are subset with `pyftsubset` to Latin and Vietnamese: Google Fonts' latin and vietnamese ranges, plus arrows. The command keeps every OpenType feature and name record (`--layout-features=* --name-IDs=* --flavor=woff2`).
+
+## Be Vietnam Pro
+
+`be-vietnam-pro-regular.woff`, `-medium.woff`, `-semibold.woff` and `-bold.woff` are **Be Vietnam Pro** by Lam Bao, Tony Le and Vietanh Nguyen (Yellow Type Foundry), version 1.002. The workspace sets all its text in it.
+
+Copyright 2021 The Be Vietnam Pro Project Authors (https://github.com/bettergui/BeVietnamPro). It is licensed under the [SIL Open Font License, Version 1.1](https://openfontlicense.org). The files keep the font's own copyright and license fields.
+
+They were made from the installed static fonts (`BeVietnamPro-Regular.ttf` and the others) with fontTools 4.62, subset with `pyftsubset` to the same Latin and Vietnamese ranges as above plus arrows (`--layout-features=* --name-IDs=* --flavor=woff`). They are WOFF rather than WOFF2 because that fontTools had no Brotli module.

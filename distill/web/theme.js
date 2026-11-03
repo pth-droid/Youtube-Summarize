@@ -15,7 +15,8 @@
     const toggle = document.getElementById('theme-toggle');
     if (toggle) {
       const vi = document.documentElement.lang === 'vi';
-      toggle.textContent = value === 'dark' ? (vi ? 'Chế độ sáng' : 'Light mode') : (vi ? 'Chế độ tối' : 'Dark mode');
+      // An icon toggle keeps its icons and names itself in a .theme-label child; a text toggle is its own label.
+      (toggle.querySelector('.theme-label') || toggle).textContent = value === 'dark' ? (vi ? 'Chế độ sáng' : 'Light mode') : (vi ? 'Chế độ tối' : 'Dark mode');
       toggle.setAttribute('aria-label', value === 'dark' ? (vi ? 'Chuyển sang chế độ sáng' : 'Switch to light mode') : (vi ? 'Chuyển sang chế độ tối' : 'Switch to dark mode'));
     }
     const frame = document.getElementById('reader-frame');
