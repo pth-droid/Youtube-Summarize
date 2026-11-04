@@ -3,11 +3,13 @@
 The edit page is the deck rendered from its saved records with each text a person may change marked by its place in
 them (renderer.editable_plan). A save puts the changes into lecture.json, and part titles into knowledge.json, checks
 them with the contracts the AI's slides meet, and renders the deck, and its phone copy if it was shared, again.
-No AI request is made.
+No AI request is made. Every save keeps the records it replaced in the deck's edit history (edit-history.json), which
+the structure edits of deck_structure.py also use, so each step can be undone.
 """
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from pathlib import Path
 
@@ -23,6 +25,8 @@ from .share import deck_look, deck_records, phone_page, render_phone
 FIELD = re.compile(r"title|(?:objectives|takeaways)\.\d+|chapters\.\d+\.title|parts\.\d+\.slides\.\d+\."
                    r"(?:title|notes|points\.\d+|columns\.\d+\.(?:heading|points\.\d+)|entries\.\d+\.(?:label|text))")
 SPAN = re.compile(r"(\d+):(\d+)")
+HISTORY = "edit-history.json"
+HISTORY_STEPS = 20
 
 
 class EditError(ValueError):
@@ -39,13 +43,32 @@ def records_version(folder: Path) -> str:
     return digest.hexdigest()[:16]
 
 
+def snapshot(lecture: LecturePlan, knowledge: KnowledgeModel, label: str) -> dict:
+    """The records an edit step can put back: the whole lecture plan and the part titles, which live in the knowledge model."""
+    return {"label": label, "lecture": lecture.model_dump(mode="json"), "chapters": {chapter.id: chapter.title for chapter in knowledge.chapters}}
+
+
+def load_history(folder: Path) -> dict:
+    """The steps that can be undone and redone. A history that does not end at the deck's current records, because the
+    deck was made again since, is dropped: undoing it would bring back slides that are gone."""
+    try:
+        saved = json.loads((folder / HISTORY).read_text(encoding="utf-8"))
+        if saved["head"] == records_version(folder) and isinstance(saved["undo"], list) and isinstance(saved["redo"], list):
+            return saved
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    return {"head": "", "undo": [], "redo": []}
+
+
 def edit_page(store, generation: dict) -> str:
     """The deck in edit mode, in its look with the look's saved changes, as the reader shows it."""
     deck = store.managed_path(generation["page_path"])
     source, knowledge, lecture, figures = deck_records(deck.parent)
     page = lecture_page(source, knowledge, lecture, figures, deck_look(generation, deck), editable=True)
-    page = page.replace("</head>", f'<meta name="distill-version" content="{records_version(deck.parent)}"></head>', 1)
-    return with_custom_look(page, store.custom_looks())
+    history = load_history(deck.parent)
+    marks = (f'<meta name="distill-version" content="{records_version(deck.parent)}">'
+             f'<meta name="distill-history" content="{len(history["undo"])},{len(history["redo"])}">')
+    return with_custom_look(page.replace("</head>", f"{marks}</head>", 1), store.custom_looks())
 
 
 def clean(text: str, field: str) -> str:
@@ -94,6 +117,27 @@ def problem(error: ValidationError) -> str:
     return "These changes cannot be saved. Cancel, then edit again."
 
 
+def write_deck(store, generation: dict, folder: Path, records: tuple, history: tuple[list, list], *, titles: bool) -> None:
+    """Check the edited records the way the AI's slides are checked, then draw the deck, and its phone copy if it was
+    shared, from them. Nothing is written unless the deck draws. `records` is (knowledge, lecture); `history` is the steps
+    that can be undone and redone once these records are saved; `titles` is whether the knowledge model changed too."""
+    model, edited = records
+    deck = store.managed_path(generation["page_path"])
+    source, _, _, figures = deck_records(folder)
+    try:
+        validate_lecture(model, edited)
+    except ValueError as error:  # a figure on a stats slide that the source does not state
+        raise EditError(f"{error}. Put the figure the source states back.") from error
+    page = lecture_page(source, model, edited, figures, deck_look(generation, deck))
+    if titles:
+        write_json(folder / "knowledge.json", model.model_dump(mode="json"))
+    write_json(folder / "lecture.json", edited.model_dump(mode="json"))
+    write_page(deck, page)
+    write_json(folder / HISTORY, {"head": records_version(folder), "undo": history[0][-HISTORY_STEPS:], "redo": history[1][-HISTORY_STEPS:]})
+    if phone_page(store, generation).is_file():
+        render_phone(store, generation)
+
+
 def save_edits(store, generation: dict, version: str, changes: list[dict]) -> None:
     deck = store.managed_path(generation["page_path"])
     folder = deck.parent
@@ -108,14 +152,6 @@ def save_edits(store, generation: dict, version: str, changes: list[dict]) -> No
         raise EditError(problem(error)) from error
     if edited.title != lecture.title and not edited.layout_seed:
         edited.layout_seed = lecture.title  # a renamed deck keeps the layouts its first title chose
-    try:
-        validate_lecture(model, edited)
-    except ValueError as error:  # a figure on a stats slide that the source does not state
-        raise EditError(f"{error}. Put the figure the source states back.") from error
-    page = lecture_page(source, model, edited, figures, deck_look(generation, deck))
-    if any(change["field"].startswith("chapters.") for change in changes):
-        write_json(folder / "knowledge.json", model.model_dump(mode="json"))
-    write_json(folder / "lecture.json", edited.model_dump(mode="json"))
-    write_page(deck, page)
-    if phone_page(store, generation).is_file():
-        render_phone(store, generation)
+    history = load_history(folder)
+    write_deck(store, generation, folder, (model, edited), (history["undo"] + [snapshot(lecture, knowledge, "Edit text")], []),
+               titles=any(change["field"].startswith("chapters.") for change in changes))

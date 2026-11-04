@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import asyncio
 import hashlib
 from contextlib import asynccontextmanager
@@ -17,7 +18,7 @@ from urllib.parse import urlparse
 from typing import Annotated, Literal
 import uuid
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -120,6 +121,22 @@ class SlideEdits(StrictModel):
     changes: list[SlideTextChange] = Field(min_length=1, max_length=600)
 
 
+class SlideOp(StrictModel):
+    """One structure edit from a deck's edit mode. Slides are addressed as [part, place], both counted from 0."""
+    type: Literal["hide", "show", "delete", "duplicate", "move", "add", "layout", "undo", "redo"]
+    slide: list[int] | None = Field(None, min_length=2, max_length=2)
+    to: list[int] | None = Field(None, min_length=2, max_length=2)
+    part: int | None = Field(None, ge=0, le=99)
+    index: int | None = Field(None, ge=0, le=99)
+    layout: Literal["points", "steps", "compare", "columns", "table", "timeline", "pyramid", "funnel", "stats", "quote"] | None = None
+
+
+class SlideStructure(StrictModel):
+    version: str = Field(pattern=r"^[0-9a-f]{16}$")
+    changes: list[SlideTextChange] = Field(default_factory=list, max_length=600)
+    op: SlideOp
+
+
 class NewJob(StrictModel):
     url: str = Field(min_length=1, max_length=2000)
     preferences: Preferences = Field(default_factory=Preferences)
@@ -204,7 +221,8 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
             except ValueError:
                 return JSONResponse({"detail": "Invalid request length."}, status_code=400)
         # Library moves and other API operations cannot overlap inside this service.
-        if request.url.path.startswith("/api/"):
+        # Drawing slides for export takes seconds and changes nothing, so it does not hold the library up.
+        if request.url.path.startswith("/api/") and not request.url.path.endswith("/slides/export"):
             async with library_gate:
                 response = await call_next(request)
         else:
@@ -720,6 +738,75 @@ def create_app(data_dir: Path | str | None = None, *, auto_worker: bool = False)
         except (OSError, ValueError) as error:
             raise HTTPException(410, "The saved slides cannot be read again, so they cannot be edited.") from error
         return {"saved": len(value.changes)}
+
+    # Structure edits: hide, show, delete, duplicate, move and add slides, change a slide's layout, undo and redo, each one
+    # atomic with the text changes not saved yet. The deck is drawn again from the saved records; no AI request is made.
+    def structure_error(error):
+        return HTTPException(error.status, str(error))
+
+    @app.post("/api/generations/{generation_id}/slides/structure")
+    def edit_structure(generation_id: str, value: SlideStructure):
+        from .deck_edits import EditError
+        from .deck_structure import structure
+        result = deck_or_409(generation_id, "Only lecture slides can be edited.")
+        try:
+            return structure(store, result, value.version, [change.model_dump() for change in value.changes], value.op.model_dump())
+        except EditError as error:
+            raise structure_error(error) from error
+        except (OSError, ValueError) as error:
+            raise HTTPException(410, "The saved slides cannot be read again, so they cannot be edited.") from error
+
+    @app.get("/api/generations/{generation_id}/slides/layout-options")
+    def slide_layout_options(generation_id: str, slide: str = Query(pattern=r"^\d{1,2}\.\d{1,2}$")):
+        from .deck_edits import EditError
+        from .deck_structure import layout_options
+        result = deck_or_409(generation_id, "Only lecture slides can be edited.")
+        try:
+            return {"slide": slide, "options": layout_options(store, result, slide)}
+        except EditError as error:
+            raise structure_error(error) from error
+        except (OSError, ValueError) as error:
+            raise HTTPException(410, "The saved slides cannot be read again, so they cannot be edited.") from error
+
+    @app.get("/api/generations/{generation_id}/slides/layout-preview")
+    def slide_layout_preview(generation_id: str, slide: str = Query(pattern=r"^\d{1,2}\.\d{1,2}$"),
+                             layout: Literal["points", "steps", "compare", "columns", "table", "timeline", "pyramid", "funnel", "stats", "quote"] = Query()):
+        from .deck_edits import EditError
+        from .deck_structure import layout_preview
+        result = deck_or_409(generation_id, "Only lecture slides can be edited.")
+        try:
+            page = layout_preview(store, result, slide, layout)
+        except EditError as error:
+            raise structure_error(error) from error
+        except (OSError, ValueError) as error:
+            raise HTTPException(410, "The saved slides cannot be read again, so they cannot be previewed.") from error
+        return HTMLResponse(with_custom_look(page, store.custom_looks()), headers={"Content-Security-Policy": READER_POLICY})
+
+    # Export: the saved deck as a PDF, or as PNG pictures (a ZIP when there are several), drawn by Edge or Chrome on this computer.
+    @app.get("/api/generations/{generation_id}/slides/export")
+    def export_slides(generation_id: str, format: Literal["pdf", "png"] = Query(), slide: str = Query("all", pattern=r"^(all|\d{1,3})$"),
+                      scale: int = Query(1, ge=1, le=3), theme: Literal["light", "dark"] = Query("light")):
+        from .slide_export import ExportError, export_page, pictures_zip, render_pdf, render_png, slide_count
+        result = deck_or_409(generation_id, "Only lecture slides can be exported as PDF or pictures.")
+        page = with_custom_look(saved_page_text(result, "The saved slides are missing. Make them again to export them."), store.custom_looks())
+        count = slide_count(page)
+        wanted = list(range(1, count + 1)) if slide == "all" else [int(slide)]
+        if not all(1 <= number <= count for number in wanted):
+            raise HTTPException(422, f"This deck has {count} slides shown; slide {slide} is not one of them.")
+        name = re.sub(r"[^\w-]+", "-", result["title"], flags=re.ASCII).strip("-").lower()[:40] or "slides"
+        try:
+            if format == "pdf":
+                data = render_pdf(page, None if slide == "all" else wanted[0], theme)
+                kind, filename = "application/pdf", f"{name}.pdf" if slide == "all" else f"{name}-slide-{wanted[0]:02d}.pdf"
+            else:
+                pictures = render_png(page, wanted, scale, theme)
+                if len(pictures) == 1:
+                    data, kind, filename = pictures[0][1], "image/png", f"{name}-slide-{wanted[0]:02d}.png"
+                else:
+                    data, kind, filename = pictures_zip(pictures, name), "application/zip", f"{name}-slides.zip"
+        except ExportError as error:
+            raise HTTPException(error.status, str(error)) from error
+        return Response(data, media_type=kind, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
     # Share to a phone: the phone copy is rendered when shared, read at /share over the tailnet, or downloaded.
     def shared_deck(generation_id):
