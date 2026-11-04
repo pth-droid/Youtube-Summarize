@@ -245,11 +245,12 @@ def lecture_page(source: Transcript, knowledge: KnowledgeModel, lecture: Lecture
 
     slides = []
 
-    def add(kind, title, content="", *, eyebrow="", heading=None, notes="", footer="", marks="", choices=None):
-        """A slide; `choices` lists the library layouts its content fits, and `arrange` picks one."""
+    def add(kind, title, content="", *, eyebrow="", heading=None, notes="", footer="", marks="", choices=None, at="", hidden=False):
+        """A slide; `choices` lists the library layouts its content fits, and `arrange` picks one. `at` is the slide's place
+        in the plan: "P.S" for the S-th slide of part P, "P" for part P's divider (counted from 0), as the editor addresses it."""
         slides.append({"kind": kind, "title": title, "eyebrow": eyebrow, "marks": marks, "content": content,
                        "heading": f'<h2 data-part="0">{slide_text(title)}</h2>' if heading is None else heading, "notes": notes,
-                       "footer": footer, "choices": choices})
+                       "footer": footer, "choices": choices, "at": at, "hidden": hidden})
 
     def chapter_ideas(chapter_id):
         chapter = chapters.get(chapter_id)
@@ -316,9 +317,9 @@ def lecture_page(source: Transcript, knowledge: KnowledgeModel, lecture: Lecture
             section = (f'<p class="part-num" data-part="1">{number:02d}</p>' + (f'<p class="lead" data-part="2">{span}</p>' if span else "")
                        + ('<ol class="parts" data-part="3">' + "".join(f'<li{" aria-current=\"true\"" if k == number else ""}>{e(name)}</li>'
                                                                         for k, name in enumerate(titles, 1)) + "</ol>" if indexed else ""))
-            add("divider", title, eyebrow=t(f"PART {number}", f"PHẦN {number}"),
+            add("divider", title, eyebrow=t(f"PART {number}", f"PHẦN {number}"), at=str(number - 1),
                 choices=[Choice("section", VARIANTS if indexed else (1, 2, 3), lambda section=section: section)])
-        for slide in part.slides:
+        for position, slide in enumerate(part.slides):
             if slide.layout == "points":
                 choices = point_choices(slide.title, slide.points, t)
             elif slide.layout == "steps":
@@ -341,7 +342,8 @@ def lecture_page(source: Transcript, knowledge: KnowledgeModel, lecture: Lecture
                            + layout_items(slide.points, "quote-points"))
                 choices = [Choice("quote", VARIANTS, lambda passage=passage: passage)]
             add(slide.layout, slide.title, eyebrow=e(title), marks=badges({units[uid].status for uid in slide.unit_ids}),
-                notes=notes_for(slide.notes, slide.unit_ids), footer=source_times(slide.unit_ids), choices=choices)
+                notes=notes_for(slide.notes, slide.unit_ids), footer=source_times(slide.unit_ids), choices=choices,
+                at=f"{number - 1}.{position}", hidden=slide.hidden)
         add_figures(number - 1, e(title))
     add_figures(None, t("FIGURE", "HÌNH"))
     conclusion = f'<p class="lede conclusion" data-part="1">{e(knowledge.main_conclusion)}</p>'
@@ -365,19 +367,24 @@ def lecture_page(source: Transcript, knowledge: KnowledgeModel, lecture: Lecture
     add("limits", t("Limits and source", "Giới hạn và nguồn"), eyebrow=t("BEFORE YOU REUSE THIS", "TRƯỚC KHI DÙNG LẠI"),
         choices=[Choice("small-icons", (3,), lambda: limits)])  # a full-width checklist, unlike the summary before it
 
-    total = len(slides)
     no_notes = f'<p class="muted">{t("No presenter notes for this slide.", "Slide này không có ghi chú.")}</p>'
     frames = []
     # The deck title sets where each rotation starts, so one-off slides such as the title also vary from deck
     # to deck, and a re-render of the same deck is stable. A renamed deck keeps the title it was made with here.
     arrange(slides, int(hashlib.sha256((lecture.layout_seed or lecture.title).encode("utf-8")).hexdigest()[:8], 16))
+    # A hidden slide takes its turn in the rotation, so hiding or showing one never changes another slide's layout; the
+    # deck leaves it out, and the editor shows it dimmed.
+    if not editable:
+        slides = [slide for slide in slides if not slide["hidden"]]
+    total = len(slides)
     for index, slide in enumerate(slides, 1):
         layout = f' layout-{slide["layout"]} variant-{slide["variant"]}' if slide.get("layout") else ""
         # Only content slides build step by step; the frame slides arrive whole.
         content = slide["content"] if slide["kind"] not in STILL else slide["content"].replace(" data-build", "")
         # Top bar: label, status marks and the slide number. Foot line: source times and the deck title.
         head = f'<header class="slide-head"><p class="eyebrow">{slide["eyebrow"]}</p>{slide["marks"]}<span class="count">{index:02d} / {total:02d}</span></header>'
-        frames.append(f'<article class="slide-frame" id="slide-{index}" role="group" aria-roledescription="slide" aria-label="{index} / {total}: {e(slide["title"])}">'
+        place = (f' data-{"slide" if "." in slide["at"] else "divider"}="{slide["at"]}"' if slide["at"] else "") + (' data-hidden="true"' if slide["hidden"] else "")
+        frames.append(f'<article class="slide-frame" id="slide-{index}"{place} role="group" aria-roledescription="slide" aria-label="{index} / {total}: {e(slide["title"])}">'
                       f'<div class="slide-box"><section class="slide kind-{slide["kind"]}{layout}">{head}{slide["heading"]}<div class="slide-content">{content}</div>'
                       f'<footer class="slide-foot"><span class="sources">{slide["footer"]}</span><span class="deck-name">{e(lecture.title)}</span></footer></section></div>'
                       f'<aside class="notes" aria-label="{t("Presenter notes", "Ghi chú người trình bày")}">{slide["notes"] or no_notes}</aside></article>')

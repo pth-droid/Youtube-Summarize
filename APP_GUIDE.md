@@ -57,6 +57,29 @@ Open the slides and select **Edit slides**. The deck stays as it is, at the slid
 
 **Save changes** writes the text into the deck's saved slides and draws the deck again, with no AI requests. Export, the phone copy and any later look change all use the edited text. A slide may move to a layout that fits its new text, but renaming the deck keeps every slide's layout. The source's own words stay as they are: the central question, the conclusion, quotations and the limits slide. A figure on a stats slide must still be a number the source states. **Cancel**, or leaving the deck, asks before dropping unsaved changes. Making the slides again from the source starts from the AI's text, not the edited one.
 
+### Edit the slides themselves
+
+In **Edit slides**, a rail of thumbnails runs down the left, one for every slide, with each part's title slide heading its group. The bar above the slides works on the slide in view:
+
+- **Move up** and **Move down** move it earlier or later, and across a part's edge into the next or the previous part. You can also drag a thumbnail in the rail: drop it on the upper or lower half of another slide, or on a part's title slide to make it that part's first slide. Only your own content slides move; the title, objectives, agenda, part, summary and limits slides are made from the deck.
+- **Hide** leaves the slide out when you present, print, share and export. It stays in the editor, dimmed and tagged **Hidden**; the button then reads **Show**. Hiding a slide never changes the layout of any other slide.
+- **Duplicate** copies the slide just after itself. **Add slide** adds a blank bullet slide after it (after a part's title slide, at the start of the part). The new slide teaches the same ideas as its neighbour, so it stays tied to the source; click its text to write it.
+- **Delete** removes the slide.
+- **Layout…** shows every layout (bullet points, steps, compare two, columns, table, timeline, pyramid, funnel, key figures, quote) with what each one does. Choose one to preview your slide in it. A layout the slide cannot take says why: a pyramid needs three items, key figures must be numbers the source states, a quote needs the source's original words. When a change would cut or merge text, such as a fourth point that a two-column slide cannot hold, a warning lists it before you apply. Points and entries convert by their `Label: text` form where they have one; otherwise the app numbers them or adds placeholder headings for you to edit.
+- **Undo** and **Redo** step back and forward through up to 20 saved edits, including text saves. The bar counts the steps. Making the slides again from the source starts a new history.
+
+Each of these is saved at once, with no AI requests, and the editor opens again at the slide you changed. Text you have typed but not saved goes into the same step. Every rule that applies to the AI's slides still applies: a part keeps one to six slides, every slide keeps the ideas it teaches, and a figure on a key-figures slide must be a number the source states, so an edit that would break one is refused with the reason and changes nothing. Adding, deleting, duplicating or moving slides moves the rotation of layouts along with it, so the slides after the change may take different frames; hiding and showing do not. Two slides can end up with the same frame side by side when a hidden slide sits between them.
+
+### Export slides as PDF or pictures
+
+When you present a deck, **Export** opens a dialog:
+
+- **PDF** has one 16:9 page for every slide (the same size as **Print / PDF**), or just the slide in view.
+- **PNG pictures** draws one picture for each slide, 1280 × 720 pixels, or 2× (2560 × 1440) or 3× (3840 × 2160). Several pictures arrive together as one ZIP, numbered in deck order.
+- **HTML** is the offline file that presents.
+
+PDF and pictures use the light colours, for paper and projectors, unless you choose **Dark**. They show every point of every slide, with no controls or motion, and leave out hidden slides. They are drawn on this computer with Microsoft Edge or Google Chrome, which Distill finds in their usual folders; set the `DISTILL_BROWSER` environment variable to the program's path to use another Chromium browser. Nothing is uploaded. Drawing takes a few seconds for the whole deck and about a second a picture, three at a time. If no browser is found, the dialog says so.
+
 ### Present from a phone
 
 To present from a phone and mirror its screen to a TV, open the slides and select **Share to phone**. Distill makes a phone copy of the deck from its saved slides, with no AI requests. Because mirroring shows everything on the phone, the copy shows only the slide, full height on black, and never shows presenter notes. Turn the phone sideways. Tap to go on, tap the left edge to go back, or swipe. **⋯** in the corner brings back the controls (slide list, light or dark, full screen where the phone allows it). Upright, the copy asks you to turn the phone. On an iPhone, **Share → Add to Home Screen** opens it without Safari's bars, so the slide is larger.
@@ -120,7 +143,7 @@ Open **Generation details** on a completed job to see reported token usage. Thes
 
 ## Save, export, and back up
 
-Select **Export HTML** to save one interactive file. It works in a local browser without the app or an internet connection. Opening the original video still needs internet. Select **Print / PDF** in the reader to use your browser's print dialog.
+Select **Export HTML** to save one interactive file. For lecture slides, **Export** also saves a PDF or PNG pictures (see above). It works in a local browser without the app or an internet connection. Opening the original video still needs internet. Select **Print / PDF** in the reader to use your browser's print dialog.
 
 Your default Windows library is stored at `%LOCALAPPDATA%\VisualLearning`. It contains one SQLite database, saved interactive HTML pages, source transcripts, evidence and analysis records, processing jobs, and your preferences. SQLite needs no database server. The Settings view shows the exact location. Keep the database and files together.
 

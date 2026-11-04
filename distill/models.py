@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic.json_schema import SkipJsonSchema
 
 SCHEMA_VERSION = "1.1"
 SKILL_VERSION = "1.1.0"
@@ -298,6 +299,8 @@ class LectureSlide(Contract):
     entries: list[LectureEntry] = Field(default_factory=list, max_length=6, description="timeline, pyramid, funnel and stats slides only; empty otherwise.")
     unit_ids: list[str] = Field(min_length=1, max_length=6, description="Supplied idea IDs this slide teaches. The slide text stays within these ideas.")
     notes: str = Field(default="", max_length=1600, description="What the presenter says for this slide, in full sentences.")
+    # Set by a person in the deck's editor, never by the AI, so it stays out of the schema the AI is sent.
+    hidden: SkipJsonSchema[bool] = False
 
     @model_validator(mode="after")
     def layout_content(self):

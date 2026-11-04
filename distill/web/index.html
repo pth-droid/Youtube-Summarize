@@ -126,7 +126,7 @@
 
       <section id="view-reader" class="view reader-view" aria-labelledby="reader-title" hidden><header class="reader-header"><button type="button" class="orb back" data-view="library" aria-label="Back to library"><svg aria-hidden="true"><use href="#i-arrow-left"/></svg></button><h1 id="reader-title">Learning page</h1>
         <div id="edit-bar" class="edit-bar" hidden><p id="edit-status" class="edit-status" role="status" aria-live="polite"></p><button id="edit-cancel" type="button" class="button glass">Cancel</button><button id="edit-save" type="button" class="button primary" disabled>Save changes</button></div>
-        <div class="reader-actions"><button id="reader-edit" type="button" class="button glass" hidden><svg aria-hidden="true"><use href="#i-edit"/></svg>Edit slides</button><button id="reader-share" type="button" class="button glass" aria-haspopup="dialog" hidden><svg aria-hidden="true"><use href="#i-phone"/></svg>Share to phone</button><a id="reader-export" class="button primary" href="#"><svg aria-hidden="true"><use href="#i-download"/></svg>Export HTML</a></div></header>
+        <div class="reader-actions"><button id="reader-edit" type="button" class="button glass" hidden><svg aria-hidden="true"><use href="#i-edit"/></svg>Edit slides</button><button id="reader-share" type="button" class="button glass" aria-haspopup="dialog" hidden><svg aria-hidden="true"><use href="#i-phone"/></svg>Share to phone</button><a id="reader-export" class="button primary" href="#"><svg aria-hidden="true"><use href="#i-download"/></svg><span id="reader-export-label">Export HTML</span></a></div></header>
         <dialog id="share-dialog" class="share-dialog" aria-labelledby="share-title">
           <h2 id="share-title">Present from your phone</h2>
           <p class="share-lede">A phone copy of these slides. Only the slide shows, so mirroring the phone to a TV puts the slide alone on the screen.</p>
@@ -139,6 +139,36 @@
             <li>⋯ in the corner shows the controls. Presenter notes stay off the phone, since mirroring shows everything on it.</li>
             <li>On an iPhone, Share → Add to Home Screen opens the slides without Safari's bars.</li></ul>
           <div class="button-row"><a id="share-download" class="button secondary" href="#"><svg aria-hidden="true"><use href="#i-download"/></svg>Download phone HTML</a><button id="share-done" type="button" class="button primary">Done</button></div>
+        </dialog>
+        <dialog id="export-dialog" class="share-dialog export-dialog" aria-labelledby="export-title">
+          <form id="export-form" method="dialog">
+            <h2 id="export-title">Export these slides</h2>
+            <p class="share-lede">Slides you hid are left out, as they are when you present. PDF and pictures are drawn on this computer by Edge or Chrome.</p>
+            <fieldset class="export-group"><legend>Format</legend>
+              <label class="check"><input type="radio" name="export-format" value="pdf" checked>PDF: one 16:9 page for each slide</label>
+              <label class="check"><input type="radio" name="export-format" value="png">PNG pictures: one for each slide</label>
+              <label class="check"><input type="radio" name="export-format" value="html">HTML: one file that presents offline</label></fieldset>
+            <fieldset class="export-group" id="export-which"><legend>Slides</legend>
+              <label class="check"><input type="radio" name="export-slide" value="current" checked><span id="export-current">This slide</span></label>
+              <label class="check"><input type="radio" name="export-slide" value="all"><span id="export-all">All slides</span></label></fieldset>
+            <fieldset class="export-group" id="export-scale-group"><legend>Picture size</legend>
+              <label class="check"><input type="radio" name="export-scale" value="1" checked>1×: 1280 × 720 px</label>
+              <label class="check"><input type="radio" name="export-scale" value="2">2×: 2560 × 1440 px</label>
+              <label class="check"><input type="radio" name="export-scale" value="3">3×: 3840 × 2160 px</label></fieldset>
+            <fieldset class="export-group" id="export-theme-group"><legend>Colours</legend>
+              <label class="check"><input type="radio" name="export-theme" value="light" checked>Light, for paper and projectors</label>
+              <label class="check"><input type="radio" name="export-theme" value="dark">Dark</label></fieldset>
+            <p id="export-status" class="export-status" role="status" aria-live="polite"></p>
+            <div class="button-row"><button id="export-cancel" type="button" class="button quiet">Close</button><button id="export-go" type="submit" class="button primary"><svg aria-hidden="true"><use href="#i-download"/></svg>Download</button></div>
+          </form>
+        </dialog>
+        <dialog id="layout-dialog" class="share-dialog layout-dialog" aria-labelledby="layout-title">
+          <h2 id="layout-title">Change layout</h2>
+          <p class="share-lede">The slide keeps its title, notes and ideas. Choose a layout to preview it; nothing changes until you apply it.</p>
+          <div class="layout-body"><ul id="layout-options" class="layout-options" aria-label="Layouts"></ul>
+            <div class="layout-side"><div class="layout-preview"><iframe id="layout-frame" title="Preview of the slide in the chosen layout" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe><p id="layout-empty" class="layout-empty">Choose a layout to see the slide in it.</p></div>
+              <ul id="layout-warnings" class="layout-warnings" aria-live="polite"></ul></div></div>
+          <div class="button-row"><button id="layout-cancel" type="button" class="button quiet">Cancel</button><button id="layout-apply" type="button" class="button primary" disabled>Apply layout</button></div>
         </dialog><div class="frame-wrap"><iframe id="reader-frame" title="Interactive learning page" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" allow="fullscreen" referrerpolicy="no-referrer"></iframe></div></section>
 
       <section id="view-settings" class="view settings-view" aria-labelledby="settings-title" hidden>
